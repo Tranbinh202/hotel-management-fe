@@ -13,6 +13,7 @@
 # testing
 /coverage
 
+.env # local env files
 # next.js
 /.next/
 /out/

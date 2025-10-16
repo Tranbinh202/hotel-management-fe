@@ -4,6 +4,7 @@ import { Inter, Be_Vietnam_Pro } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
+import ReactQueryProvider from "@/lib/react-query-provider"
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -31,10 +32,12 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${inter.variable} ${beVietnamPro.variable} font-sans antialiased`}>
-        <Suspense fallback={<div>Loading...</div>}>
-          {children}
-          <Analytics />
-        </Suspense>
+        <ReactQueryProvider>
+          <Suspense fallback={<div>Loading...</div>}>
+            {children}
+            <Analytics />
+          </Suspense>
+        </ReactQueryProvider>
       </body>
     </html>
   )

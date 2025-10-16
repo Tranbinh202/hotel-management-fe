@@ -5,6 +5,8 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
 import ReactQueryProvider from "@/lib/react-query-provider"
+import { AuthProvider } from "@/lib/contexts/auth-context"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -33,10 +35,13 @@ export default function RootLayout({
     <html lang="vi">
       <body className={`${inter.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <ReactQueryProvider>
-          <Suspense fallback={<div>Loading...</div>}>
-            {children}
-            <Analytics />
-          </Suspense>
+          <AuthProvider>
+            <Suspense fallback={<div>Loading...</div>}>
+              {children}
+              <Analytics />
+              <Toaster />
+            </Suspense>
+          </AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>

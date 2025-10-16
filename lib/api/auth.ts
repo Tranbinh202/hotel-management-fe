@@ -1,77 +1,65 @@
-import axiosInstance from "@/lib/axios"
+import { apiClient } from "./client"
+import type { LoginDto, RegisterDto, AuthResponse } from "@/lib/types/api"
 
-// Types cho Authentication
-export interface LoginDto {
-  email: string
-  password: string
-}
-
-export interface RegisterDto {
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-  phone: string
-  gender: "male" | "female" | "other"
-}
-
-export interface AuthResponse {
-  accessToken: string
-  refreshToken: string
-  user: {
-    id: number
-    email: string
-    firstName: string
-    lastName: string
-    role: string
-  }
-}
-
-// API functions
 export const authApi = {
-  // Đăng nhập
   login: async (data: LoginDto): Promise<AuthResponse> => {
-    const response = await axiosInstance.post("/auth/login", data)
-    // Lưu token vào localStorage
-    if (typeof window !== "undefined" && response.data.accessToken) {
-      localStorage.setItem("access_token", response.data.accessToken)
-      localStorage.setItem("refresh_token", response.data.refreshToken)
+    const response = await apiClient.post<AuthResponse>("/auth/login", data)
+
+    if (typeof window !== "undefined" && response.accessToken) {
+      localStorage.setItem("access_token", response.accessToken)
+      localStorage.setItem("refresh_token", response.refreshToken)
+      localStorage.setItem("user", JSON.stringify(response.user))
     }
-    return response.data
+
+    return response
   },
 
-  // Đăng ký
   register: async (data: RegisterDto): Promise<AuthResponse> => {
-    const response = await axiosInstance.post("/auth/register", data)
-    return response.data
+    return apiClient.post<AuthResponse>("/auth/register", data)
   },
 
-  // Đăng xuất
   logout: async (): Promise<void> => {
-    await axiosInstance.post("/auth/logout")
-    // Xóa token khỏi localStorage
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("access_token")
-      localStorage.removeItem("refresh_token")
+    try {
+      await apiClient.post("/auth/logout")
+    } finally {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("access_token")
+        localStorage.removeItem("refresh_token")
+        localStorage.removeItem("user")
+      }
     }
   },
 
-  // Refresh token
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await axiosInstance.post("/auth/refresh", { refreshToken })
-    if (typeof window !== "undefined" && response.data.accessToken) {
-      localStorage.setItem("access_token", response.data.accessToken)
+    const response = await apiClient.post<AuthResponse>("/auth/refresh", { refreshToken })
+
+    if (typeof window !== "undefined" && response.accessToken) {
+      localStorage.setItem("access_token", response.accessToken)
     }
-    return response.data
+
+    return response
   },
 
-  // Quên mật khẩu
   forgotPassword: async (email: string): Promise<void> => {
-    await axiosInstance.post("/auth/forgot-password", { email })
+    await apiClient.post("/auth/forgot-password", { email })
   },
 
-  // Đổi mật khẩu
   changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
-    await axiosInstance.post("/auth/change-password", { oldPassword, newPassword })
+    await apiClient.post("/auth/change-password", { oldPassword, newPassword })
+  },
+
+  getCurrentUser: () => {
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("user")
+      return userStr ? JSON.parse(userStr) : null
+    }
+    return null
+  },
+
+  isAuthenticated: () => {
+    if (typeof window !== "undefined") {
+      return !!localStorage.getItem("access_token")
+    }
+    return false
   },
 }

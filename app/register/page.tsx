@@ -6,21 +6,25 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { useRegister } from "@/lib/hooks"
 
 export default function RegisterPage() {
+  const { mutate: register, isPending } = useRegister()
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
-    phone: "",
-    gender: "",
+    fullName: "",
+    identityCard: "",
+    address: "",
+    phoneNumber: "",
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // Clear error when user starts typing
@@ -29,22 +33,17 @@ export default function RegisterPage() {
     }
   }
 
-  const handleGenderChange = (gender: string) => {
-    setFormData((prev) => ({ ...prev, gender }))
-    if (errors.gender) {
-      setErrors((prev) => ({ ...prev, gender: "" }))
-    }
-  }
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "Vui lòng nhập họ"
+    if (!formData.username.trim()) {
+      newErrors.username = "Vui lòng nhập tên đăng nhập"
+    } else if (formData.username.length < 3) {
+      newErrors.username = "Tên đăng nhập phải có ít nhất 3 ký tự"
     }
 
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Vui lòng nhập tên"
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Vui lòng nhập họ và tên"
     }
 
     if (!formData.email.trim()) {
@@ -65,14 +64,20 @@ export default function RegisterPage() {
       newErrors.confirmPassword = "Mật khẩu không khớp"
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Vui lòng nhập số điện thoại"
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone)) {
-      newErrors.phone = "Số điện thoại không hợp lệ"
+    if (!formData.identityCard.trim()) {
+      newErrors.identityCard = "Vui lòng nhập số CMND/CCCD"
+    } else if (!/^[0-9]{9,12}$/.test(formData.identityCard)) {
+      newErrors.identityCard = "Số CMND/CCCD không hợp lệ (9-12 chữ số)"
     }
 
-    if (!formData.gender) {
-      newErrors.gender = "Vui lòng chọn giới tính"
+    if (!formData.address.trim()) {
+      newErrors.address = "Vui lòng nhập địa chỉ"
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = "Vui lòng nhập số điện thoại"
+    } else if (!/^[0-9]{10,11}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "Số điện thoại không hợp lệ (10-11 chữ số)"
     }
 
     setErrors(newErrors)
@@ -83,20 +88,29 @@ export default function RegisterPage() {
     e.preventDefault()
 
     if (validateForm()) {
-      console.log("Form submitted:", formData)
+      const registrationData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        identityCard: formData.identityCard,
+        address: formData.address,
+        phoneNumber: formData.phoneNumber,
+      }
+      console.log("Form submitted:", registrationData)
       // Handle registration logic here
-      alert("Đăng ký thành công!")
+      register(registrationData)
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-background">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-xl">
           <div className="mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ff5e7e] to-[#a78bfa] flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#FF6B6B] to-[#06B6D4] flex items-center justify-center shadow-lg">
                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -106,168 +120,171 @@ export default function RegisterPage() {
                   />
                 </svg>
               </div>
-              <span className="text-2xl font-serif font-bold bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] bg-clip-text text-transparent">
+              <span className="text-2xl font-bold bg-gradient-to-r from-[#FF6B6B] to-[#06B6D4] bg-clip-text text-transparent">
                 StayHub
               </span>
             </Link>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Đăng ký</h1>
-            <p className="text-gray-600">Tạo tài khoản mới để bắt đầu trải nghiệm</p>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Đăng ký tài khoản</h1>
+            <p className="text-muted-foreground">Điền thông tin để tạo tài khoản mới</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* First Name and Last Name */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">Họ</Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className={errors.firstName ? "border-red-500" : ""}
-                  placeholder="Nguyễn"
-                />
-                {errors.firstName && <p className="text-xs text-red-500">{errors.firstName}</p>}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-foreground font-medium">
+                Tên đăng nhập
+              </Label>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                value={formData.username}
+                onChange={handleChange}
+                className={`h-11 ${errors.username ? "border-red-500" : ""}`}
+                placeholder="username123"
+              />
+              {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="lastName">Tên</Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className={errors.lastName ? "border-red-500" : ""}
-                  placeholder="Văn A"
-                />
-                {errors.lastName && <p className="text-xs text-red-500">{errors.lastName}</p>}
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="text-foreground font-medium">
+                Họ và tên
+              </Label>
+              <Input
+                id="fullName"
+                name="fullName"
+                type="text"
+                value={formData.fullName}
+                onChange={handleChange}
+                className={`h-11 ${errors.fullName ? "border-red-500" : ""}`}
+                placeholder="Nguyễn Văn A"
+              />
+              {errors.fullName && <p className="text-xs text-red-500">{errors.fullName}</p>}
             </div>
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-foreground font-medium">
+                Email
+              </Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={errors.email ? "border-red-500" : ""}
+                className={`h-11 ${errors.email ? "border-red-500" : ""}`}
                 placeholder="example@email.com"
               />
               {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
             </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password">Mật khẩu</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={errors.password ? "border-red-500" : ""}
-                placeholder="••••••••"
-              />
-              {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Xác nhận mật khẩu</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={errors.confirmPassword ? "border-red-500" : ""}
-                placeholder="••••••••"
-              />
-              {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Số điện thoại</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                className={errors.phone ? "border-red-500" : ""}
-                placeholder="0123456789"
-              />
-              {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
-            </div>
-
-            {/* Gender */}
-            <div className="space-y-2">
-              <Label className="text-gray-700">Giới tính</Label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleGenderChange("male")}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-medium ${
-                    formData.gender === "male"
-                      ? "border-[#14b8a6] bg-[#14b8a6] text-white shadow-lg shadow-teal-500/30"
-                      : "border-gray-200 hover:border-[#14b8a6]/50 text-gray-700"
-                  }`}
-                >
-                  Nam
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGenderChange("female")}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-medium ${
-                    formData.gender === "female"
-                      ? "border-[#ff5e7e] bg-[#ff5e7e] text-white shadow-lg shadow-pink-500/30"
-                      : "border-gray-200 hover:border-[#ff5e7e]/50 text-gray-700"
-                  }`}
-                >
-                  Nữ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleGenderChange("other")}
-                  className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-medium ${
-                    formData.gender === "other"
-                      ? "border-[#a78bfa] bg-[#a78bfa] text-white shadow-lg shadow-purple-500/30"
-                      : "border-gray-200 hover:border-[#a78bfa]/50 text-gray-700"
-                  }`}
-                >
-                  Khác
-                </button>
+            {/* Password fields in grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-foreground font-medium">
+                  Mật khẩu
+                </Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`h-11 ${errors.password ? "border-red-500" : ""}`}
+                  placeholder="••••••••"
+                />
+                {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
               </div>
-              {errors.gender && <p className="text-xs text-red-500">{errors.gender}</p>}
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-foreground font-medium">
+                  Xác nhận mật khẩu
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className={`h-11 ${errors.confirmPassword ? "border-red-500" : ""}`}
+                  placeholder="••••••••"
+                />
+                {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
+              </div>
             </div>
 
-            {/* Submit Button */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="identityCard" className="text-foreground font-medium">
+                  Số CMND/CCCD
+                </Label>
+                <Input
+                  name="identityCard"
+                  type="text"
+                  value={formData.identityCard}
+                  onChange={handleChange}
+                  className={`h-11 ${errors.identityCard ? "border-red-500" : ""}`}
+                  placeholder="001234567890"
+                />
+                {errors.identityCard && <p className="text-xs text-red-500">{errors.identityCard}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="text-foreground font-medium">
+                  Số điện thoại
+                </Label>
+                <Input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className={`h-11 ${errors.phoneNumber ? "border-red-500" : ""}`}
+                  placeholder="0536549059"
+                />
+                {errors.phoneNumber && <p className="text-xs text-red-500">{errors.phoneNumber}</p>}
+              </div>
+            </div>
+
+
+            <div className="space-y-2">
+              <Label htmlFor="address" className="text-foreground font-medium">
+                Địa chỉ
+              </Label>
+              <Textarea
+                id="address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                className={`min-h-[80px] resize-none ${errors.address ? "border-red-500" : ""}`}
+                placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+              />
+              {errors.address && <p className="text-xs text-red-500">{errors.address}</p>}
+            </div>
+
             <Button
               type="submit"
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#ff5e7e] to-[#ff4569] hover:from-[#ff4569] hover:to-[#ff2d54] text-white shadow-lg shadow-pink-500/30"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-[#FF6B6B] to-[#FF5E7E] hover:opacity-90 text-white shadow-lg"
             >
               Đăng ký
             </Button>
 
-            {/* Login Link */}
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm text-muted-foreground">
               Đã có tài khoản?{" "}
-              <a href="/login" className="text-[#ff5e7e] font-semibold hover:underline">
-                Đăng nhập
-              </a>
+              <Link href="/login" className="text-[#06B6D4] hover:text-[#0891B2] font-semibold transition-colors">
+                Đăng nhập ngay
+              </Link>
             </p>
           </form>
         </div>
       </div>
 
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#ff5e7e] via-[#a78bfa] to-[#14b8a6] items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-10"></div>
+      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#FF6B6B] via-[#A78BFA] to-[#06B6D4] items-center justify-center p-12 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+        </div>
+
         <div className="relative z-10 text-center text-white max-w-lg">
           <div className="mb-8">
             <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-white/20 backdrop-blur-sm mb-6 shadow-2xl">
@@ -281,9 +298,8 @@ export default function RegisterPage() {
               </svg>
             </div>
             <h2 className="text-4xl font-bold mb-4">Chào mừng đến với StayHub</h2>
-            <p className="text-lg text-white/95 leading-relaxed">
-              Hệ thống quản lý khách sạn hiện đại với giao diện thân thiện, dễ sử dụng và đầy đủ tính năng cho người
-              dùng trẻ
+            <p className="text-lg text-white/90 leading-relaxed">
+              Hệ thống quản lý khách sạn hiện đại với đầy đủ tính năng và giao diện thân thiện
             </p>
           </div>
 

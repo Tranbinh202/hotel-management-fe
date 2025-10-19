@@ -1,26 +1,34 @@
 import { apiClient } from "./client"
-import type { LoginDto, RegisterDto, AuthResponse } from "@/lib/types/api"
+import type { LoginDto, RegisterDto, AuthResponse, ApiResponse } from "@/lib/types/api"
 
 export const authApi = {
-  login: async (data: LoginDto): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>("/auth/login", data)
+  login: async (data: LoginDto): Promise<ApiResponse<AuthResponse>> => {
+    const response = await apiClient.post<ApiResponse<AuthResponse>>("/authentication/login", data)
 
-    if (typeof window !== "undefined" && response.accessToken) {
-      localStorage.setItem("access_token", response.accessToken)
-      localStorage.setItem("refresh_token", response.refreshToken)
-      localStorage.setItem("user", JSON.stringify(response.user))
+    console.log("AUTH>>>", response.data)
+
+    if (typeof window !== "undefined" && response.data.token) {
+      localStorage.setItem("access_token", response.data.token)
+      localStorage.setItem("refresh_token", response.data.refreshToken)
     }
 
     return response
   },
 
   register: async (data: RegisterDto): Promise<AuthResponse> => {
-    return apiClient.post<AuthResponse>("/auth/register", data)
+    const response = await apiClient.post<AuthResponse>("/authentication/register", data)
+
+    if (typeof window !== "undefined" && response.token) {
+      localStorage.setItem("access_token", response.token)
+      localStorage.setItem("refresh_token", response.refreshToken)
+    }
+
+    return response
   },
 
   logout: async (): Promise<void> => {
     try {
-      await apiClient.post("/auth/logout")
+      await apiClient.post("/authentication/logout")
     } finally {
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token")
@@ -31,21 +39,21 @@ export const authApi = {
   },
 
   refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>("/auth/refresh", { refreshToken })
+    const response = await apiClient.post<AuthResponse>("/authentication/refresh", { refreshToken })
 
-    if (typeof window !== "undefined" && response.accessToken) {
-      localStorage.setItem("access_token", response.accessToken)
+    if (typeof window !== "undefined" && response.token) {
+      localStorage.setItem("access_token", response.token)
     }
 
     return response
   },
 
   forgotPassword: async (email: string): Promise<void> => {
-    await apiClient.post("/auth/forgot-password", { email })
+    await apiClient.post("/authentication/forgot-password", { email })
   },
 
   changePassword: async (oldPassword: string, newPassword: string): Promise<void> => {
-    await apiClient.post("/auth/change-password", { oldPassword, newPassword })
+    await apiClient.post("/authentication/change-password", { oldPassword, newPassword })
   },
 
   getCurrentUser: () => {

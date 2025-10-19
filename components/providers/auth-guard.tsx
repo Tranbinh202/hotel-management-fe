@@ -15,8 +15,9 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, requireAuth = true, requireAdmin = false, redirectTo }: AuthGuardProps) {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, account, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
+  console.log("AuthGuard:", { user, account, isAuthenticated, isLoading })
 
   useEffect(() => {
     if (isLoading) return
@@ -26,11 +27,11 @@ export function AuthGuard({ children, requireAuth = true, requireAdmin = false, 
       return
     }
 
-    if (requireAdmin && user?.role !== "admin") {
+    if (requireAdmin && account?.roleId !== 1) {
       router.push("/")
       return
     }
-  }, [isAuthenticated, isLoading, requireAuth, requireAdmin, user, router, redirectTo])
+  }, [isAuthenticated, isLoading, requireAuth, requireAdmin, user, account, router, redirectTo])
 
   if (isLoading) {
     return (
@@ -38,14 +39,6 @@ export function AuthGuard({ children, requireAuth = true, requireAdmin = false, 
         <LoadingSpinner size="lg" />
       </div>
     )
-  }
-
-  if (requireAuth && !isAuthenticated) {
-    return null
-  }
-
-  if (requireAdmin && user?.role !== "admin") {
-    return null
   }
 
   return <>{children}</>

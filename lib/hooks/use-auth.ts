@@ -12,10 +12,10 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
-      queryClient.setQueryData(["user"], data.user)
+      // queryClient.setQueryData(["user"], data.user)
       toast({
         title: "Đăng nhập thành công",
-        description: `Chào mừng ${data.user.firstName}!`,
+        // description: `Chào mừng ${data.user.firstName}!`,
       })
       router.push("/admin/dashboard")
     },
@@ -37,9 +37,8 @@ export function useRegister() {
     onSuccess: () => {
       toast({
         title: "Đăng ký thành công",
-        description: "Vui lòng đăng nhập để tiếp tục",
       })
-      router.push("/login")
+      router.push("/admin/dashboard")
     },
     onError: (error: any) => {
       toast({

@@ -1,5 +1,14 @@
-import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig } from "axios"
+// api-client.ts
+import axios, { AxiosError, AxiosHeaders, AxiosInstance, AxiosRequestConfig } from "axios"
 import type { ApiError } from "@/lib/types/api"
+
+let isRefreshing = false
+let refreshQueue: Array<(token: string | null) => void> = []
+
+const refreshClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api",
+  headers: { "Content-Type": "application/json" },
+})
 
 class ApiClient {
   private instance: AxiosInstance
@@ -8,65 +17,98 @@ class ApiClient {
     this.instance = axios.create({
       baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api",
       timeout: 10000,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
     })
-
     this.setupInterceptors()
   }
 
   private setupInterceptors() {
-    // Request interceptor
     this.instance.interceptors.request.use(
       (config) => {
         const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
 
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
+        // Bảo đảm headers là AxiosHeaders, rồi dùng .set()
+        if (!config.headers) config.headers = new AxiosHeaders()
+        const h = config.headers as AxiosHeaders
 
+        if (token) {
+          h.set("Authorization", `Bearer ${token}`)
+        }
+        // Nếu cần set content-type
+        if (!h.has("Content-Type")) {
+          h.set("Content-Type", "application/json")
+        }
         return config
       },
-      (error) => {
-        return Promise.reject(this.handleError(error))
-      },
+      (error) => Promise.reject(error),
     )
 
-    // Response interceptor
     this.instance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
+        const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined
+        const status = error.response?.status
 
-        // Handle 401 Unauthorized
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          originalRequest._retry = true
+        // Nếu không có request gốc hoặc đã retry thì trả lỗi luôn
+        if (!original || original._retry) {
+          return Promise.reject(this.handleError(error))
+        }
 
-          try {
-            const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
+        if (status === 401) {
+          original._retry = true
 
-            if (refreshToken) {
-              const response = await this.instance.post("/auth/refresh", { refreshToken })
-              const { accessToken } = response.data
+          // Hàng đợi các request đợi token mới
+          if (!isRefreshing) {
+            isRefreshing = true
+            try {
+              const refreshToken =
+                typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
+
+              if (!refreshToken) throw new Error("NO_REFRESH_TOKEN")
+
+              const res = await refreshClient.post("/auth/refresh", { refreshToken })
+              const newAccess = (res.data as any)?.accessToken
+
+              if (typeof window !== "undefined" && newAccess) {
+                localStorage.setItem("access_token", newAccess)
+              }
+
+              // Thông báo cho hàng đợi
+              refreshQueue.forEach((cb) => cb(newAccess ?? null))
+              refreshQueue = []
+              isRefreshing = false
+
+              // Retry request cũ với token mới
+              if (!original.headers) original.headers = new AxiosHeaders()
+                ; (original.headers as AxiosHeaders).set("Authorization", `Bearer ${newAccess}`)
+
+              return this.instance(original)
+            } catch (e) {
+              // Refresh fail -> xoá token & điều hướng
+              refreshQueue.forEach((cb) => cb(null))
+              refreshQueue = []
+              isRefreshing = false
 
               if (typeof window !== "undefined") {
-                localStorage.setItem("access_token", accessToken)
+                localStorage.removeItem("access_token")
+                localStorage.removeItem("refresh_token")
+                window.location.href = "/login"
               }
-
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${accessToken}`
-              }
-
-              return this.instance(originalRequest)
+              return Promise.reject(this.handleError(error))
             }
-          } catch (refreshError) {
-            // Refresh failed, logout user
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("access_token")
-              localStorage.removeItem("refresh_token")
-              window.location.href = "/login"
-            }
+          } else {
+            // Đang refresh -> chờ xong rồi retry
+            return new Promise((resolve, reject) => {
+              refreshQueue.push((newToken) => {
+                if (!newToken) {
+                  reject(this.handleError(error))
+                  return
+                }
+                if (!original.headers) original.headers = {}
+                original.headers.Authorization = `Bearer ${newToken}`
+                resolve(this.instance(original))
+              })
+            })
           }
         }
 
@@ -77,7 +119,6 @@ class ApiClient {
 
   private handleError(error: AxiosError): ApiError {
     if (error.response) {
-      // Server responded with error
       const data = error.response.data as any
       return {
         message: data?.message || "Đã xảy ra lỗi từ máy chủ",
@@ -86,43 +127,32 @@ class ApiClient {
         errors: data?.errors,
       }
     } else if (error.request) {
-      // Request made but no response
-      return {
-        message: "Không thể kết nối đến máy chủ",
-        code: "NETWORK_ERROR",
-      }
+      return { message: "Không thể kết nối đến máy chủ", code: "NETWORK_ERROR" }
     } else {
-      // Something else happened
-      return {
-        message: error.message || "Đã xảy ra lỗi không xác định",
-        code: "UNKNOWN_ERROR",
-      }
+      return { message: error.message || "Đã xảy ra lỗi không xác định", code: "UNKNOWN_ERROR" }
     }
   }
 
+  // wrappers...
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.get<T>(url, config)
-    return response.data
+    const res = await this.instance.get<T>(url, config)
+    return res.data
   }
-
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.post<T>(url, data, config)
-    return response.data
+    const res = await this.instance.post<T>(url, data, config)
+    return res.data
   }
-
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.put<T>(url, data, config)
-    return response.data
+    const res = await this.instance.put<T>(url, data, config)
+    return res.data
   }
-
   async patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.patch<T>(url, data, config)
-    return response.data
+    const res = await this.instance.patch<T>(url, data, config)
+    return res.data
   }
-
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.instance.delete<T>(url, config)
-    return response.data
+    const res = await this.instance.delete<T>(url, config)
+    return res.data
   }
 }
 

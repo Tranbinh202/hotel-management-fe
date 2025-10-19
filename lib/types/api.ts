@@ -1,8 +1,10 @@
 // Common API response types
 export interface ApiResponse<T> {
+  isSuccess: boolean
+  responseCode: number | null
+  statusCode: number
+  message: string
   data: T
-  message?: string
-  success: boolean
 }
 
 export interface PaginatedResponse<T> {
@@ -27,28 +29,46 @@ export interface LoginDto {
 }
 
 export interface RegisterDto {
-  firstName: string
-  lastName: string
+  username: string
   email: string
   password: string
-  phone: string
-  gender: "male" | "female" | "other"
+  fullName: string
+  identityCard: string
+  address: string
+  phoneNumber: string
 }
 
 export interface AuthResponse {
-  accessToken: string
+  token: string
   refreshToken: string
-  user: User
+  roles: string[]
+}
+
+export interface Account {
+  accountId: number
+  username: string
+  email: string
+  phone?: string | null
+  roleId: number
+  isLocked: boolean
+  lastLoginAt: string
+  createdAt: string
+  createdBy?: number | null
+  updatedAt?: string | null
+  updatedBy?: number | null
 }
 
 export interface User {
-  id: number
-  email: string
-  firstName: string
-  lastName: string
-  role: string
-  phone?: string
-  gender?: "male" | "female" | "other"
+  customerId: number
+  accountId: number
+  fullName: string
+  phoneNumber: string
+  identityCard: string
+  address: string
+  createdAt: string
+  createdBy?: number | null
+  updatedAt?: string | null
+  updatedBy?: number | null
 }
 
 // Amenity types

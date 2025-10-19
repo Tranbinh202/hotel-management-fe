@@ -1,15 +1,15 @@
 "use client"
 
-import Link from "next/link"
 import { LoginForm } from "@/components/features/auth/login-form"
-import { useLogin } from "@/lib/hooks/use-auth"
+import { useAuth } from "@/lib/contexts/auth-context"
 import type { LoginDto } from "@/lib/types/api"
+import Link from "next/link"
 
 export default function LoginPage() {
-  const loginMutation = useLogin()
+  const { login, isLoading } = useAuth()
 
   const handleSubmit = async (data: LoginDto) => {
-    await loginMutation.mutateAsync(data)
+    await login(data.email, data.password)
   }
 
   const handleGoogleLogin = () => {
@@ -33,7 +33,7 @@ export default function LoginPage() {
           <h1 className="text-4xl font-bold text-foreground mb-2">Đăng nhập</h1>
           <p className="text-muted-foreground mb-8">Chào mừng bạn trở lại!</p>
 
-          <LoginForm onSubmit={handleSubmit} isLoading={loginMutation.isPending} />
+          <LoginForm onSubmit={handleSubmit} isLoading={isLoading} />
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

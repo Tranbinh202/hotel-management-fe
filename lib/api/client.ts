@@ -1,6 +1,8 @@
+import { Card } from '@/components/ui/card';
 // api-client.ts
 import axios, { AxiosError, AxiosHeaders, AxiosInstance, AxiosRequestConfig } from "axios"
 import type { ApiError } from "@/lib/types/api"
+import { QueryClient } from "@tanstack/react-query"
 
 let isRefreshing = false
 let refreshQueue: Array<(token: string | null) => void> = []
@@ -157,3 +159,7 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+export const queryClient = new QueryClient(
+  { defaultOptions: { queries: { retry: 1, staleTime: 5 * 60 * 1000, }, mutations: { retry: 1 } } }
+)

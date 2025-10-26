@@ -102,9 +102,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } bg-white border-r border-slate-200 w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } bg-white border-r border-slate-200 w-64`}
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
@@ -135,11 +134,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                    isActive
-                      ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
-                      : "text-slate-600 hover:bg-slate-100"
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
+                    ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
+                    : "text-slate-600 hover:bg-slate-100"
+                    }`}
                 >
                   {item.icon}
                   <span className="font-medium">{item.name}</span>
@@ -191,9 +189,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
 
-              {/* Logout */}
               <Link
-                href="/admin/login"
+                href="/login"
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Đăng xuất

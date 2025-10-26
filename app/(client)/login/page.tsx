@@ -4,27 +4,28 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginPage() {
-  const router = useRouter()
+  const { login, isLoading, isInitializing } = useAuth()
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!formData.email) {
-      newErrors.email = "Vui lòng nhập email"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email không hợp lệ"
+    if (!formData.username) {
+      newErrors.username = "Vui lòng nhập tên đăng nhập"
     }
 
     if (!formData.password) {
@@ -42,12 +43,15 @@ export default function LoginPage() {
 
     if (!validateForm()) return
 
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsLoading(false)
-
-    console.log("Login data:", formData)
-    router.push("/admin/dashboard")
+    try {
+      await login(formData.username, formData.password)
+    } catch (error) {
+      toast({
+        title: "Đăng nhập thất bại",
+        description: error instanceof Error ? error.message : "Vui lòng kiểm tra lại thông tin đăng nhập",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleGoogleLogin = () => {
@@ -60,6 +64,17 @@ export default function LoginPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border-2 border-[#FF6B6B] border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground">Đang tải...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -81,30 +96,40 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Tên đăng nhập</Label>
               <Input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
                 onChange={handleChange}
-                className={errors.email ? "border-red-500" : ""}
-                placeholder="your.email@example.com"
+                className={errors.username ? "border-red-500" : ""}
+                placeholder="username"
               />
-              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+              {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Mật khẩu</Label>
-              <Input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={errors.password ? "border-red-500" : ""}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
             </div>
 
@@ -130,7 +155,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-background-white text-muted-foreground">Hoặc</span>
+                <span className="px-4 bg-background text-muted-foreground">Hoặc</span>
               </div>
             </div>
 

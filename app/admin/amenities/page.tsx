@@ -52,9 +52,9 @@ export default function AmenitiesPage() {
   }, [error, toast])
 
   const amenities: readonly Amenity[] =
-    data?.pages?.flatMap<Amenity>((page: any) => page.data.items) ?? [];
-  const totalPages = data?.pages[0]?.data.totalPages || 1
-  const totalCount = data?.pages[0]?.data.totalCount || 0
+    data?.pages?.flatMap<Amenity>((page: any) => page.items) ?? [];
+  const totalPages = data?.pages[0]?.totalPages || 1
+  const totalCount = data?.pages[0]?.totalCount || 0
   console.log("FLAT AMENITIES:", data)
 
   const handleOpenModal = (amenity?: Amenity) => {

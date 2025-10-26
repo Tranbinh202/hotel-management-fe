@@ -1,8 +1,36 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import Image from "next/image"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function Home() {
+  const { user, isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      const isAdminOrManager = user.roles?.some((role) => role === "Admin" || role === "Manager")
+      if (isAdminOrManager) {
+        router.push("/admin/dashboard")
+      }
+    }
+  }, [isAuthenticated, isLoading, user, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Đang tải...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {/* Hero Section */}
@@ -25,9 +53,8 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-xl md:text-2xl mb-10 text-white/95 leading-relaxed max-w-3xl mx-auto">
-            Khám phá không gian sang trọng, dịch vụ hoàn hảo và những khoảnh
-            khắc đáng nhớ tại StayHub - Nơi mọi kỳ nghỉ trở thành trải nghiệm
-            tuyệt vời
+            Khám phá không gian sang trọng, dịch vụ hoàn hảo và những khoảnh khắc đáng nhớ tại StayHub - Nơi mọi kỳ nghỉ
+            trở thành trải nghiệm tuyệt vời
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/rooms">
@@ -54,12 +81,7 @@ export default function Home() {
               <span>4.9/5 từ 2,500+ đánh giá</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -70,12 +92,7 @@ export default function Home() {
               <span>Miễn phí hủy phòng</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -88,18 +105,8 @@ export default function Home() {
           </div>
         </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 animate-bounce">
-          <svg
-            className="w-6 h-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 14l-7 7m0 0l-7-7m7 7V3"
-            />
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
         </div>
       </section>
@@ -108,12 +115,9 @@ export default function Home() {
       <section id="rooms" className="py-24 bg-background">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">
-              Phòng nghỉ cao cấp
-            </h2>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">Phòng nghỉ cao cấp</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Mỗi phòng được thiết kế tinh tế, mang đến sự thoải mái tối đa cho
-              kỳ nghỉ của bạn
+              Mỗi phòng được thiết kế tinh tế, mang đến sự thoải mái tối đa cho kỳ nghỉ của bạn
             </p>
           </div>
 
@@ -152,39 +156,23 @@ export default function Home() {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-primary font-semibold">
-                      {room.price}đ/đêm
-                    </span>
+                    <span className="text-primary font-semibold">{room.price}đ/đêm</span>
                   </div>
                 </div>
                 <div className="p-6">
-                  <h3 className="font-serif text-2xl font-semibold mb-3">
-                    {room.name}
-                  </h3>
+                  <h3 className="font-serif text-2xl font-semibold mb-3">{room.name}</h3>
                   <div className="flex gap-4 mb-4 text-sm text-muted-foreground">
                     {room.features.map((feature, i) => (
                       <span key={i} className="flex items-center gap-1">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         {feature}
                       </span>
                     ))}
                   </div>
                   <Link href="/rooms">
-                    <Button className="w-full bg-primary hover:bg-primary-hover">
-                      Xem chi tiết
-                    </Button>
+                    <Button className="w-full bg-primary hover:bg-primary-hover">Xem chi tiết</Button>
                   </Link>
                 </div>
               </div>
@@ -197,12 +185,9 @@ export default function Home() {
       <section id="amenities" className="py-24 bg-muted">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">
-              Tiện nghi đẳng cấp
-            </h2>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">Tiện nghi đẳng cấp</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Trải nghiệm đầy đủ các tiện ích hiện đại và dịch vụ chăm sóc tận
-              tâm
+              Trải nghiệm đầy đủ các tiện ích hiện đại và dịch vụ chăm sóc tận tâm
             </p>
           </div>
 
@@ -249,10 +234,7 @@ export default function Home() {
                 desc: "Dịch vụ xe riêng theo yêu cầu",
               },
             ].map((amenity, index) => (
-              <div
-                key={index}
-                className="bg-card rounded-xl p-6 text-center hover:shadow-lg transition-shadow"
-              >
+              <div key={index} className="bg-card rounded-xl p-6 text-center hover:shadow-lg transition-shadow">
                 <div className="text-5xl mb-4">{amenity.icon}</div>
                 <h3 className="font-semibold text-lg mb-2">{amenity.title}</h3>
                 <p className="text-sm text-muted-foreground">{amenity.desc}</p>
@@ -275,10 +257,7 @@ export default function Home() {
       </section>
 
       {/* Offers Section */}
-      <section
-        id="offers"
-        className="py-24 bg-gradient-to-br from-[#ff5e7e]/5 to-[#a78bfa]/5"
-      >
+      <section id="offers" className="py-24 bg-gradient-to-br from-[#ff5e7e]/5 to-[#a78bfa]/5">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] bg-clip-text text-transparent">
@@ -294,16 +273,14 @@ export default function Home() {
               {
                 title: "Ưu đãi đặt sớm",
                 discount: "30%",
-                description:
-                  "Đặt trước 30 ngày và nhận ngay ưu đãi lên đến 30%",
+                description: "Đặt trước 30 ngày và nhận ngay ưu đãi lên đến 30%",
                 color: "from-[#ff5e7e] to-[#ff4569]",
                 icon: "🎯",
               },
               {
                 title: "Nghỉ dài giá ưu đãi",
                 discount: "25%",
-                description:
-                  "Lưu trú từ 5 đêm trở lên, giảm ngay 25% tổng hóa đơn",
+                description: "Lưu trú từ 5 đêm trở lên, giảm ngay 25% tổng hóa đơn",
                 color: "from-[#14b8a6] to-[#0d9488]",
                 icon: "📅",
               },
@@ -329,15 +306,9 @@ export default function Home() {
                   >
                     -{offer.discount}
                   </div>
-                  <h3 className="font-serif text-2xl font-bold mb-3">
-                    {offer.title}
-                  </h3>
-                  <p className="text-gray-600 mb-6 leading-relaxed">
-                    {offer.description}
-                  </p>
-                  <Button
-                    className={`w-full bg-gradient-to-r ${offer.color} hover:opacity-90 text-white`}
-                  >
+                  <h3 className="font-serif text-2xl font-bold mb-3">{offer.title}</h3>
+                  <p className="text-gray-600 mb-6 leading-relaxed">{offer.description}</p>
+                  <Button className={`w-full bg-gradient-to-r ${offer.color} hover:opacity-90 text-white`}>
                     Đặt ngay
                   </Button>
                 </div>
@@ -351,12 +322,8 @@ export default function Home() {
       <section className="py-24 bg-background">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">
-              Khách hàng nói gì về chúng tôi
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              Hơn 10,000 khách hàng hài lòng
-            </p>
+            <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">Khách hàng nói gì về chúng tôi</h2>
+            <p className="text-muted-foreground text-lg">Hơn 10,000 khách hàng hài lòng</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -372,43 +339,31 @@ export default function Home() {
                 name: "Trần Hoàng Long",
                 role: "Khách doanh nhân",
                 rating: 5,
-                comment:
-                  "Dịch vụ chuyên nghiệp, tiện nghi hiện đại. Rất phù hợp cho các chuyến công tác.",
+                comment: "Dịch vụ chuyên nghiệp, tiện nghi hiện đại. Rất phù hợp cho các chuyến công tác.",
               },
               {
                 name: "Lê Thị Hương",
                 role: "Gia đình",
                 rating: 5,
-                comment:
-                  "Kỳ nghỉ gia đình tuyệt vời. Các bé rất thích hồ bơi và khu vui chơi. Highly recommended!",
+                comment: "Kỳ nghỉ gia đình tuyệt vời. Các bé rất thích hồ bơi và khu vui chơi. Highly recommended!",
               },
             ].map((testimonial, index) => (
               <div key={index} className="bg-card rounded-xl p-8 shadow-sm">
                 <div className="flex gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <svg
-                      key={i}
-                      className="w-5 h-5 text-primary fill-current"
-                      viewBox="0 0 20 20"
-                    >
+                    <svg key={i} className="w-5 h-5 text-primary fill-current" viewBox="0 0 20 20">
                       <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
                     </svg>
                   ))}
                 </div>
-                <p className="text-muted-foreground mb-6 leading-relaxed">
-                  {testimonial.comment}
-                </p>
+                <p className="text-muted-foreground mb-6 leading-relaxed">{testimonial.comment}</p>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-primary font-semibold">
-                      {testimonial.name.charAt(0)}
-                    </span>
+                    <span className="text-primary font-semibold">{testimonial.name.charAt(0)}</span>
                   </div>
                   <div>
                     <div className="font-semibold">{testimonial.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {testimonial.role}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
                   </div>
                 </div>
               </div>
@@ -424,37 +379,28 @@ export default function Home() {
       >
         <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-10"></div>
         <div className="container mx-auto px-6 text-center relative z-10">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-6">
-            Đặt phòng ngay hôm nay
-          </h2>
+          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-6">Đặt phòng ngay hôm nay</h2>
           <p className="text-xl mb-12 text-white/95 max-w-2xl mx-auto">
-            Nhận ưu đãi đặc biệt khi đặt phòng trực tiếp. Giảm giá lên đến 30%
-            cho khách hàng mới!
+            Nhận ưu đãi đặc biệt khi đặt phòng trực tiếp. Giảm giá lên đến 30% cho khách hàng mới!
           </p>
           <div className="bg-white/15 backdrop-blur-xl rounded-3xl p-8 max-w-5xl mx-auto shadow-2xl border border-white/20">
             <div className="grid md:grid-cols-4 gap-4 mb-6">
               <div className="text-left">
-                <label className="block text-sm mb-2 text-white/90 font-medium">
-                  Ngày nhận phòng
-                </label>
+                <label className="block text-sm mb-2 text-white/90 font-medium">Ngày nhận phòng</label>
                 <input
                   type="date"
                   className="w-full px-4 py-3 rounded-xl bg-white/25 border border-white/30 text-white placeholder-white/60 backdrop-blur-sm focus:bg-white/35 focus:border-white/50 transition-all"
                 />
               </div>
               <div className="text-left">
-                <label className="block text-sm mb-2 text-white/90 font-medium">
-                  Ngày trả phòng
-                </label>
+                <label className="block text-sm mb-2 text-white/90 font-medium">Ngày trả phòng</label>
                 <input
                   type="date"
                   className="w-full px-4 py-3 rounded-xl bg-white/25 border border-white/30 text-white placeholder-white/60 backdrop-blur-sm focus:bg-white/35 focus:border-white/50 transition-all"
                 />
               </div>
               <div className="text-left">
-                <label className="block text-sm mb-2 text-white/90 font-medium">
-                  Số khách
-                </label>
+                <label className="block text-sm mb-2 text-white/90 font-medium">Số khách</label>
                 <select className="w-full px-4 py-3 rounded-xl bg-white/25 border border-white/30 text-white backdrop-blur-sm focus:bg-white/35 focus:border-white/50 transition-all">
                   <option className="text-gray-900">1 người</option>
                   <option className="text-gray-900">2 người</option>
@@ -463,9 +409,7 @@ export default function Home() {
                 </select>
               </div>
               <div className="text-left">
-                <label className="block text-sm mb-2 text-white/90 font-medium">
-                  Loại phòng
-                </label>
+                <label className="block text-sm mb-2 text-white/90 font-medium">Loại phòng</label>
                 <select className="w-full px-4 py-3 rounded-xl bg-white/25 border border-white/30 text-white backdrop-blur-sm focus:bg-white/35 focus:border-white/50 transition-all">
                   <option className="text-gray-900">Deluxe</option>
                   <option className="text-gray-900">Suite</option>
@@ -482,8 +426,7 @@ export default function Home() {
               </Button>
             </Link>
             <p className="text-sm text-white/80 mt-4">
-              💳 Thanh toán an toàn • 🔄 Miễn phí hủy phòng • ⚡ Xác nhận ngay
-              lập tức
+              💳 Thanh toán an toàn • 🔄 Miễn phí hủy phòng • ⚡ Xác nhận ngay lập tức
             </p>
           </div>
         </div>
@@ -494,13 +437,10 @@ export default function Home() {
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="font-serif text-4xl md:text-5xl font-bold mb-6">
-                Vị trí đắc địa
-              </h2>
+              <h2 className="font-serif text-4xl md:text-5xl font-bold mb-6">Vị trí đắc địa</h2>
               <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
-                Tọa lạc tại trung tâm thành phố, StayHub mang đến sự thuận tiện
-                tối đa cho mọi hành trình của bạn. Chỉ 5 phút đến sân bay, 2
-                phút đến trung tâm thương mại và các điểm tham quan nổi tiếng.
+                Tọa lạc tại trung tâm thành phố, StayHub mang đến sự thuận tiện tối đa cho mọi hành trình của bạn. Chỉ 5
+                phút đến sân bay, 2 phút đến trung tâm thương mại và các điểm tham quan nổi tiếng.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
@@ -525,9 +465,7 @@ export default function Home() {
                   </svg>
                   <div>
                     <div className="font-semibold">Địa chỉ</div>
-                    <div className="text-muted-foreground">
-                      123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh
-                    </div>
+                    <div className="text-muted-foreground">123 Đường Lê Lợi, Quận 1, TP. Hồ Chí Minh</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -546,9 +484,7 @@ export default function Home() {
                   </svg>
                   <div>
                     <div className="font-semibold">Hotline</div>
-                    <div className="text-muted-foreground">
-                      1900 1234 (24/7)
-                    </div>
+                    <div className="text-muted-foreground">1900 1234 (24/7)</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
@@ -583,5 +519,5 @@ export default function Home() {
         </div>
       </section>
     </>
-  );
+  )
 }

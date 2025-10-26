@@ -91,11 +91,12 @@ class ApiClient {
               refreshQueue = []
               isRefreshing = false
 
-              if (typeof window !== "undefined") {
-                localStorage.removeItem("access_token")
-                localStorage.removeItem("refresh_token")
-                window.location.href = "/login"
-              }
+              // if (typeof window !== "undefined") {
+              //   localStorage.removeItem("access_token")
+              //   localStorage.removeItem("refresh_token")
+              //   // window.location.href = "/login"
+              //   console.warn("Redirect to login page", window)
+              // }
               return Promise.reject(this.handleError(error))
             }
           } else {

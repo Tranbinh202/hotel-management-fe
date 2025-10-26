@@ -2,13 +2,57 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const pathname = usePathname()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    console.log("Admin Layout - Auth State:", {
+      isLoading,
+      isAuthenticated,
+      user: user?.username,
+      roles: user?.roles,
+    })
+
+    // Only check authentication after loading is complete
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        console.log("Not authenticated, redirecting to login")
+        router.push("/login")
+        return
+      }
+
+      const isAdminOrManager = user?.roles?.some((role) => role === "Admin" || role === "Manager")
+      console.log("Is Admin or Manager:", isAdminOrManager)
+
+      if (!isAdminOrManager) {
+        console.log("Not admin/manager, redirecting to home")
+        router.push("/")
+      }
+    }
+  }, [isAuthenticated, isLoading, user, router])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Đang tải...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated || !user?.roles?.some((role) => role === "Admin" || role === "Manager")) {
+    return null
+  }
 
   const navigation = [
     {
@@ -82,6 +126,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ),
     },
     {
+      name: "Nhân viên",
+      href: "/admin/employees",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+      ),
+    },
+    {
       name: "Cài đặt",
       href: "/admin/settings",
       icon: (
@@ -102,8 +160,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } bg-white border-r border-slate-200 w-64`}
+        className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } bg-white border-r border-slate-200 w-64`}
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
@@ -134,10 +193,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive
-                    ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
-                    : "text-slate-600 hover:bg-slate-100"
-                    }`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    isActive
+                      ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
+                      : "text-slate-600 hover:bg-slate-100"
+                  }`}
                 >
                   {item.icon}
                   <span className="font-medium">{item.name}</span>
@@ -150,11 +210,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="p-4 border-t border-slate-200">
             <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center text-white font-semibold">
-                A
+                {user?.profileDetails?.fullName?.charAt(0) || user?.username?.charAt(0) || "A"}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-slate-900 truncate">Admin User</div>
-                <div className="text-xs text-slate-500 truncate">admin@stayhub.com</div>
+                <div className="font-medium text-slate-900 truncate">
+                  {user?.profileDetails?.fullName || user?.username || "Admin User"}
+                </div>
+                <div className="text-xs text-slate-500 truncate">{user?.email || "admin@stayhub.com"}</div>
               </div>
             </div>
           </div>
@@ -189,12 +251,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
 
-              <Link
-                href="/login"
+              <button
+                onClick={logout}
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
               >
                 Đăng xuất
-              </Link>
+              </button>
             </div>
           </div>
         </header>

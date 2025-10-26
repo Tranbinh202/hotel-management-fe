@@ -8,9 +8,9 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[]
-  total: number
-  page: number
+  items: T[]
+  totalCount: number
+  pageIndex: number
   pageSize: number
   totalPages: number
 }

@@ -1,145 +1,521 @@
 "use client"
 
-import { useState } from "react"
-import { PageHeader } from "@/components/layout/page-header"
-import { SearchBar } from "@/components/shared/search-bar"
-import { Modal, ConfirmModal } from "@/components/shared/modal"
-import { AmenityForm } from "@/components/features/amenities/amenity-form"
-import { AmenityList } from "@/components/features/amenities/amenity-list"
-import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import { EmptyState } from "@/components/shared/empty-state"
-import {
-  useAmenities,
-  useCreateAmenity,
-  useUpdateAmenity,
-  useDeleteAmenity,
-  useToggleAmenityActive,
-} from "@/lib/hooks/use-amenities"
-import type { Amenity, CreateAmenityDto } from "@/lib/types/api"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
+import { Amenity } from "@/lib/api"
+import { useAmenities } from "@/lib/hooks"
 
 export default function AmenitiesPage() {
-  const [searchTerm, setSearchTerm] = useState("")
+  const { toast } = useToast()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingAmenity, setEditingAmenity] = useState<Amenity | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<Amenity | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [amenityTypeFilter, setAmenityTypeFilter] = useState<string>("all")
+  const [isActiveFilter, setIsActiveFilter] = useState<string>("all")
 
-  const { data: amenities = [], isLoading } = useAmenities()
-  const createMutation = useCreateAmenity()
-  const updateMutation = useUpdateAmenity()
-  const deleteMutation = useDeleteAmenity()
-  const toggleActiveMutation = useToggleAmenityActive()
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(10)
 
-  const filteredAmenities = amenities.filter(
-    (amenity) =>
-      amenity.amenityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      amenity.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const [formData, setFormData] = useState({
+    amenityName: "",
+    description: "",
+    amenityType: "Common" as "Common" | "Additional",
+    isActive: true,
+    images: [] as string[],
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const { data, isLoading, error } = useAmenities({
+    pageIndex: currentPage,
+    pageSize: pageSize,
+    ...(searchTerm && { search: searchTerm }),
+    ...(amenityTypeFilter !== "all" && { amenityType: amenityTypeFilter }),
+    ...(isActiveFilter !== "all" && { isActive: isActiveFilter === "active" }),
+  })
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách tiện nghi",
+        variant: "destructive",
+      })
+    }
+  }, [error, toast])
+
+  const amenities: readonly Amenity[] =
+    data?.pages?.flatMap<Amenity>((page: any) => page.data.items) ?? [];
+  const totalPages = data?.pages[0]?.data.totalPages || 1
+  const totalCount = data?.pages[0]?.data.totalCount || 0
+  console.log("FLAT AMENITIES:", data)
 
   const handleOpenModal = (amenity?: Amenity) => {
-    setEditingAmenity(amenity || null)
+    if (amenity) {
+      setEditingAmenity(amenity)
+      setFormData({
+        amenityName: amenity.amenityName,
+        description: amenity.description,
+        amenityType: amenity.amenityType,
+        isActive: amenity.isActive,
+        images: amenity.images,
+      })
+    } else {
+      setEditingAmenity(null)
+      setFormData({
+        amenityName: "",
+        description: "",
+        amenityType: "Common",
+        isActive: true,
+        images: [],
+      })
+    }
+    setErrors({})
     setIsModalOpen(true)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingAmenity(null)
+    setFormData({
+      amenityName: "",
+      description: "",
+      amenityType: "Common",
+      isActive: true,
+      images: [],
+    })
+    setErrors({})
   }
 
-  const handleSubmit = async (data: CreateAmenityDto) => {
-    if (editingAmenity) {
-      await updateMutation.mutateAsync({
-        amenityId: editingAmenity.amenityId,
-        ...data,
-      })
-    } else {
-      await createMutation.mutateAsync(data)
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.amenityName.trim()) {
+      newErrors.amenityName = "Vui lòng nhập tên tiện nghi"
     }
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Vui lòng nhập mô tả"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    // TODO: Implement API calls for create/update
+    toast({
+      title: "Thông báo",
+      description: "Chức năng này đang được phát triển",
+    })
+
     handleCloseModal()
   }
 
-  const handleDelete = (amenity: Amenity) => {
-    setDeleteConfirm(amenity)
-  }
-
-  const confirmDelete = async () => {
-    if (deleteConfirm) {
-      await deleteMutation.mutateAsync(deleteConfirm.amenityId)
-      setDeleteConfirm(null)
+  const handleDelete = (amenityId: number) => {
+    if (confirm("Bạn có chắc chắn muốn xóa tiện nghi này?")) {
+      // TODO: Implement API call for delete
+      toast({
+        title: "Thông báo",
+        description: "Chức năng này đang được phát triển",
+      })
     }
   }
 
-  const handleToggleActive = async (amenity: Amenity) => {
-    await toggleActiveMutation.mutateAsync(amenity.amenityId)
+  const handleToggleActive = (amenityId: number) => {
+    // TODO: Implement API call for toggle active
+    toast({
+      title: "Thông báo",
+      description: "Chức năng này đang được phát triển",
+    })
   }
 
-  if (isLoading) {
-    return <LoadingSpinner size="lg" />
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }))
+    }
+  }
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A"
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const getAmenityTypeBadge = (type: string) => {
+    return type === "Common" ? (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        Phổ biến
+      </span>
+    ) : (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+        Bổ sung
+      </span>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Quản lý tiện nghi"
-        description="Quản lý các tiện nghi và dịch vụ của khách sạn"
-        action={{
-          label: "Thêm tiện nghi",
-          onClick: () => handleOpenModal(),
-          icon: (
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          ),
-        }}
-      />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Quản lý tiện nghi</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Tổng: <span className="font-semibold text-slate-900">{totalCount}</span> tiện nghi
+          </p>
+        </div>
+        <Button
+          onClick={() => handleOpenModal()}
+          className="bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db] text-white"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Thêm tiện nghi
+        </Button>
+      </div>
 
-      <SearchBar
-        value={searchTerm}
-        onChange={setSearchTerm}
-        placeholder="Tìm kiếm tiện nghi..."
-        resultCount={filteredAmenities.length}
-      />
+      <Card className="border-0 shadow">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 relative">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+              <Input
+                type="text"
+                placeholder="Tìm kiếm tiện nghi..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="pl-9 h-9"
+              />
+            </div>
 
-      {filteredAmenities.length === 0 && searchTerm ? (
-        <EmptyState
-          title="Không tìm thấy kết quả"
-          description="Thử tìm kiếm với từ khóa khác"
-          action={{
-            label: "Xóa tìm kiếm",
-            onClick: () => setSearchTerm(""),
-          }}
-        />
-      ) : (
-        <AmenityList
-          amenities={filteredAmenities}
-          onEdit={handleOpenModal}
-          onDelete={handleDelete}
-          onToggleActive={handleToggleActive}
-        />
+            <Select
+              value={amenityTypeFilter}
+              onValueChange={(value) => {
+                setAmenityTypeFilter(value)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue placeholder="Loại tiện nghi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả loại</SelectItem>
+                <SelectItem value="Common">Phổ biến</SelectItem>
+                <SelectItem value="Additional">Bổ sung</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={isActiveFilter}
+              onValueChange={(value) => {
+                setIsActiveFilter(value)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="w-40 h-9">
+                <SelectValue placeholder="Trạng thái" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                <SelectItem value="active">Hoạt động</SelectItem>
+                <SelectItem value="inactive">Tạm dừng</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Amenities Table */}
+      <Card className="border-0 shadow">
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-[#ff5e7e]" />
+            </div>
+          ) : amenities.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-slate-500">Không tìm thấy tiện nghi nào</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">ID</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Tên tiện nghi</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Mô tả</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Loại</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Trạng thái</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Cập nhật</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-slate-900">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {amenities.map((amenity) => (
+                      <tr
+                        key={amenity.amenityId}
+                        className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="py-3 px-4 text-sm font-medium text-slate-900">#{amenity.amenityId}</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-slate-900">{amenity.amenityName}</div>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="text-sm text-slate-600 max-w-xs truncate">{amenity.description}</div>
+                        </td>
+                        <td className="py-3 px-4">{getAmenityTypeBadge(amenity.amenityType)}</td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleToggleActive(amenity.amenityId)}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${amenity.isActive
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                              }`}
+                          >
+                            {amenity.isActive ? "Hoạt động" : "Tạm dừng"}
+                          </button>
+                        </td>
+                        <td className="py-3 px-4 text-sm text-slate-600">{formatDate(amenity.updatedAt)}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenModal(amenity)}
+                              className="p-1.5 text-slate-600 hover:text-[#14b8a6] hover:bg-[#14b8a6]/10 rounded-lg transition-colors"
+                              title="Chỉnh sửa"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDelete(amenity.amenityId)}
+                              className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Xóa"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+                  <div className="text-sm text-slate-600">
+                    Trang {currentPage} / {totalPages}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Trước
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Sau
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {editingAmenity ? "Chỉnh sửa tiện nghi" : "Thêm tiện nghi mới"}
+              </h2>
+              <button onClick={handleCloseModal} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="amenityName">
+                  Tên tiện nghi <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="amenityName"
+                  name="amenityName"
+                  type="text"
+                  value={formData.amenityName}
+                  onChange={handleChange}
+                  className={errors.amenityName ? "border-red-500" : ""}
+                  placeholder="VD: Wifi miễn phí, Bể bơi..."
+                />
+                {errors.amenityName && <p className="text-xs text-red-500">{errors.amenityName}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Mô tả <span className="text-red-500">*</span>
+                </Label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#ff5e7e] focus:border-transparent outline-none transition-all ${errors.description ? "border-red-500" : "border-slate-300"
+                    }`}
+                  placeholder="Mô tả chi tiết về tiện nghi..."
+                />
+                {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="amenityType">Loại tiện nghi</Label>
+                  <Select
+                    value={formData.amenityType}
+                    onValueChange={(value: "Common" | "Additional") =>
+                      setFormData((prev) => ({ ...prev, amenityType: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Common">Phổ biến</SelectItem>
+                      <SelectItem value="Additional">Bổ sung</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Trạng thái</Label>
+                  <div className="flex items-center gap-4 h-10">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="isActive"
+                        checked={formData.isActive}
+                        onChange={() => setFormData((prev) => ({ ...prev, isActive: true }))}
+                        className="w-4 h-4 text-[#14b8a6] focus:ring-[#14b8a6]"
+                      />
+                      <span className="text-sm text-slate-700">Hoạt động</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="isActive"
+                        checked={!formData.isActive}
+                        onChange={() => setFormData((prev) => ({ ...prev, isActive: false }))}
+                        className="w-4 h-4 text-slate-400 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-700">Tạm dừng</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Hình ảnh</Label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-[#ff5e7e] transition-colors cursor-pointer">
+                  <svg
+                    className="w-12 h-12 mx-auto text-slate-400 mb-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="text-sm text-slate-600">Nhấp để tải lên hoặc kéo thả hình ảnh</p>
+                  <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF tối đa 10MB</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-4 border-t border-slate-200">
+                <Button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="flex-1 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db] text-white"
+                >
+                  {editingAmenity ? "Cập nhật" : "Thêm mới"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={editingAmenity ? "Chỉnh sửa tiện nghi" : "Thêm tiện nghi mới"}
-      >
-        <AmenityForm
-          amenity={editingAmenity || undefined}
-          onSubmit={handleSubmit}
-          onCancel={handleCloseModal}
-          isLoading={createMutation.isPending || updateMutation.isPending}
-        />
-      </Modal>
-
-      <ConfirmModal
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={confirmDelete}
-        title="Xác nhận xóa"
-        message={`Bạn có chắc chắn muốn xóa tiện nghi "${deleteConfirm?.amenityName}"? Hành động này không thể hoàn tác.`}
-        confirmText="Xóa"
-        cancelText="Hủy"
-        variant="danger"
-      />
     </div>
   )
 }

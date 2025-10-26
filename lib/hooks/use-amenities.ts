@@ -1,11 +1,19 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { amenitiesApi } from "@/lib/api"
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query"
+import { amenitiesApi, GetAmenitiesParams } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 
-export function useAmenities() {
-  return useQuery({
-    queryKey: ["amenities"],
-    queryFn: amenitiesApi.getAll,
+export function useAmenities(params: Partial<GetAmenitiesParams>) {
+  return useInfiniteQuery({
+    queryKey: ["amenities", params],
+    queryFn: () => amenitiesApi.getAll(params),
+    getNextPageParam: (lastPage, allPages) => {
+      // Giả sử API trả về thông tin phân trang
+      if (lastPage.pageIndex === allPages.length && lastPage.totalPages > allPages.length) {
+        return allPages.length + 1 // Trang tiếp theo
+      }
+      return undefined
+    },
+    initialPageParam: 1,
   })
 }
 

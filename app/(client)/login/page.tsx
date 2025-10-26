@@ -46,10 +46,14 @@ export default function LoginPage() {
     try {
       await login(formData.username, formData.password)
     } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message ? error.message : "Tên đăng nhập hoặc mật khẩu không chính xác"
+
       toast({
         title: "Đăng nhập thất bại",
-        description: error instanceof Error ? error.message : "Vui lòng kiểm tra lại thông tin đăng nhập",
+        description: errorMessage,
         variant: "destructive",
+        duration: 4000, // Auto-dismiss after 4 seconds
       })
     }
   }

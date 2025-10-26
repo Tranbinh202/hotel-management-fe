@@ -53,7 +53,7 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-xl md:text-2xl mb-10 text-white/95 leading-relaxed max-w-3xl mx-auto">
-            Khám phá không gian sang trọng, dịch vụ hoàn hảo và những khoảnh khắc đáng nhớ tại StayHub - Nơi mọi kỳ nghỉ
+            Khám phá không gian sang trọng, dịch vụ hoàn hảo và những khoảnh khắc đáng nhớ t��i StayHub - Nơi mọi kỳ nghỉ
             trở thành trải nghiệm tuyệt vời
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

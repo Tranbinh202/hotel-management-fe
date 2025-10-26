@@ -228,3 +228,61 @@ export interface CreateRoomTypeDto {
 export interface UpdateRoomTypeDto extends CreateRoomTypeDto {
   roomTypeId: number
 }
+
+// AccountSummary types to match /Account/summary API response
+export interface EmployeeProfileDetails {
+  employeeId: number
+  fullName: string
+  phoneNumber: string
+  employeeTypeId: number
+  employeeTypeName: string
+  hireDate: string
+  terminationDate: string | null
+  isActive: boolean
+}
+
+export interface CustomerProfileDetails {
+  customerId: number
+  fullName: string
+  phoneNumber: string
+  identityCard: string
+  address: string
+  avatarUrl: string | null
+}
+
+export interface AccountStatistics {
+  totalBookings: number | null
+  completedBookings: number | null
+  cancelledBookings: number | null
+  totalSpent: number | null
+  totalFeedbacks: number | null
+  totalTasksAssigned: number | null
+  completedTasks: number | null
+  pendingTasks: number | null
+  totalAttendance: number | null
+  totalSalaryPaid: number | null
+  workingDays: number | null
+  totalNotifications: number
+  unreadNotifications: number
+}
+
+export interface AccountSummary {
+  accountId: number
+  username: string
+  email: string
+  isLocked: boolean
+  lastLoginAt: string
+  createdAt: string
+  roles: string[]
+  accountType: "Employee" | "Customer"
+  profileDetails: EmployeeProfileDetails | CustomerProfileDetails
+  statistics: AccountStatistics | null
+}
+
+export interface UpdateAccountProfileDto {
+  fullName?: string
+  phoneNumber?: string
+  address?: string
+  identityCard?: string
+  avatarUrl?: string
+}

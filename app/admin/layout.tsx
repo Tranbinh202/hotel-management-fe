@@ -6,12 +6,32 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const pathname = usePathname()
   const { user, isAuthenticated, isLoading, logout } = useAuth()
   const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
 
   useEffect(() => {
     console.log("Admin Layout - Auth State:", {
@@ -35,9 +55,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       if (!isAdminOrManager) {
         console.log("Not admin/manager, redirecting to home")
         router.push("/")
+        setIsAuthorized(false)
+      } else {
+        setIsAuthorized(true)
       }
     }
   }, [isAuthenticated, isLoading, user, router])
+
+  const handleLogout = () => {
+    setShowLogoutDialog(false)
+    logout()
+  }
+
+  if (isLoading || !isAuthorized) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Đang tải...</p>
+        </div>
+      </div>
+    )
+  }
 
   const navigation = [
     {
@@ -119,7 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 00-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
           />
         </svg>
       ),
@@ -133,7 +172,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
           />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -143,15 +182,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-600">Đang tải...</p>
-          </div>
-        </div>
-      )}
-
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
@@ -202,17 +232,53 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* User Profile */}
           <div className="p-4 border-t border-slate-200">
-            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center text-white font-semibold">
-                {user?.profileDetails?.fullName?.charAt(0) || user?.username?.charAt(0) || "A"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-slate-900 truncate">
-                  {user?.profileDetails?.fullName || user?.username || "Admin User"}
-                </div>
-                <div className="text-xs text-slate-500 truncate">{user?.email || "admin@stayhub.com"}</div>
-              </div>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center text-white font-semibold">
+                    {user?.profileDetails?.fullName?.charAt(0) || user?.username?.charAt(0) || "A"}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="font-medium text-slate-900 truncate">
+                      {user?.profileDetails?.fullName || user?.username || "Admin User"}
+                    </div>
+                    <div className="text-xs text-slate-500 truncate">{user?.email || "admin@stayhub.com"}</div>
+                  </div>
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Tài khoản của tôi</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/admin/profile" className="cursor-pointer">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    Xem hồ sơ
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowLogoutDialog(true)} className="text-red-600 cursor-pointer">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 003-3h4a3 3 0 013 3v1"
+                    />
+                  </svg>
+                  Đăng xuất
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </aside>
@@ -244,13 +310,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </svg>
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-
-              <button
-                onClick={logout}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
-              >
-                Đăng xuất
-              </button>
             </div>
           </div>
         </header>
@@ -258,6 +317,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Page Content */}
         <main className="p-6">{children}</main>
       </div>
+
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận đăng xuất</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống? Bạn sẽ cần đăng nhập lại để tiếp tục sử dụng.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLogout} className="bg-red-600 hover:bg-red-700">
+              Đăng xuất
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

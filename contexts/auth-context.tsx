@@ -87,7 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const loginData = await authApi.login({ email, password })
 
       if (!loginData.isSuccess) {
-        throw new Error(loginData.message || "Login failed")
+        const errorMessage = loginData.message || "Tên đăng nhập hoặc mật khẩu không chính xác"
+        throw new Error(errorMessage)
       }
 
       const { token: authToken, refreshToken, roles } = loginData.data
@@ -113,7 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Login error:", error)
-      throw error
+      if (error instanceof Error) {
+        throw error
+      } else {
+        throw new Error("Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.")
+      }
     } finally {
       setIsLoading(false)
     }

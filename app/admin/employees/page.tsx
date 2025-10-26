@@ -26,7 +26,7 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState<string>("all")
 
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(0)
   const [pageSize] = useState(10)
 
   const [formData, setFormData] = useState({
@@ -35,16 +35,15 @@ export default function EmployeesPage() {
     password: "",
     fullName: "",
     phoneNumber: "",
-    employeeTypeId: 13,
     hireDate: new Date().toISOString().split("T")[0],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data, isLoading } = useEmployees({
-    pageIndex: currentPage,
-    pageSize,
-    searchTerm: searchTerm || undefined,
-    employeeTypeId: employeeTypeFilter !== "all" ? Number.parseInt(employeeTypeFilter) : undefined,
+    PageIndex: currentPage,
+    PageSize: pageSize,
+    Search: searchTerm || undefined,
+    EmployeeTypeId: employeeTypeFilter !== "all" ? Number.parseInt(employeeTypeFilter) : undefined,
   })
 
   const createMutation = useCreateEmployee()

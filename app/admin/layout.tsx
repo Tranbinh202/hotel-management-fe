@@ -39,21 +39,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isAuthenticated, isLoading, user, router])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Đang tải...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated || !user?.roles?.some((role) => role === "Admin" || role === "Manager")) {
-    return null
-  }
-
   const navigation = [
     {
       name: "Tổng quan",
@@ -158,6 +143,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600">Đang tải...</p>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-40 h-screen transition-transform ${

@@ -91,4 +91,5 @@ export const roomsApi = {
   toggleAvailability: async (id: number): Promise<Room> => {
     return apiClient.patch<Room>(`/rooms/${id}/toggle-availability`);
   },
+  
 };

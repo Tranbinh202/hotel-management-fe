@@ -140,19 +140,34 @@ export interface UpdateAmenityDto extends Partial<CreateAmenityDto> {
 }
 
 // Room types
-export interface Room {
-  roomId: number
-  roomNumber: string
-  roomType: string
-  price: number
-  capacity: number
+export interface RoomTypeImage {
+  mediaId: number
+  filePath: string
   description: string
-  isAvailable: boolean
-  images: string[]
-  amenities: Amenity[]
-  createdAt: string
-  updatedAt: string
+  referenceTable: string
+  referenceKey: string
+  isActive: boolean
 }
+
+export interface RoomType {
+  roomTypeId: number
+  typeName: string
+  typeCode: string
+  description: string
+  basePriceNight: number
+  maxOccupancy: number
+  roomSize: number
+  numberOfBeds: number
+  bedType: string
+  isActive: boolean
+  images: RoomTypeImage[]
+  totalRooms: number
+  createdAt: string
+  updatedAt: string | null
+  amenities: string[]
+}
+
+export type Room = RoomType
 
 export interface CreateRoomDto {
   roomNumber: string
@@ -196,4 +211,20 @@ export interface UpdateBookingDto {
   bookingId: number
   status?: "pending" | "confirmed" | "cancelled" | "completed"
   specialRequests?: string
+}
+
+export interface CreateRoomTypeDto {
+  typeName: string
+  typeCode: string
+  description: string
+  basePriceNight: number
+  maxOccupancy: number
+  roomSize: number
+  numberOfBeds: number
+  bedType: string
+  imageUrls: string[]
+}
+
+export interface UpdateRoomTypeDto extends CreateRoomTypeDto {
+  roomTypeId: number
 }

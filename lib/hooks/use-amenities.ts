@@ -13,7 +13,7 @@ export function useAmenities(params: Partial<GetAmenitiesParams>) {
     getNextPageParam: (lastPage) => {
       console.log("lastPage:", lastPage)
       // Check if there are more pages
-      if (lastPage.pageIndex < lastPage.totalPages) {
+      if (lastPage.pageIndex < lastPage.totalPages - 1) {
         return lastPage.pageIndex + 1
       }
       return undefined

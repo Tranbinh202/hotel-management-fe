@@ -130,9 +130,9 @@ export interface Amenity {
 export interface CreateAmenityDto {
   amenityName: string
   description: string
-  price: number
+  amenityType: string
   isActive: boolean
-  images?: string[]
+  imageLinks: string[]
 }
 
 export interface UpdateAmenityDto extends Partial<CreateAmenityDto> {

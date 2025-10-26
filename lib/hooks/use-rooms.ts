@@ -17,7 +17,7 @@ export function useRooms(params: Partial<GetAllRoomsParams>) {
       }
       return undefined;
     },
-    initialPageParam: 1,
+    initialPageParam: 0,
   });
 }
 

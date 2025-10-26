@@ -54,21 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Load auth data from localStorage on mount
   useEffect(() => {
-    console.log("AuthProvider - Initializing...")
     const storedToken = localStorage.getItem("access_token")
     const storedUser = localStorage.getItem("user")
 
-    console.log("AuthProvider - Stored token exists:", !!storedToken)
-    console.log("AuthProvider - Stored user exists:", !!storedUser)
+    // Clean up old token keys if they exist
+    localStorage.removeItem("token")
+    localStorage.removeItem("refreshToken")
 
     if (storedToken && storedUser) {
       setToken(storedToken)
       const parsedUser = JSON.parse(storedUser)
       setUser(parsedUser)
-      console.log("AuthProvider - Loaded user:", parsedUser.username, "Roles:", parsedUser.roles)
     }
     setIsLoading(false)
-    console.log("AuthProvider - Initialization complete")
   }, [])
 
   // Fetch user account summary
@@ -96,7 +94,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem("access_token", authToken)
       localStorage.setItem("refresh_token", refreshToken)
-      console.log("Login - Tokens stored in localStorage")
 
       setToken(authToken)
 
@@ -104,13 +101,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await fetchUserSummary()
       localStorage.setItem("user", JSON.stringify(userData))
       setUser(userData)
-      console.log("Login - User data fetched and stored:", userData.username)
 
       // Role-based routing
       const userRoles = userData.roles || roles
       const isAdminOrManager = userRoles.some((role) => role === "Admin" || role === "Manager")
-
-      console.log("Login - User roles:", userRoles, "Is admin/manager:", isAdminOrManager)
 
       if (isAdminOrManager) {
         router.push("/admin/dashboard")
@@ -130,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("user")
-    console.log("Logout - Cleared all auth data from localStorage")
 
     authApi.logout()
     setToken(null)

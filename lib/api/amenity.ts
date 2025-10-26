@@ -34,13 +34,13 @@ export interface Amenity {
 // }
 
 export interface GetAmenitiesParams {
-  isActive?: boolean;
-  amenityType?: string;
-  pageIndex?: number;
-  pageSize?: number;
-  search?: string;
-  sortBy?: string;
-  sortDesc?: boolean;
+  IsActive?: boolean;
+  AmenityType?: string;
+  PageIndex?: number;
+  PageSize?: number;
+  Search?: string;
+  SortBy?: string;
+  SortDesc?: boolean;
 }
 
 export const amenitiesApi = {
@@ -58,23 +58,23 @@ export const amenitiesApi = {
   },
 
   getById: async (id: number): Promise<Amenity> => {
-    return apiClient.get<Amenity>(`/amenities/${id}`);
+    return apiClient.get<Amenity>(`/amenity/${id}`);
   },
 
   create: async (data: CreateAmenityDto): Promise<Amenity> => {
-    return apiClient.post<Amenity>("/amenities", data);
+    return apiClient.post<Amenity>("/amenity", data);
   },
 
   update: async (data: UpdateAmenityDto): Promise<Amenity> => {
     const { amenityId, ...updateData } = data;
-    return apiClient.put<Amenity>(`/amenities/${amenityId}`, updateData);
+    return apiClient.put<Amenity>(`/amenity/${amenityId}`, updateData);
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/amenities/${id}`);
+    await apiClient.delete(`/amenity/${id}`);
   },
 
   toggleActive: async (id: number): Promise<Amenity> => {
-    return apiClient.patch<Amenity>(`/amenities/${id}/toggle-active`);
+    return apiClient.patch<Amenity>(`/amenity/${id}/toggle-active`);
   },
 };

@@ -51,6 +51,7 @@ export default function RoomsPage() {
   );
 
   const { data: roomsData } = useRooms(searchParams);
+  console.log("roomsData", roomsData);
 
   const allRooms = roomsData?.pages.flatMap((page) => page.items) || [];
   const totalRooms = roomsData?.pages[0]?.totalCount || 0;

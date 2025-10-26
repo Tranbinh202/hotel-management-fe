@@ -9,15 +9,16 @@ import { toast } from "@/hooks/use-toast";
 
 export function useRooms(params: Partial<GetAllRoomsParams>) {
   return useInfiniteQuery({
-    queryKey: ["rooms"],
-    queryFn: () => roomsApi.getAll(params),
+    queryKey: ["client-rooms", params],
+    queryFn: ({ pageParam }) =>
+      roomsApi.getAll({ ...params, PageIndex: pageParam }),
     getNextPageParam: (lastPage) => {
       if (lastPage.pageIndex * lastPage.pageSize < lastPage.totalCount) {
         return lastPage.pageIndex + 1;
       }
       return undefined;
     },
-    initialPageParam: 1,
+    initialPageParam: 0,
   });
 }
 

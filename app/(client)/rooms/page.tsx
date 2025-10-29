@@ -3,12 +3,32 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Users, Maximize, Wifi, Tv, Wind, Coffee, Bath, Home, Check, Search, Sparkles, Star } from "lucide-react"
+import {
+  Users,
+  Maximize,
+  Wifi,
+  Tv,
+  Wind,
+  Coffee,
+  Bath,
+  Home,
+  Check,
+  Search,
+  Sparkles,
+  Star,
+} from "lucide-react"
 import { useRooms } from "@/lib/hooks"
 import type { GetAllRoomsParams } from "@/lib/api"
 
@@ -22,6 +42,7 @@ const amenityIcons: Record<string, any> = {
 }
 
 export default function RoomsPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>("all")
   const [capacityFilter, setCapacityFilter] = useState<string>("all")
@@ -34,36 +55,41 @@ export default function RoomsPage() {
   const allRooms = roomsData?.pages.flatMap((page) => page.items) || []
   const totalRooms = roomsData?.pages[0]?.totalCount || 0
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price)
-  }
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Hero section */}
       <section className="pt-32 pb-12 luxury-gradient relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-5"></div>
         <div className="container mx-auto px-6 relative z-10">
           <div className="text-center max-w-3xl mx-auto animate-fade-in-up">
             <div className="inline-flex items-center gap-2 px-4 py-2 glass-effect rounded-full shadow-lg mb-6 animate-scale-in">
               <Sparkles className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-primary-foreground">Phòng nghỉ cao cấp</span>
+              <span className="text-sm font-medium text-primary-foreground">
+                Phòng nghỉ cao cấp
+              </span>
             </div>
             <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6 text-primary-foreground leading-tight py-2">
               Khám phá phòng nghỉ
             </h1>
             <p className="text-xl text-primary-foreground/90 leading-loose">
-              Tìm phòng hoàn hảo với đầy đủ tiện nghi hiện đại và dịch vụ đẳng cấp 5 sao
+              Tìm phòng hoàn hảo với đầy đủ tiện nghi hiện đại và dịch vụ đẳng
+              cấp 5 sao
             </p>
           </div>
         </div>
       </section>
 
+      {/* Filter + Room list */}
       <section className="py-8">
         <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-5 gap-6">
+            {/* FILTERS */}
             <div className="lg:col-span-1">
               <Card className="sticky top-20 border-primary/20 shadow-lg glass-effect">
                 <CardContent className="p-6 space-y-6">
@@ -74,7 +100,9 @@ export default function RoomsPage() {
 
                   {/* Search */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Tìm kiếm</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Tìm kiếm
+                    </label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
@@ -89,8 +117,13 @@ export default function RoomsPage() {
 
                   {/* Room Type */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Loại phòng</label>
-                    <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+                    <label className="text-sm font-medium text-foreground">
+                      Loại phòng
+                    </label>
+                    <Select
+                      value={roomTypeFilter}
+                      onValueChange={setRoomTypeFilter}
+                    >
                       <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
@@ -106,8 +139,13 @@ export default function RoomsPage() {
 
                   {/* Capacity */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Số người</label>
-                    <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+                    <label className="text-sm font-medium text-foreground">
+                      Số người
+                    </label>
+                    <Select
+                      value={capacityFilter}
+                      onValueChange={setCapacityFilter}
+                    >
                       <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
@@ -123,7 +161,9 @@ export default function RoomsPage() {
 
                   {/* Price Range */}
                   <div className="space-y-3">
-                    <label className="text-sm font-medium text-foreground">Khoảng giá</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Khoảng giá
+                    </label>
                     <Slider
                       min={0}
                       max={3000000}
@@ -133,14 +173,20 @@ export default function RoomsPage() {
                       className="py-4"
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="font-medium">{formatPrice(priceRange[0])}</span>
-                      <span className="font-medium">{formatPrice(priceRange[1])}</span>
+                      <span className="font-medium">
+                        {formatPrice(priceRange[0])}
+                      </span>
+                      <span className="font-medium">
+                        {formatPrice(priceRange[1])}
+                      </span>
                     </div>
                   </div>
 
                   {/* Sort */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Sắp xếp</label>
+                    <label className="text-sm font-medium text-foreground">
+                      Sắp xếp
+                    </label>
                     <Select value={sortBy} onValueChange={setSortBy}>
                       <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue />
@@ -148,12 +194,17 @@ export default function RoomsPage() {
                       <SelectContent>
                         <SelectItem value="price-asc">Giá tăng dần</SelectItem>
                         <SelectItem value="price-desc">Giá giảm dần</SelectItem>
-                        <SelectItem value="capacity-asc">Sức chứa tăng</SelectItem>
-                        <SelectItem value="capacity-desc">Sức chứa giảm</SelectItem>
+                        <SelectItem value="capacity-asc">
+                          Sức chứa tăng
+                        </SelectItem>
+                        <SelectItem value="capacity-desc">
+                          Sức chứa giảm
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
+                  {/* Reset */}
                   <Button
                     onClick={() => {
                       setSearchTerm("")
@@ -171,13 +222,16 @@ export default function RoomsPage() {
               </Card>
             </div>
 
+            {/* ROOM LIST */}
             <div className="lg:col-span-4">
               <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Tìm thấy <span className="font-bold text-foreground text-lg">{totalRooms}</span> phòng có sẵn
-                  </p>
-                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Tìm thấy{" "}
+                  <span className="font-bold text-foreground text-lg">
+                    {totalRooms}
+                  </span>{" "}
+                  phòng có sẵn
+                </p>
                 <div className="flex items-center gap-2">
                   <Star className="w-4 h-4 text-accent fill-accent" />
                   <span className="text-sm font-medium">Đẳng cấp 5 sao</span>
@@ -206,7 +260,7 @@ export default function RoomsPage() {
                               {room.typeName}
                             </span>
                             <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shadow-lg">
-                              Còn {room.totalRooms} phòng
+                              Còn {room.availableRoomCount} phòng
                             </span>
                           </div>
                         </div>
@@ -254,22 +308,28 @@ export default function RoomsPage() {
 
                           <div className="pt-4 border-t border-primary/10 flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-xs text-muted-foreground mb-1">Mỗi đêm từ</p>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Mỗi đêm từ
+                              </p>
                               <p className="text-xl font-bold luxury-text-gradient">
                                 {formatPrice(room.basePriceNight)}
                               </p>
                             </div>
                             <Button
-                              asChild
                               size="sm"
                               className="luxury-gradient text-primary-foreground hover:opacity-90 shadow-lg hover:shadow-xl transition-all h-10 px-6"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(
+                                  `/booking?roomId=${room.roomTypeId}` +
+                                    `&roomType=${encodeURIComponent(
+                                      room.typeName
+                                    )}` +
+                                    `&price=${room.basePriceNight}`
+                                )
+                              }}
                             >
-                              <Link
-                                href={`/booking?roomId=${room.roomTypeId}&roomType=${encodeURIComponent(room.typeName)}&price=${room.basePriceNight}`}
-                              >
-                                Đặt ngay
-                              </Link>
+                              Đặt ngay
                             </Button>
                           </div>
                         </CardContent>
@@ -283,8 +343,12 @@ export default function RoomsPage() {
                     <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                       <Search className="w-10 h-10 text-muted-foreground" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Không tìm thấy phòng phù hợp</h3>
-                    <p className="text-muted-foreground leading-relaxed">Thử điều chỉnh bộ lọc để xem thêm phòng</p>
+                    <h3 className="text-xl font-semibold mb-2">
+                      Không tìm thấy phòng phù hợp
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed">
+                      Thử điều chỉnh bộ lọc để xem thêm phòng
+                    </p>
                   </CardContent>
                 </Card>
               )}

@@ -185,6 +185,94 @@ export interface UpdateRoomDto extends Partial<CreateRoomDto> {
 }
 
 // Booking types
+export interface BookingRoomType {
+  roomTypeId: number
+  quantity: number
+}
+
+export interface CheckAvailabilityRequest {
+  roomTypes: BookingRoomType[]
+  checkInDate: string
+  checkOutDate: string
+}
+
+export interface RoomTypeAvailability {
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  requestedQuantity: number
+  availableCount: number
+  isAvailable: boolean
+  basePriceNight: number
+  message: string
+}
+
+export interface CheckAvailabilityResponse {
+  isSuccess: boolean
+  data: {
+    roomTypes: RoomTypeAvailability[]
+    totalNights: number
+    isAllAvailable: boolean
+  }
+  message: string
+}
+
+export interface CreateAuthenticatedBookingRequest {
+  customerId: number
+  roomTypes: BookingRoomType[]
+  checkInDate: string
+  checkOutDate: string
+  specialRequests?: string
+}
+
+export interface CreateGuestBookingRequest {
+  fullName: string
+  email: string
+  phoneNumber: string
+  identityCard?: string
+  address?: string
+  roomTypes: BookingRoomType[]
+  checkInDate: string
+  checkOutDate: string
+  specialRequests?: string
+}
+
+export interface BookingResponse {
+  isSuccess: boolean
+  data: {
+    bookingId: number
+    customerId: number
+    customerName: string
+    roomNames: string[]
+    checkInDate: string
+    checkOutDate: string
+    totalAmount: number
+    depositAmount: number
+    paymentUrl: string
+    paymentStatus: string
+    depositStatus: string
+    bookingType: string
+  }
+  message: string
+}
+
+export interface BookingDetails {
+  bookingId: number
+  customerId: number
+  customerName: string
+  roomNames: string[]
+  checkInDate: string
+  checkOutDate: string
+  totalAmount: number
+  depositAmount: number
+  paymentUrl: string
+  paymentStatus: string
+  depositStatus: string
+  bookingType: string
+  specialRequests?: string
+  createdAt: string
+}
+
 export interface Booking {
   bookingId: number
   userId: number

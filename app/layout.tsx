@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Be_Vietnam_Pro } from "next/font/google"
+import { Inter, Be_Vietnam_Pro, Playfair_Display, Cormorant_Garamond } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
@@ -10,13 +10,28 @@ const inter = Inter({
   subsets: ["latin", "vietnamese"],
   variable: "--font-inter",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 })
 
 const beVietnamPro = Be_Vietnam_Pro({
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin", "vietnamese"],
   variable: "--font-be-vietnam-pro",
   display: "swap",
+})
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-playfair",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+})
+
+const cormorantGaramond = Cormorant_Garamond({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-cormorant",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 })
 
 export const metadata: Metadata = {
@@ -31,7 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={`${inter.variable} ${beVietnamPro.variable} font-sans antialiased`}>
+      <body
+        className={`${inter.variable} ${beVietnamPro.variable} ${playfairDisplay.variable} ${cormorantGaramond.variable} font-sans antialiased`}
+      >
         <Providers>
           <Suspense fallback={<div>Loading...</div>}>
             {children}

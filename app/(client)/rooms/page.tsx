@@ -1,33 +1,16 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import {
-  Users,
-  Maximize,
-  Wifi,
-  Tv,
-  Wind,
-  Coffee,
-  Bath,
-  Home,
-  Check,
-} from "lucide-react";
-import { BookingModal } from "@/components/booking-modal";
-import { useRooms } from "@/lib/hooks";
-import { GetAllRoomsParams, Room } from "@/lib/api";
+import { useState } from "react"
+import Link from "next/link"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
+import { Users, Maximize, Wifi, Tv, Wind, Coffee, Bath, Home, Check, Search, Sparkles, Star } from "lucide-react"
+import { useRooms } from "@/lib/hooks"
+import type { GetAllRoomsParams } from "@/lib/api"
 
 const amenityIcons: Record<string, any> = {
   Wifi: Wifi,
@@ -36,100 +19,79 @@ const amenityIcons: Record<string, any> = {
   Minibar: Coffee,
   "Bồn tắm": Bath,
   "Ban công": Home,
-};
+}
 
 export default function RoomsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [roomTypeFilter, setRoomTypeFilter] = useState<string>("all");
-  const [capacityFilter, setCapacityFilter] = useState<string>("all");
-  const [priceRange, setPriceRange] = useState([0, 3000000]);
-  const [sortBy, setSortBy] = useState<string>("price-asc");
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-  const [searchParams, setSearchParams] = useState<Partial<GetAllRoomsParams>>(
-    {}
-  );
+  const [searchTerm, setSearchTerm] = useState("")
+  const [roomTypeFilter, setRoomTypeFilter] = useState<string>("all")
+  const [capacityFilter, setCapacityFilter] = useState<string>("all")
+  const [priceRange, setPriceRange] = useState([0, 3000000])
+  const [sortBy, setSortBy] = useState<string>("price-asc")
+  const [searchParams, setSearchParams] = useState<Partial<GetAllRoomsParams>>({})
 
-  const { data: roomsData } = useRooms(searchParams);
-  console.log("roomsData", roomsData);
+  const { data: roomsData } = useRooms(searchParams)
 
-  const allRooms = roomsData?.pages.flatMap((page) => page.items) || [];
-  const totalRooms = roomsData?.pages[0]?.totalCount || 0;
+  const allRooms = roomsData?.pages.flatMap((page) => page.items) || []
+  const totalRooms = roomsData?.pages[0]?.totalCount || 0
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(price);
-  };
-
-  const handleBookRoom = (room: Room) => {
-    setSelectedRoom(room);
-    setBookingModalOpen(true);
-  };
+    }).format(price)
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      <section className="pt-20 pb-6 bg-gradient-to-br from-[#ff5e7e]/5 via-[#a78bfa]/5 to-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="font-serif text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background">
+      <section className="pt-32 pb-12 luxury-gradient relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-5"></div>
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center max-w-3xl mx-auto animate-fade-in-up">
+            <div className="inline-flex items-center gap-2 px-4 py-2 glass-effect rounded-full shadow-lg mb-6 animate-scale-in">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-primary-foreground">Phòng nghỉ cao cấp</span>
+            </div>
+            <h1 className="font-serif text-5xl md:text-6xl font-bold mb-6 text-primary-foreground leading-tight py-2">
               Khám phá phòng nghỉ
             </h1>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Tìm phòng hoàn hảo với đầy đủ tiện nghi hiện đại
+            <p className="text-xl text-primary-foreground/90 leading-loose">
+              Tìm phòng hoàn hảo với đầy đủ tiện nghi hiện đại và dịch vụ đẳng cấp 5 sao
             </p>
           </div>
         </div>
       </section>
 
-      <section className="py-6">
-        <div className="container mx-auto px-4">
+      <section className="py-8">
+        <div className="container mx-auto px-6">
           <div className="grid lg:grid-cols-5 gap-6">
             <div className="lg:col-span-1">
-              <Card className="sticky top-20 border shadow-sm">
-                <CardContent className="p-4 space-y-4">
-                  <h3 className="font-semibold mb-3">Bộ lọc</h3>
+              <Card className="sticky top-20 border-primary/20 shadow-lg glass-effect">
+                <CardContent className="p-6 space-y-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-1 h-6 bg-accent rounded-full"></div>
+                    <h3 className="font-semibold text-lg">Bộ lọc</h3>
+                  </div>
 
                   {/* Search */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Tìm kiếm
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Tìm kiếm</label>
                     <div className="relative">
-                      <svg
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         type="text"
-                        placeholder="Tìm kiếm..."
+                        placeholder="Tìm kiếm phòng..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-9 h-9 text-sm"
+                        className="pl-10 h-10 bg-background/50 border-primary/20 focus:border-accent"
                       />
                     </div>
                   </div>
 
                   {/* Room Type */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Loại phòng
-                    </label>
-                    <Select
-                      value={roomTypeFilter}
-                      onValueChange={setRoomTypeFilter}
-                    >
-                      <SelectTrigger className="h-9 text-sm">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Loại phòng</label>
+                    <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+                      <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
                       <SelectContent>
@@ -143,15 +105,10 @@ export default function RoomsPage() {
                   </div>
 
                   {/* Capacity */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Số người
-                    </label>
-                    <Select
-                      value={capacityFilter}
-                      onValueChange={setCapacityFilter}
-                    >
-                      <SelectTrigger className="h-9 text-sm">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Số người</label>
+                    <Select value={capacityFilter} onValueChange={setCapacityFilter}>
+                      <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue placeholder="Tất cả" />
                       </SelectTrigger>
                       <SelectContent>
@@ -165,57 +122,48 @@ export default function RoomsPage() {
                   </div>
 
                   {/* Price Range */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Khoảng giá
-                    </label>
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-foreground">Khoảng giá</label>
                     <Slider
                       min={0}
                       max={3000000}
                       step={100000}
                       value={priceRange}
                       onValueChange={setPriceRange}
-                      className="py-3"
+                      className="py-4"
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatPrice(priceRange[0])}</span>
-                      <span>{formatPrice(priceRange[1])}</span>
+                      <span className="font-medium">{formatPrice(priceRange[0])}</span>
+                      <span className="font-medium">{formatPrice(priceRange[1])}</span>
                     </div>
                   </div>
 
                   {/* Sort */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Sắp xếp
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Sắp xếp</label>
                     <Select value={sortBy} onValueChange={setSortBy}>
-                      <SelectTrigger className="h-9 text-sm">
+                      <SelectTrigger className="h-10 bg-background/50 border-primary/20">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="price-asc">Giá tăng dần</SelectItem>
                         <SelectItem value="price-desc">Giá giảm dần</SelectItem>
-                        <SelectItem value="capacity-asc">
-                          Sức chứa tăng
-                        </SelectItem>
-                        <SelectItem value="capacity-desc">
-                          Sức chứa giảm
-                        </SelectItem>
+                        <SelectItem value="capacity-asc">Sức chứa tăng</SelectItem>
+                        <SelectItem value="capacity-desc">Sức chứa giảm</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <Button
                     onClick={() => {
-                      setSearchTerm("");
-                      setRoomTypeFilter("all");
-                      setCapacityFilter("all");
-                      setPriceRange([0, 3000000]);
-                      setSortBy("price-asc");
+                      setSearchTerm("")
+                      setRoomTypeFilter("all")
+                      setCapacityFilter("all")
+                      setPriceRange([0, 3000000])
+                      setSortBy("price-asc")
                     }}
                     variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
+                    className="w-full border-primary/20 hover:bg-accent hover:text-accent-foreground"
                   >
                     Xóa bộ lọc
                   </Button>
@@ -224,100 +172,104 @@ export default function RoomsPage() {
             </div>
 
             <div className="lg:col-span-4">
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-semibold text-foreground">
-                    {totalRooms}
-                  </span>{" "}
-                  phòng có sẵn
-                </p>
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Tìm thấy <span className="font-bold text-foreground text-lg">{totalRooms}</span> phòng có sẵn
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-accent fill-accent" />
+                  <span className="text-sm font-medium">Đẳng cấp 5 sao</span>
+                </div>
               </div>
 
               {allRooms.length > 0 ? (
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {allRooms.map((room) => (
+                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {allRooms.map((room, index) => (
                     <Card
                       key={room.roomTypeId}
-                      className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer"
+                      className="border-primary/10 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden group cursor-pointer glass-effect animate-fade-in-up"
+                      style={{ animationDelay: `${index * 0.05}s` }}
                     >
                       <Link href={`/rooms/${room.roomTypeId}`}>
-                        <div className="relative h-44 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-secondary to-secondary/50">
                           <Image
                             src="/hotel-building-exterior-modern-architecture.jpg"
                             alt={room.typeName}
                             fill
                             className="object-cover group-hover:scale-110 transition-transform duration-700"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                           <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/95 backdrop-blur-sm text-slate-900 shadow-sm">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold glass-effect text-foreground shadow-lg backdrop-blur-md border border-white/20">
                               {room.typeName}
                             </span>
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500 text-white shadow-sm">
-                              Còn trống
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground shadow-lg">
+                              Còn {room.totalRooms} phòng
                             </span>
                           </div>
                         </div>
 
-                        <CardContent className="p-4 space-y-3">
+                        <CardContent className="p-5 space-y-4">
                           <div>
-                            <h3 className="font-serif text-lg font-bold mb-1 line-clamp-1">
+                            <h3 className="font-serif text-lg font-bold mb-2 line-clamp-1 group-hover:text-accent transition-colors">
                               {room.typeName}
                             </h3>
-                            <p className="text-muted-foreground text-xs line-clamp-2 leading-relaxed">
+                            <p className="text-muted-foreground text-sm line-clamp-2 leading-loose">
                               {room.description}
                             </p>
                           </div>
 
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5" />
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-primary" />
                               <span>{room.maxOccupancy} người</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Maximize className="w-3.5 h-3.5" />
+                            <div className="flex items-center gap-1.5">
+                              <Maximize className="w-4 h-4 text-accent" />
                               <span>{room.roomSize}m²</span>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-2">
                             {room.amenities.slice(0, 3).map((amenity) => {
-                              const Icon = amenityIcons[amenity] || Check;
+                              const Icon = amenityIcons[amenity] || Check
                               return (
                                 <div
                                   key={amenity}
-                                  className="flex items-center gap-1 px-2 py-0.5 bg-slate-50 rounded text-xs text-slate-600"
+                                  className="flex items-center gap-1.5 px-2.5 py-1 bg-secondary/50 rounded-lg text-xs text-foreground border border-primary/10"
                                 >
-                                  <Icon className="w-3 h-3" />
+                                  <Icon className="w-3.5 h-3.5 text-primary" />
                                   <span>{amenity}</span>
                                 </div>
-                              );
+                              )
                             })}
                             {room.amenities.length > 3 && (
-                              <div className="flex items-center px-2 py-0.5 bg-slate-50 rounded text-xs text-slate-600">
-                                +{room.amenities.length - 3}
+                              <div className="flex items-center px-2.5 py-1 bg-accent/20 rounded-lg text-xs text-accent-foreground font-medium">
+                                +{room.amenities.length - 3} tiện nghi
                               </div>
                             )}
                           </div>
 
-                          <div className="pt-3 border-t flex items-center justify-between gap-2">
+                          <div className="pt-4 border-t border-primary/10 flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-xs text-muted-foreground">
-                                Mỗi đêm
-                              </p>
-                              <p className="text-lg font-bold bg-gradient-to-r from-[#ff5e7e] to-[#ff4569] bg-clip-text text-transparent">
+                              <p className="text-xs text-muted-foreground mb-1">Mỗi đêm từ</p>
+                              <p className="text-xl font-bold luxury-text-gradient">
                                 {formatPrice(room.basePriceNight)}
                               </p>
                             </div>
                             <Button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                handleBookRoom(room);
-                              }}
+                              asChild
                               size="sm"
-                              className="bg-gradient-to-r from-[#ff5e7e] to-[#ff4569] hover:from-[#ff4569] hover:to-[#ff2d54] text-white shadow-md hover:shadow-lg transition-all"
+                              className="luxury-gradient text-primary-foreground hover:opacity-90 shadow-lg hover:shadow-xl transition-all h-10 px-6"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Đặt ngay
+                              <Link
+                                href={`/booking?roomId=${room.roomTypeId}&roomType=${encodeURIComponent(room.typeName)}&price=${room.basePriceNight}`}
+                              >
+                                Đặt ngay
+                              </Link>
                             </Button>
                           </div>
                         </CardContent>
@@ -326,29 +278,13 @@ export default function RoomsPage() {
                   ))}
                 </div>
               ) : (
-                <Card className="border-0 shadow-md">
-                  <CardContent className="p-12 text-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <svg
-                        className="w-8 h-8 text-slate-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                        />
-                      </svg>
+                <Card className="border-primary/10 shadow-lg glass-effect">
+                  <CardContent className="p-16 text-center">
+                    <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-10 h-10 text-muted-foreground" />
                     </div>
-                    <p className="text-slate-500 text-lg">
-                      Không tìm thấy phòng phù hợp
-                    </p>
-                    <p className="text-slate-400 text-sm mt-1">
-                      Thử điều chỉnh bộ lọc để xem thêm phòng
-                    </p>
+                    <h3 className="text-xl font-semibold mb-2">Không tìm thấy phòng phù hợp</h3>
+                    <p className="text-muted-foreground leading-relaxed">Thử điều chỉnh bộ lọc để xem thêm phòng</p>
                   </CardContent>
                 </Card>
               )}
@@ -356,19 +292,6 @@ export default function RoomsPage() {
           </div>
         </div>
       </section>
-
-      {/* Booking Modal */}
-      {selectedRoom && (
-        <BookingModal
-          open={bookingModalOpen}
-          onOpenChange={setBookingModalOpen}
-          room={{
-            roomId: selectedRoom.roomTypeId,
-            roomType: selectedRoom.typeName,
-            pricePerNight: selectedRoom.basePriceNight,
-          }}
-        />
-      )}
     </div>
-  );
+  )
 }

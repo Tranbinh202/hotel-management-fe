@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Lock, Mail, Shield, CheckCircle2 } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
@@ -81,33 +82,33 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-fade-in-up">
           <div className="mb-8">
-            <Link
-              href="/"
-              className="text-2xl font-bold bg-gradient-to-r from-[#FF6B6B] to-[#06B6D4] bg-clip-text text-transparent"
-            >
+            <Link href="/" className="text-2xl font-serif font-bold luxury-text-gradient">
               StayHub
             </Link>
           </div>
 
-          <h1 className="text-4xl font-bold text-foreground mb-2">Quên mật khẩu</h1>
-          <p className="text-muted-foreground mb-8">Nhập email để nhận mã xác nhận</p>
+          <h1 className="text-4xl font-serif font-bold text-foreground mb-2 leading-tight">Quên mật khẩu</h1>
+          <p className="text-muted-foreground mb-8 leading-loose">Nhập email để nhận mã xác nhận</p>
 
           <form onSubmit={handleVerifyCode} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                disabled={codeSent}
-                className={errors.email ? "border-red-500" : ""}
-                placeholder="your.email@example.com"
-              />
-              {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={codeSent}
+                  className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
+                  placeholder="your.email@example.com"
+                />
+              </div>
+              {errors.email && <p className="text-sm text-red-500 leading-loose">{errors.email}</p>}
             </div>
 
             <div className="flex gap-3">
@@ -123,33 +124,38 @@ export default function ForgotPasswordPage() {
                   className={errors.code ? "border-red-500" : ""}
                   placeholder="000000"
                 />
-                {errors.code && <p className="text-sm text-red-500">{errors.code}</p>}
+                {errors.code && <p className="text-sm text-red-500 leading-loose">{errors.code}</p>}
               </div>
               <div className="flex items-end">
                 <Button
                   type="button"
                   onClick={handleSendCode}
                   disabled={isLoading || !formData.email}
-                  className="bg-[#06B6D4] hover:bg-[#0891B2] whitespace-nowrap"
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground whitespace-nowrap"
                 >
                   {codeSent ? "Gửi lại" : "Gửi mã"}
                 </Button>
               </div>
             </div>
 
-            {codeSent && <p className="text-sm text-green-600">Mã xác nhận đã được gửi đến email của bạn!</p>}
+            {codeSent && (
+              <p className="text-sm text-green-600 leading-loose flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Mã xác nhận đã được gửi đến email của bạn!
+              </p>
+            )}
 
             <Button
               type="submit"
               disabled={isLoading || !codeSent}
-              className="w-full bg-gradient-to-r from-[#FF6B6B] to-[#FF5E7E] hover:opacity-90"
+              className="w-full luxury-gradient hover:opacity-90 text-white"
             >
               {isLoading ? "Đang xác nhận..." : "Xác nhận"}
             </Button>
 
-            <p className="text-center text-muted-foreground mt-6">
+            <p className="text-center text-muted-foreground mt-6 leading-loose">
               Nhớ mật khẩu?{" "}
-              <Link href="/login" className="text-[#06B6D4] hover:text-[#0891B2] font-semibold transition-colors">
+              <Link href="/login" className="text-accent hover:text-accent/80 font-semibold transition-colors">
                 Đăng nhập
               </Link>
             </p>
@@ -158,27 +164,50 @@ export default function ForgotPasswordPage() {
       </div>
 
       {/* Right side - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#A78BFA] via-[#FF6B6B] to-[#06B6D4] items-center justify-center p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 luxury-gradient items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 right-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 left-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute top-20 right-20 w-64 h-64 bg-white rounded-full blur-3xl animate-float"></div>
+          <div
+            className="absolute bottom-20 left-20 w-96 h-96 bg-white rounded-full blur-3xl animate-float"
+            style={{ animationDelay: "1s" }}
+          ></div>
         </div>
 
-        <div className="relative z-10 text-white text-center max-w-lg">
+        <div
+          className="relative z-10 text-white text-center max-w-lg animate-fade-in-up"
+          style={{ animationDelay: "0.2s" }}
+        >
           <div className="mb-8">
-            <svg className="w-24 h-24 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
+            <Lock className="w-24 h-24 mx-auto animate-float" />
           </div>
-          <h2 className="text-5xl font-bold mb-6">Đừng lo lắng!</h2>
-          <p className="text-xl text-white/90 leading-relaxed">
+          <h2 className="text-5xl font-serif font-bold mb-6 leading-tight">Đừng lo lắng!</h2>
+          <p className="text-xl text-white/90 leading-loose mb-8">
             Chúng tôi sẽ giúp bạn khôi phục tài khoản một cách nhanh chóng và an toàn
           </p>
+
+          <div className="space-y-4">
+            <div
+              className="flex items-center gap-3 glass-effect rounded-lg p-4 animate-scale-in"
+              style={{ animationDelay: "0.4s" }}
+            >
+              <Shield className="w-6 h-6 flex-shrink-0" />
+              <span className="text-left leading-loose">Mã xác nhận được mã hóa an toàn</span>
+            </div>
+            <div
+              className="flex items-center gap-3 glass-effect rounded-lg p-4 animate-scale-in"
+              style={{ animationDelay: "0.6s" }}
+            >
+              <CheckCircle2 className="w-6 h-6 flex-shrink-0" />
+              <span className="text-left leading-loose">Xác thực qua email đã đăng ký</span>
+            </div>
+            <div
+              className="flex items-center gap-3 glass-effect rounded-lg p-4 animate-scale-in"
+              style={{ animationDelay: "0.8s" }}
+            >
+              <Lock className="w-6 h-6 flex-shrink-0" />
+              <span className="text-left leading-loose">Bảo mật thông tin tuyệt đối</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { authApi } from "@/lib/api/auth"
 import { accountApi } from "@/lib/api/account"
+import { isTokenExpired, getAccountIdFromToken } from "@/lib/utils/token"
 
 interface LoginResponse {
   isSuccess: boolean
@@ -52,21 +53,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  // Load auth data from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem("access_token")
-    const storedUser = localStorage.getItem("user")
+    const initializeAuth = async () => {
+      const storedToken = localStorage.getItem("access_token")
+      const storedRefreshToken = localStorage.getItem("refresh_token")
+      const storedUser = localStorage.getItem("user")
 
-    // Clean up old token keys if they exist
-    localStorage.removeItem("token")
-    localStorage.removeItem("refreshToken")
+      // Clean up old token keys if they exist
+      localStorage.removeItem("token")
+      localStorage.removeItem("refreshToken")
 
-    if (storedToken && storedUser) {
-      setToken(storedToken)
-      const parsedUser = JSON.parse(storedUser)
-      setUser(parsedUser)
+      if (storedToken && storedUser) {
+        // Check if token is expired
+        if (isTokenExpired(storedToken)) {
+          console.log("Access token expired on load, attempting refresh...")
+
+          if (storedRefreshToken) {
+            try {
+              const accountId = getAccountIdFromToken(storedToken)
+
+              if (accountId) {
+                // Attempt to refresh the token
+                const refreshResult = await authApi.refreshToken(accountId, storedRefreshToken)
+
+                if (refreshResult.isSuccess && refreshResult.data.token) {
+                  console.log("Token refreshed successfully on load")
+                  setToken(refreshResult.data.token)
+                  const parsedUser = JSON.parse(storedUser)
+                  setUser(parsedUser)
+                } else {
+                  console.log("Token refresh failed, clearing auth data")
+                  localStorage.removeItem("access_token")
+                  localStorage.removeItem("refresh_token")
+                  localStorage.removeItem("user")
+                }
+              } else {
+                console.log("Could not extract accountId, clearing auth data")
+                localStorage.removeItem("access_token")
+                localStorage.removeItem("refresh_token")
+                localStorage.removeItem("user")
+              }
+            } catch (error) {
+              console.error("Error refreshing token on load:", error)
+              localStorage.removeItem("access_token")
+              localStorage.removeItem("refresh_token")
+              localStorage.removeItem("user")
+            }
+          } else {
+            console.log("No refresh token available, clearing auth data")
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            localStorage.removeItem("user")
+          }
+        } else {
+          // Token is still valid
+          setToken(storedToken)
+          const parsedUser = JSON.parse(storedUser)
+          setUser(parsedUser)
+        }
+      }
+
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    initializeAuth()
   }, [])
 
   // Fetch user account summary
@@ -136,9 +186,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/login")
   }
 
-  // Refresh user data
   const refreshUserData = async () => {
     if (!token) return
+
+    // Check if token is expired before fetching
+    if (isTokenExpired(token)) {
+      console.log("Token expired, refreshing before fetching user data...")
+      const refreshToken = localStorage.getItem("refresh_token")
+      const accountId = getAccountIdFromToken(token)
+
+      if (refreshToken && accountId) {
+        try {
+          const refreshResult = await authApi.refreshToken(accountId, refreshToken)
+          if (refreshResult.isSuccess && refreshResult.data.token) {
+            setToken(refreshResult.data.token)
+          } else {
+            logout()
+            return
+          }
+        } catch (error) {
+          console.error("Failed to refresh token:", error)
+          logout()
+          return
+        }
+      } else {
+        logout()
+        return
+      }
+    }
 
     try {
       const userData = await fetchUserSummary()

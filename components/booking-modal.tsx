@@ -326,7 +326,7 @@ export function BookingModal({ open, onOpenChange, room }: BookingModalProps) {
                         <div className="space-y-2">
                             <Label>Yêu cầu đặc biệt (tùy chọn)</Label>
                             <Textarea
-                                placeholder="Ví dụ: Tầng cao, view đẹp, giường đôi..."
+                                placeholder="V�� dụ: Tầng cao, view đẹp, giường đôi..."
                                 value={specialRequests}
                                 onChange={(e) => setSpecialRequests(e.target.value)}
                                 rows={3}

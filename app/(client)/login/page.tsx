@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Hotel, Shield, Clock, Award } from "lucide-react"
 
 export default function LoginPage() {
   const { login, isLoading, isInitializing } = useAuth()
@@ -74,8 +74,8 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 border-2 border-[#FF6B6B] border-t-transparent rounded-full animate-spin" />
-          <span className="text-muted-foreground">Đang tải...</span>
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground leading-loose">Đang tải...</span>
         </div>
       </div>
     )
@@ -85,18 +85,15 @@ export default function LoginPage() {
     <div className="min-h-screen flex">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-fade-in-up">
           <div className="mb-8">
-            <Link
-              href="/"
-              className="text-2xl font-bold bg-gradient-to-r from-[#FF6B6B] to-[#06B6D4] bg-clip-text text-transparent"
-            >
+            <Link href="/" className="text-2xl font-serif font-bold luxury-text-gradient">
               StayHub
             </Link>
           </div>
 
-          <h1 className="text-4xl font-bold text-foreground mb-2">Đăng nhập</h1>
-          <p className="text-muted-foreground mb-8">Chào mừng bạn trở lại!</p>
+          <h1 className="text-4xl font-serif font-bold text-foreground mb-2 leading-tight">Đăng nhập</h1>
+          <p className="text-muted-foreground mb-8 leading-loose">Chào mừng bạn trở lại!</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
@@ -110,7 +107,7 @@ export default function LoginPage() {
                 className={errors.username ? "border-red-500" : ""}
                 placeholder="username"
               />
-              {errors.username && <p className="text-sm text-red-500">{errors.username}</p>}
+              {errors.username && <p className="text-sm text-red-500 leading-loose">{errors.username}</p>}
             </div>
 
             <div className="space-y-2">
@@ -134,13 +131,13 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
+              {errors.password && <p className="text-sm text-red-500 leading-loose">{errors.password}</p>}
             </div>
 
             <div className="text-right">
               <Link
                 href="/forgot-password"
-                className="text-sm text-[#06B6D4] hover:text-[#0891B2] font-medium transition-colors"
+                className="text-sm text-accent hover:text-accent/80 font-medium transition-colors"
               >
                 Quên mật khẩu?
               </Link>
@@ -149,7 +146,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-[#FF6B6B] to-[#FF5E7E] hover:opacity-90"
+              className="w-full luxury-gradient hover:opacity-90 transition-opacity"
             >
               {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
@@ -167,7 +164,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleGoogleLogin}
               variant="outline"
-              className="w-full flex items-center justify-center gap-3 bg-transparent"
+              className="w-full flex items-center justify-center gap-3 bg-transparent hover:bg-muted"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path
@@ -190,9 +187,9 @@ export default function LoginPage() {
               Đăng nhập với Google
             </Button>
 
-            <p className="text-center text-muted-foreground mt-6">
+            <p className="text-center text-muted-foreground mt-6 leading-loose">
               Chưa có tài khoản?{" "}
-              <Link href="/register" className="text-[#06B6D4] hover:text-[#0891B2] font-semibold transition-colors">
+              <Link href="/register" className="text-accent hover:text-accent/80 font-semibold transition-colors">
                 Đăng ký ngay
               </Link>
             </p>
@@ -200,30 +197,56 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right side - Visual */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#FF6B6B] via-[#A78BFA] to-[#06B6D4] items-center justify-center p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 luxury-gradient items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+          <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl animate-float"></div>
+          <div
+            className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl animate-float"
+            style={{ animationDelay: "1s" }}
+          ></div>
         </div>
 
         <div className="relative z-10 text-white text-center max-w-lg">
-          <h2 className="text-5xl font-bold mb-6">Chào mừng trở lại!</h2>
-          <p className="text-xl text-white/90 leading-relaxed">
+          <h2 className="text-5xl font-serif font-bold mb-6 leading-tight animate-fade-in-up">Chào mừng trở lại!</h2>
+          <p
+            className="text-xl text-white/90 leading-loose mb-12 animate-fade-in-up"
+            style={{ animationDelay: "0.1s" }}
+          >
             Đăng nhập để tiếp tục quản lý khách sạn của bạn một cách hiệu quả và chuyên nghiệp
           </p>
-          <div className="mt-12 grid grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold">1000+</div>
-              <div className="text-sm text-white/80 mt-2">Khách sạn</div>
+
+          <div className="grid grid-cols-2 gap-6 mb-12">
+            <div
+              className="text-center p-6 glass-effect rounded-xl animate-scale-in"
+              style={{ animationDelay: "0.2s" }}
+            >
+              <Hotel className="h-8 w-8 mx-auto mb-3 text-accent" />
+              <div className="text-2xl font-bold">1000+</div>
+              <div className="text-sm text-white/80 mt-2 leading-loose">Khách sạn</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold">50K+</div>
-              <div className="text-sm text-white/80 mt-2">Người dùng</div>
+            <div
+              className="text-center p-6 glass-effect rounded-xl animate-scale-in"
+              style={{ animationDelay: "0.3s" }}
+            >
+              <Shield className="h-8 w-8 mx-auto mb-3 text-accent" />
+              <div className="text-2xl font-bold">99%</div>
+              <div className="text-sm text-white/80 mt-2 leading-loose">Bảo mật</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold">99%</div>
-              <div className="text-sm text-white/80 mt-2">Hài lòng</div>
+            <div
+              className="text-center p-6 glass-effect rounded-xl animate-scale-in"
+              style={{ animationDelay: "0.4s" }}
+            >
+              <Clock className="h-8 w-8 mx-auto mb-3 text-accent" />
+              <div className="text-2xl font-bold">24/7</div>
+              <div className="text-sm text-white/80 mt-2 leading-loose">Hỗ trợ</div>
+            </div>
+            <div
+              className="text-center p-6 glass-effect rounded-xl animate-scale-in"
+              style={{ animationDelay: "0.5s" }}
+            >
+              <Award className="h-8 w-8 mx-auto mb-3 text-accent" />
+              <div className="text-2xl font-bold">50K+</div>
+              <div className="text-sm text-white/80 mt-2 leading-loose">Người dùng</div>
             </div>
           </div>
         </div>

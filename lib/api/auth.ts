@@ -38,11 +38,31 @@ export const authApi = {
     }
   },
 
-  refreshToken: async (refreshToken: string): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>("/authentication/refresh", { refreshToken })
+  refreshToken: async (accountId: number, refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
+    const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
+      accountId,
+      refreshToken,
+    })
 
-    if (typeof window !== "undefined" && response.token) {
-      localStorage.setItem("access_token", response.token)
+    if (typeof window !== "undefined" && response.data?.token) {
+      localStorage.setItem("access_token", response.data.token)
+      // Update refresh token if a new one is provided
+      if (response.data.refreshToken) {
+        localStorage.setItem("refresh_token", response.data.refreshToken)
+      }
+    }
+
+    return response
+  },
+
+  refreshTokenFromCache: async (): Promise<ApiResponse<AuthResponse>> => {
+    const response = await apiClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token")
+
+    if (typeof window !== "undefined" && response.data?.token) {
+      localStorage.setItem("access_token", response.data.token)
+      if (response.data.refreshToken) {
+        localStorage.setItem("refresh_token", response.data.refreshToken)
+      }
     }
 
     return response

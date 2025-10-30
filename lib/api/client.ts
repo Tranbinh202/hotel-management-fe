@@ -1,8 +1,8 @@
-import { Card } from '@/components/ui/card';
 // api-client.ts
-import axios, { AxiosError, AxiosHeaders, AxiosInstance, AxiosRequestConfig } from "axios"
-import type { ApiError } from "@/lib/types/api"
+import axios, { type AxiosError, AxiosHeaders, type AxiosInstance, type AxiosRequestConfig } from "axios"
+import type { ApiError, ApiResponse, AuthResponse } from "@/lib/types/api"
 import { QueryClient } from "@tanstack/react-query"
+import { isTokenExpired, getAccountIdFromToken } from "@/lib/utils/token"
 
 let isRefreshing = false
 let refreshQueue: Array<(token: string | null) => void> = []
@@ -26,17 +26,31 @@ class ApiClient {
 
   private setupInterceptors() {
     this.instance.interceptors.request.use(
-      (config) => {
+      async (config) => {
         const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
 
-        // Bảo đảm headers là AxiosHeaders, rồi dùng .set()
         if (!config.headers) config.headers = new AxiosHeaders()
         const h = config.headers as AxiosHeaders
 
-        if (token) {
+        if (token && isTokenExpired(token)) {
+          console.log("Token expired, refreshing before request...")
+
+          try {
+            const newToken = await this.handleTokenRefresh()
+            if (newToken) {
+              h.set("Authorization", `Bearer ${newToken}`)
+            }
+          } catch (error) {
+            console.error("Failed to refresh token in request interceptor:", error)
+            // Continue with expired token, let response interceptor handle it
+            if (token) {
+              h.set("Authorization", `Bearer ${token}`)
+            }
+          }
+        } else if (token) {
           h.set("Authorization", `Bearer ${token}`)
         }
-        // Nếu cần set content-type
+
         if (!h.has("Content-Type")) {
           h.set("Content-Type", "application/json")
         }
@@ -51,7 +65,6 @@ class ApiClient {
         const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined
         const status = error.response?.status
 
-        // Nếu không có request gốc hoặc đã retry thì trả lỗi luôn
         if (!original || original._retry) {
           return Promise.reject(this.handleError(error))
         }
@@ -59,56 +72,49 @@ class ApiClient {
         if (status === 401) {
           original._retry = true
 
-          // Hàng đợi các request đợi token mới
           if (!isRefreshing) {
             isRefreshing = true
             try {
-              const refreshToken =
-                typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
+              const newToken = await this.handleTokenRefresh()
 
-              if (!refreshToken) throw new Error("NO_REFRESH_TOKEN")
-
-              const res = await refreshClient.post("/auth/refresh", { refreshToken })
-              const newAccess = (res.data as any)?.accessToken
-
-              if (typeof window !== "undefined" && newAccess) {
-                localStorage.setItem("access_token", newAccess)
+              if (!newToken) {
+                throw new Error("Failed to refresh token")
               }
 
-              // Thông báo cho hàng đợi
-              refreshQueue.forEach((cb) => cb(newAccess ?? null))
+              // Notify all queued requests
+              refreshQueue.forEach((cb) => cb(newToken))
               refreshQueue = []
               isRefreshing = false
 
-              // Retry request cũ với token mới
+              // Retry original request with new token
               if (!original.headers) original.headers = new AxiosHeaders()
-                ; (original.headers as AxiosHeaders).set("Authorization", `Bearer ${newAccess}`)
+              ;(original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
 
               return this.instance(original)
             } catch (e) {
-              // Refresh fail -> xoá token & điều hướng
+              console.error("Token refresh failed:", e)
               refreshQueue.forEach((cb) => cb(null))
               refreshQueue = []
               isRefreshing = false
 
-              // if (typeof window !== "undefined") {
-              //   localStorage.removeItem("access_token")
-              //   localStorage.removeItem("refresh_token")
-              //   // window.location.href = "/login"
-              //   console.warn("Redirect to login page", window)
-              // }
+              if (typeof window !== "undefined") {
+                localStorage.removeItem("access_token")
+                localStorage.removeItem("refresh_token")
+                localStorage.removeItem("user")
+                window.location.href = "/login"
+              }
               return Promise.reject(this.handleError(error))
             }
           } else {
-            // Đang refresh -> chờ xong rồi retry
+            // Wait for ongoing refresh
             return new Promise((resolve, reject) => {
               refreshQueue.push((newToken) => {
                 if (!newToken) {
                   reject(this.handleError(error))
                   return
                 }
-                if (!original.headers) original.headers = {}
-                original.headers.Authorization = `Bearer ${newToken}`
+                if (!original.headers) original.headers = new AxiosHeaders()
+                ;(original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
                 resolve(this.instance(original))
               })
             })
@@ -118,6 +124,62 @@ class ApiClient {
         return Promise.reject(this.handleError(error))
       },
     )
+  }
+
+  private async handleTokenRefresh(): Promise<string | null> {
+    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
+    const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
+
+    if (!refreshToken) {
+      console.error("No refresh token available")
+      return null
+    }
+
+    try {
+      // Try to get accountId from current access token
+      let accountId: number | null = null
+      if (accessToken) {
+        accountId = getAccountIdFromToken(accessToken)
+      }
+
+      let response: any
+
+      if (accountId) {
+        // Use POST endpoint with accountId and refreshToken
+        console.log("Refreshing token with POST endpoint (accountId:", accountId, ")")
+        response = await refreshClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
+          accountId,
+          refreshToken,
+        })
+      } else {
+        // Fallback to GET endpoint (from cache)
+        console.log("Refreshing token with GET endpoint (from cache)")
+        response = await refreshClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
+          headers: { Authorization: `Bearer ${refreshToken}` },
+        })
+      }
+
+      const newAccessToken = response.data?.data?.token || response.data?.token
+      const newRefreshToken = response.data?.data?.refreshToken || response.data?.refreshToken
+
+      if (!newAccessToken) {
+        throw new Error("No access token in refresh response")
+      }
+
+      // Update tokens in localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("access_token", newAccessToken)
+        if (newRefreshToken) {
+          localStorage.setItem("refresh_token", newRefreshToken)
+        }
+      }
+
+      console.log("Token refreshed successfully")
+      return newAccessToken
+    } catch (error) {
+      console.error("Token refresh error:", error)
+      throw error
+    }
   }
 
   private handleError(error: AxiosError): ApiError {
@@ -161,6 +223,6 @@ class ApiClient {
 
 export const apiClient = new ApiClient()
 
-export const queryClient = new QueryClient(
-  { defaultOptions: { queries: { retry: 1, staleTime: 5 * 60 * 1000, }, mutations: { retry: 1 } } }
-)
+export const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 5 * 60 * 1000 }, mutations: { retry: 1 } },
+})

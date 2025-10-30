@@ -138,7 +138,7 @@ export default function ClientProfilePage() {
       <div className="flex items-center justify-center min-h-[600px]">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Đang tải thông tin...</p>
+          <p className="text-muted-foreground leading-loose">Đang tải thông tin...</p>
         </div>
       </div>
     )
@@ -159,32 +159,32 @@ export default function ClientProfilePage() {
     .slice(0, 2)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container max-w-8xl mx-auto py-8 md:py-12">
-        <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600 p-8 md:p-12 shadow-xl">
+        <div className="relative mb-8 overflow-hidden rounded-2xl luxury-gradient p-8 md:p-12 shadow-2xl animate-fade-in-up">
           <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-10" />
           <div className="relative">
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Hồ sơ của tôi</h1>
-            <p className="text-pink-100 text-lg">Quản lý thông tin cá nhân và tài khoản của bạn</p>
+            <h1 className="text-3xl md:text-4xl font-serif font-bold text-white mb-2 leading-tight">Hồ sơ của tôi</h1>
+            <p className="text-accent/90 text-lg leading-loose">Quản lý thông tin cá nhân và tài khoản của bạn</p>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <Card className="border-0 shadow-lg overflow-hidden">
-              <div className="h-32 bg-gradient-to-r from-pink-500 via-rose-500 to-pink-600" />
+          <div className="lg:col-span-1 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+            <Card className="border-0 shadow-xl overflow-hidden glass-effect">
+              <div className="h-32 luxury-gradient" />
               <CardContent className="pt-0 pb-8">
                 <div className="flex flex-col items-center -mt-16">
                   <div className="relative mb-4">
-                    <Avatar className="h-32 w-32 border-4 border-white shadow-xl ring-4 ring-pink-100">
+                    <Avatar className="h-32 w-32 border-4 border-white shadow-2xl ring-4 ring-accent/20">
                       <AvatarImage src={avatarUrl || profile.avatarUrl || undefined} alt={displayName} />
-                      <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-pink-400 to-rose-500 text-white">
+                      <AvatarFallback className="text-3xl font-bold luxury-gradient text-white">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     {isEditing && (
                       <label className="absolute bottom-0 right-0 cursor-pointer group">
-                        <div className="bg-gradient-to-r from-pink-500 to-rose-500 text-white p-3 rounded-full hover:from-pink-600 hover:to-rose-600 transition-all shadow-lg group-hover:scale-110">
+                        <div className="luxury-gradient text-white p-3 rounded-full hover:scale-110 transition-all shadow-lg">
                           {isUploadingAvatar ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
@@ -202,17 +202,17 @@ export default function ClientProfilePage() {
                     )}
                   </div>
 
-                  <h2 className="text-2xl font-bold text-slate-900 text-center">{displayName}</h2>
-                  <p className="text-slate-600 mt-1 text-center">{displayEmail}</p>
+                  <h2 className="text-2xl font-bold text-foreground text-center leading-tight">{displayName}</h2>
+                  <p className="text-muted-foreground mt-1 text-center leading-loose">{displayEmail}</p>
 
-                  <Badge variant="secondary" className="mt-3">
+                  <Badge variant="secondary" className="mt-3 bg-accent/10 text-accent border-accent/20">
                     Khách hàng
                   </Badge>
 
                   {!isEditing && (
                     <Button
                       onClick={() => setIsEditing(true)}
-                      className="mt-6 w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                      className="mt-6 w-full luxury-gradient hover:opacity-90 transition-opacity"
                       size="lg"
                     >
                       Chỉnh sửa hồ sơ
@@ -224,10 +224,10 @@ export default function ClientProfilePage() {
 
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 text-sm">
-                    <Calendar className="h-4 w-4 text-slate-400" />
+                    <Calendar className="h-4 w-4 text-accent" />
                     <div>
-                      <p className="text-slate-500">Tham gia</p>
-                      <p className="font-medium text-slate-900">
+                      <p className="text-muted-foreground leading-loose">Tham gia</p>
+                      <p className="font-medium text-foreground leading-loose">
                         {new Date(accountSummary.createdAt).toLocaleDateString("vi-VN", {
                           year: "numeric",
                           month: "long",
@@ -237,10 +237,10 @@ export default function ClientProfilePage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-sm">
-                    <Calendar className="h-4 w-4 text-slate-400" />
+                    <Calendar className="h-4 w-4 text-accent" />
                     <div>
-                      <p className="text-slate-500">Đăng nhập lần cuối</p>
-                      <p className="font-medium text-slate-900">
+                      <p className="text-muted-foreground leading-loose">Đăng nhập lần cuối</p>
+                      <p className="font-medium text-foreground leading-loose">
                         {new Date(accountSummary.lastLoginAt).toLocaleDateString("vi-VN", {
                           year: "numeric",
                           month: "long",
@@ -256,16 +256,19 @@ export default function ClientProfilePage() {
 
           <div className="lg:col-span-2 space-y-6">
             {accountSummary.statistics && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+              <div
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 animate-fade-in-up"
+                style={{ animationDelay: "0.2s" }}
+              >
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 glass-effect">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-blue-100 rounded-xl">
-                        <TrendingUp className="h-6 w-6 text-blue-600" />
+                      <div className="p-3 bg-primary/10 rounded-xl">
+                        <TrendingUp className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600">Tổng đặt phòng</p>
-                        <p className="text-2xl font-bold text-slate-900">
+                        <p className="text-sm text-muted-foreground leading-loose">Tổng đặt phòng</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {accountSummary.statistics.totalBookings || 0}
                         </p>
                       </div>
@@ -273,15 +276,15 @@ export default function ClientProfilePage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 glass-effect">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-green-100 rounded-xl">
+                      <div className="p-3 bg-green-500/10 rounded-xl">
                         <CheckCircle2 className="h-6 w-6 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600">Hoàn thành</p>
-                        <p className="text-2xl font-bold text-slate-900">
+                        <p className="text-sm text-muted-foreground leading-loose">Hoàn thành</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {accountSummary.statistics.completedBookings || 0}
                         </p>
                       </div>
@@ -289,15 +292,15 @@ export default function ClientProfilePage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 glass-effect">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-red-100 rounded-xl">
+                      <div className="p-3 bg-red-500/10 rounded-xl">
                         <XCircle className="h-6 w-6 text-red-600" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600">Đã hủy</p>
-                        <p className="text-2xl font-bold text-slate-900">
+                        <p className="text-sm text-muted-foreground leading-loose">Đã hủy</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {accountSummary.statistics.cancelledBookings || 0}
                         </p>
                       </div>
@@ -305,15 +308,15 @@ export default function ClientProfilePage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 glass-effect">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-amber-100 rounded-xl">
-                        <Star className="h-6 w-6 text-amber-600" />
+                      <div className="p-3 bg-accent/10 rounded-xl">
+                        <Star className="h-6 w-6 text-accent" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600">Đánh giá</p>
-                        <p className="text-2xl font-bold text-slate-900">
+                        <p className="text-sm text-muted-foreground leading-loose">Đánh giá</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {accountSummary.statistics.totalFeedbacks || 0}
                         </p>
                       </div>
@@ -321,15 +324,15 @@ export default function ClientProfilePage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow sm:col-span-2">
+                <Card className="border-0 shadow-lg hover:shadow-xl transition-all hover:scale-105 glass-effect sm:col-span-2">
                   <CardContent className="pt-6">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-purple-100 rounded-xl">
-                        <DollarSign className="h-6 w-6 text-purple-600" />
+                      <div className="p-3 bg-accent/10 rounded-xl">
+                        <DollarSign className="h-6 w-6 text-accent" />
                       </div>
                       <div>
-                        <p className="text-sm text-slate-600">Tổng chi tiêu</p>
-                        <p className="text-2xl font-bold text-slate-900">
+                        <p className="text-sm text-muted-foreground leading-loose">Tổng chi tiêu</p>
+                        <p className="text-2xl font-bold luxury-text-gradient">
                           {accountSummary.statistics.totalSpent
                             ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
                                 accountSummary.statistics.totalSpent,
@@ -343,17 +346,19 @@ export default function ClientProfilePage() {
               </div>
             )}
 
-            <Card className="border-0 shadow-lg">
+            <Card className="border-0 shadow-xl glass-effect animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
               <CardHeader>
-                <CardTitle className="text-xl">Thông tin cá nhân</CardTitle>
-                <CardDescription>Cập nhật thông tin liên hệ và địa chỉ của bạn</CardDescription>
+                <CardTitle className="text-xl font-serif">Thông tin cá nhân</CardTitle>
+                <CardDescription className="leading-loose">
+                  Cập nhật thông tin liên hệ và địa chỉ của bạn
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="fullName" className="flex items-center gap-2 text-slate-700">
-                        <User className="h-4 w-4 text-slate-500" />
+                      <Label htmlFor="fullName" className="flex items-center gap-2 text-foreground">
+                        <User className="h-4 w-4 text-accent" />
                         Họ và tên
                       </Label>
                       <Input
@@ -368,8 +373,8 @@ export default function ClientProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phoneNumber" className="flex items-center gap-2 text-slate-700">
-                        <Phone className="h-4 w-4 text-slate-500" />
+                      <Label htmlFor="phoneNumber" className="flex items-center gap-2 text-foreground">
+                        <Phone className="h-4 w-4 text-accent" />
                         Số điện thoại
                       </Label>
                       <Input
@@ -384,8 +389,8 @@ export default function ClientProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="identityCard" className="flex items-center gap-2 text-slate-700">
-                        <CreditCard className="h-4 w-4 text-slate-500" />
+                      <Label htmlFor="identityCard" className="flex items-center gap-2 text-foreground">
+                        <CreditCard className="h-4 w-4 text-accent" />
                         CMND/CCCD
                       </Label>
                       <Input
@@ -399,18 +404,18 @@ export default function ClientProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-slate-700">
-                        <Mail className="h-4 w-4 text-slate-500" />
+                      <Label className="flex items-center gap-2 text-foreground">
+                        <Mail className="h-4 w-4 text-accent" />
                         Email
                       </Label>
                       <Input value={displayEmail} disabled className="h-11 opacity-60" />
-                      <p className="text-xs text-slate-500">Email không thể thay đổi</p>
+                      <p className="text-xs text-muted-foreground leading-loose">Email không thể thay đổi</p>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address" className="flex items-center gap-2 text-slate-700">
-                      <MapPin className="h-4 w-4 text-slate-500" />
+                    <Label htmlFor="address" className="flex items-center gap-2 text-foreground">
+                      <MapPin className="h-4 w-4 text-accent" />
                       Địa chỉ
                     </Label>
                     <Input
@@ -429,7 +434,7 @@ export default function ClientProfilePage() {
                         type="submit"
                         disabled={updateProfile.isPending}
                         size="lg"
-                        className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                        className="flex-1 luxury-gradient hover:opacity-90 transition-opacity"
                       >
                         {updateProfile.isPending ? (
                           <>
@@ -460,16 +465,18 @@ export default function ClientProfilePage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-lg">
+            <Card className="border-0 shadow-xl glass-effect animate-fade-in-up" style={{ animationDelay: "0.4s" }}>
               <CardHeader>
-                <CardTitle className="text-xl">Bảo mật tài khoản</CardTitle>
-                <CardDescription>Quản lý mật khẩu và cài đặt bảo mật của bạn</CardDescription>
+                <CardTitle className="text-xl font-serif">Bảo mật tài khoản</CardTitle>
+                <CardDescription className="leading-loose">Quản lý mật khẩu và cài đặt bảo mật của bạn</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl hover:bg-muted transition-colors">
                   <div className="flex-1">
-                    <p className="font-medium text-slate-900">Mật khẩu</p>
-                    <p className="text-sm text-slate-600 mt-1">Đổi mật khẩu định kỳ để bảo mật tài khoản của bạn</p>
+                    <p className="font-medium text-foreground">Mật khẩu</p>
+                    <p className="text-sm text-muted-foreground mt-1 leading-loose">
+                      Đổi mật khẩu định kỳ để bảo mật tài khoản của bạn
+                    </p>
                   </div>
                   <Button variant="outline" onClick={() => router.push("/change-password")} className="ml-4">
                     Đổi mật khẩu

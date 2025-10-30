@@ -4,11 +4,7 @@ import { useState, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { BookingModal } from "@/components/booking-modal";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Users,
   Maximize,
@@ -24,7 +20,10 @@ import {
   MapPin,
   Building2,
   Bed,
-  AlertCircle,
+  Calendar,
+  Clock,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { useRoom, useRooms } from "@/lib/hooks";
 
@@ -53,39 +52,9 @@ export default function RoomDetailPage({
   } = useRoom({
     id: roomTypeId,
   });
-  const { data: allRoomTypes } = useRooms({
-    // PageSize: 20,
-  });
+  const { data: allRoomTypes } = useRooms({});
 
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Spinner className="w-12 h-12 mx-auto" />
-          <p className="text-muted-foreground">Đang tải thông tin phòng...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !roomType) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-500" />
-          <p className="text-muted-foreground">
-            Không tìm thấy thông tin phòng
-          </p>
-          <Link href="/rooms">
-            <Button variant="outline">Quay lại danh sách phòng</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -96,96 +65,91 @@ export default function RoomDetailPage({
 
   const similarRooms =
     allRoomTypes?.pages[0].items
-      .filter(
-        (r) => r.roomTypeId !== roomType.roomTypeId && r.isActive
-        //  &&  (r.typeCode === roomType.typeCode
-        //     // || Math.abs(r.basePriceNight - roomType.basePriceNight) < 500000
-        // )
-      )
+      .filter((r) => r.roomTypeId !== roomType?.roomTypeId && r.isActive)
       .slice(0, 3) || [];
 
   const images =
-    roomType.images.length > 0
-      ? roomType.images.map((img) => img.filePath)
+    roomType && roomType?.images?.length > 0
+      ? roomType?.images.map((img) => img.filePath)
       : ["/hotel-building-exterior-modern-architecture.jpg"];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      {/* Breadcrumb */}
-      <div className="bg-white border-b">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="glass-effect border-b border-border/50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Link href="/" className="hover:text-[#ff5e7e] transition-colors">
+            <Link href="/" className="hover:text-accent transition-colors">
               Trang chủ
             </Link>
             <span>/</span>
-            <Link
-              href="/rooms"
-              className="hover:text-[#ff5e7e] transition-colors"
-            >
+            <Link href="/rooms" className="hover:text-accent transition-colors">
               Phòng
             </Link>
             <span>/</span>
             <span className="text-foreground font-medium">
-              {roomType.typeName}
+              {roomType?.typeName}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 lg:py-12">
         <Link
           href="/rooms"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-[#ff5e7e] transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-accent transition-colors mb-8 animate-fade-in-up"
         >
           <ChevronLeft className="w-4 h-4" />
           Quay lại danh sách phòng
         </Link>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
-            <Card className="border-0 shadow-lg overflow-hidden">
-              <div className="relative h-[400px] bg-gradient-to-br from-slate-100 to-slate-200">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* Main Content - 8 columns */}
+          <div className="lg:col-span-8 space-y-8">
+            <div
+              className="space-y-4 animate-fade-in-up"
+              style={{ animationDelay: "0.1s" }}
+            >
+              <div className="relative h-[500px] rounded-2xl overflow-hidden group">
                 <Image
                   src={images[selectedImageIndex] || "/placeholder.svg"}
-                  alt={roomType.typeName}
+                  alt={roomType?.typeName}
                   fill
-                  className="object-cover"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute top-4 left-4 flex gap-2">
-                  <Badge className="bg-white/95 backdrop-blur-sm text-slate-900 hover:bg-white">
-                    {roomType.typeCode}
+                <div className="absolute top-6 left-6 flex gap-3">
+                  <Badge className="glass-effect backdrop-blur-md border-white/20 text-foreground px-4 py-2 text-sm font-medium">
+                    {roomType?.typeCode}
                   </Badge>
-                  {roomType.availableRoomCount !== null &&
-                  roomType.availableRoomCount > 0 ? (
-                    <Badge className="bg-emerald-500 text-white hover:bg-emerald-600">
-                      Còn {roomType.availableRoomCount} phòng
+                  {roomType?.availableRoomCount !== null &&
+                  roomType?.availableRoomCount > 0 ? (
+                    <Badge className="bg-accent/90 backdrop-blur-md text-accent-foreground border-0 px-4 py-2 text-sm font-medium">
+                      Còn {roomType?.availableRoomCount} phòng
                     </Badge>
                   ) : (
-                    <Badge className="bg-red-500 text-white hover:bg-red-600">
+                    <Badge className="bg-destructive/90 backdrop-blur-md text-destructive-foreground border-0 px-4 py-2 text-sm font-medium">
                       Hết phòng
                     </Badge>
                   )}
                 </div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>
+
               {images.length > 1 && (
-                <div className="p-4 grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-3">
                   {images.map((img, idx) => (
                     <button
                       key={idx}
                       onClick={() => setSelectedImageIndex(idx)}
-                      className={`relative h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                      className={`relative h-24 rounded-xl overflow-hidden transition-all duration-300 ${
                         selectedImageIndex === idx
-                          ? "border-[#ff5e7e]"
-                          : "border-transparent hover:border-gray-300"
+                          ? "ring-2 ring-accent ring-offset-2 ring-offset-background scale-105"
+                          : "opacity-60 hover:opacity-100 hover:scale-105"
                       }`}
                     >
                       <Image
                         src={img || "/placeholder.svg"}
                         alt={
-                          roomType.images[idx]?.description || `View ${idx + 1}`
+                          roomType?.images[idx]?.description || `View ${idx + 1}`
                         }
                         fill
                         className="object-cover"
@@ -194,133 +158,112 @@ export default function RoomDetailPage({
                   ))}
                 </div>
               )}
-            </Card>
+            </div>
 
-            {/* Room Details */}
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <h1 className="font-serif text-3xl font-bold mb-2">
-                    {roomType.typeName}
-                  </h1>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      <span>Mã: {roomType.typeCode}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Building2 className="w-4 h-4" />
-                      <span>{roomType.totalRoomCount} phòng</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span>4.8 (124 đánh giá)</span>
-                    </div>
+            <div
+              className="space-y-8 animate-fade-in-up"
+              style={{ animationDelay: "0.2s" }}
+            >
+              {/* Header */}
+              <div className="space-y-4">
+                <h1 className="font-serif text-4xl lg:text-5xl font-bold leading-tight text-balance">
+                  {roomType?.typeName}
+                </h1>
+                <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-accent" />
+                    <span>Mã: {roomType?.typeCode}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-accent" />
+                    <span>{roomType?.totalRoomCount} phòng</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 fill-accent text-accent" />
+                    <span className="font-medium text-foreground">4.8</span>
+                    <span>(124 đánh giá)</span>
                   </div>
                 </div>
+              </div>
 
-                <Separator />
-
-                {/* Specifications */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-4">Thông số phòng</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-[#ff5e7e]/10 to-[#ff5e7e]/5 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                        <Users className="w-5 h-5 text-[#ff5e7e]" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Sức chứa
-                        </p>
-                        <p className="font-semibold">
-                          {roomType.maxOccupancy} người
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-[#a78bfa]/10 to-[#a78bfa]/5 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                        <Maximize className="w-5 h-5 text-[#a78bfa]" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Diện tích
-                        </p>
-                        <p className="font-semibold">{roomType.roomSize}m²</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                        <Bed className="w-5 h-5 text-emerald-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Số giường
-                        </p>
-                        <p className="font-semibold">
-                          {roomType.numberOfBeds} giường
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
-                        <Bed className="w-5 h-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">
-                          Loại giường
-                        </p>
-                        <p className="font-semibold">{roomType.bedType}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Description */}
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Mô tả</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {roomType.description}
-                  </p>
-                </div>
-
-                <Separator />
-
-                {/* Amenities */}
-                {/* {roomType.amenities.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-lg mb-4">Tiện nghi</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {roomType.amenities.map((amenity) => {
-                        const Icon = amenityIcons[amenity.amenityName] || Check;
-                        return (
-                          <div
-                            key={amenity.amenityId}
-                            className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg"
-                          >
-                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                              <Icon className="w-4 h-4 text-[#ff5e7e]" />
-                            </div>
-                            <span className="text-sm font-medium">
-                              {amenity.amenityName}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )} */}
-              </CardContent>
-            </Card>
-
-            {/* Reviews Section */}
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-lg mb-4">
-                  Đánh giá từ khách hàng
+              <div className="space-y-6">
+                <h3 className="font-serif text-2xl font-semibold">
+                  Thông số phòng
                 </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div
+                    className="group p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/50 transition-all duration-300 animate-scale-in"
+                    style={{ animationDelay: "0.3s" }}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Users className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Sức chứa
+                    </p>
+                    <p className="text-xl font-bold">
+                      {roomType?.maxOccupancy} người
+                    </p>
+                  </div>
+                  <div
+                    className="group p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/50 transition-all duration-300 animate-scale-in"
+                    style={{ animationDelay: "0.35s" }}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Maximize className="w-6 h-6 text-accent" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Diện tích
+                    </p>
+                    <p className="text-xl font-bold">{roomType?.roomSize}m²</p>
+                  </div>
+                  <div
+                    className="group p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/50 transition-all duration-300 animate-scale-in"
+                    style={{ animationDelay: "0.4s" }}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Bed className="w-6 h-6 text-primary" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Số giường
+                    </p>
+                    <p className="text-xl font-bold">
+                      {roomType?.numberOfBeds} giường
+                    </p>
+                  </div>
+                  <div
+                    className="group p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/50 transition-all duration-300 animate-scale-in"
+                    style={{ animationDelay: "0.45s" }}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Bed className="w-6 h-6 text-accent" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Loại giường
+                    </p>
+                    <p className="text-xl font-bold">{roomType?.bedType}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="font-serif text-2xl font-semibold">Mô tả</h3>
+                <p className="text-muted-foreground leading-loose text-lg">
+                  {roomType?.description}
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-serif text-2xl font-semibold">
+                    Đánh giá từ khách hàng
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 fill-accent text-accent" />
+                    <span className="text-2xl font-bold">4.8</span>
+                    <span className="text-muted-foreground">/5</span>
+                  </div>
+                </div>
                 <div className="space-y-4">
                   {[
                     {
@@ -337,157 +280,208 @@ export default function RoomDetailPage({
                       date: "1 tuần trước",
                     },
                   ].map((review, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="font-semibold">{review.name}</p>
+                    <div
+                      key={idx}
+                      className="p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/30 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-semibold text-lg mb-1">
+                            {review.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {review.date}
+                          </p>
+                        </div>
                         <div className="flex items-center gap-1">
                           {Array.from({ length: review.rating }).map((_, i) => (
                             <Star
                               key={i}
-                              className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                              className="w-4 h-4 fill-accent text-accent"
                             />
                           ))}
                         </div>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-1">
+                      <p className="text-muted-foreground leading-relaxed">
                         {review.comment}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {review.date}
                       </p>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          {/* Booking Sidebar */}
-          <div className="lg:col-span-1">
-            <Card className="border-0 shadow-lg sticky top-24">
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Giá mỗi đêm
-                  </p>
-                  <p className="text-3xl font-bold bg-gradient-to-r from-[#ff5e7e] to-[#ff4569] bg-clip-text text-transparent">
-                    {formatPrice(roomType.basePriceNight)}
-                  </p>
-                </div>
-
+          <div className="lg:col-span-4">
+            <div
+              className="sticky top-24 space-y-6 animate-fade-in-up"
+              style={{ animationDelay: "0.3s" }}
+            >
+              {/* Price Card */}
+              <div className="p-8 rounded-2xl luxury-gradient text-white shadow-2xl">
+                <p className="text-sm opacity-90 mb-2">Giá mỗi đêm từ</p>
+                <p className="text-4xl font-bold mb-6">
+                  {formatPrice(roomType?.basePriceNight)}
+                </p>
                 <Button
-                  onClick={() => setBookingModalOpen(true)}
-                  disabled={roomType.availableRoomCount === 0}
-                  className="w-full bg-gradient-to-r from-[#ff5e7e] to-[#ff4569] hover:from-[#ff4569] hover:to-[#ff2d54] text-white h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  asChild
+                  disabled={roomType?.availableRoomCount === 0}
+                  className="w-full bg-white text-primary hover:bg-white/90 h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
                 >
-                  {roomType.availableRoomCount === 0
-                    ? "Hết phòng"
-                    : "Đặt phòng ngay"}
+                  {roomType?.availableRoomCount === 0 ? (
+                    <span>Hết phòng</span>
+                  ) : (
+                    <Link
+                      href={`/booking?roomId=${
+                        roomType?.roomTypeId
+                      }&roomType=${encodeURIComponent(
+                        roomType?.typeName
+                      )}&price=${roomType?.basePriceNight}`}
+                    >
+                      Đặt phòng ngay
+                    </Link>
+                  )}
                 </Button>
+              </div>
 
-                <Separator />
-
-                <div className="space-y-3">
-                  <h4 className="font-semibold">Chính sách</h4>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>Miễn phí hủy phòng trước 24h</span>
+              {/* Policies Card */}
+              <div className="p-6 rounded-2xl glass-effect border border-border/50 space-y-6">
+                <h4 className="font-serif text-xl font-semibold">Chính sách</h4>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-4 h-4 text-accent" />
                     </div>
-                    <div className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>Nhận phòng: 14:00 - 23:00</span>
+                    <div>
+                      <p className="font-medium mb-1">Miễn phí hủy phòng</p>
+                      <p className="text-sm text-muted-foreground">
+                        Trước 24 giờ nhận phòng
+                      </p>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>Trả phòng: Trước 12:00</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Calendar className="w-4 h-4 text-accent" />
                     </div>
-                    <div className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      <span>Bao gồm bữa sáng buffet</span>
+                    <div>
+                      <p className="font-medium mb-1">Nhận phòng</p>
+                      <p className="text-sm text-muted-foreground">
+                        14:00 - 23:00
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Clock className="w-4 h-4 text-accent" />
+                    </div>
+                    <div>
+                      <p className="font-medium mb-1">Trả phòng</p>
+                      <p className="text-sm text-muted-foreground">
+                        Trước 12:00
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Coffee className="w-4 h-4 text-accent" />
+                    </div>
+                    <div>
+                      <p className="font-medium mb-1">Bữa sáng</p>
+                      <p className="text-sm text-muted-foreground">
+                        Buffet miễn phí
+                      </p>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <Separator />
-
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Liên hệ hỗ trợ</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Hotline: 1900 xxxx
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Email: support@stayhub.com
-                  </p>
+              {/* Contact Card */}
+              <div className="p-6 rounded-2xl glass-effect border border-border/50 space-y-4">
+                <h4 className="font-serif text-xl font-semibold">
+                  Liên hệ hỗ trợ
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm">
+                    <Phone className="w-4 h-4 text-accent" />
+                    <span className="text-muted-foreground">Hotline:</span>
+                    <span className="font-medium">1900 xxxx</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Mail className="w-4 h-4 text-accent" />
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium">support@stayhub.com</span>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Similar Rooms */}
         {similarRooms.length > 0 && (
-          <div className="mt-12">
-            <h2 className="font-serif text-2xl font-bold mb-6">
-              Phòng tương tự
-            </h2>
+          <div
+            className="mt-20 animate-fade-in-up"
+            style={{ animationDelay: "0.5s" }}
+          >
+            <div className="mb-8">
+              <h2 className="font-serif text-3xl lg:text-4xl font-bold mb-2">
+                Phòng tương tự
+              </h2>
+              <p className="text-muted-foreground text-lg">
+                Khám phá thêm các lựa chọn phù hợp với bạn
+              </p>
+            </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {similarRooms.map((similarRoom) => (
+              {similarRooms.map((similarRoom, idx) => (
                 <Link
                   key={similarRoom.roomTypeId}
                   href={`/rooms/${similarRoom.roomTypeId}`}
+                  className="group animate-scale-in"
+                  style={{ animationDelay: `${0.6 + idx * 0.1}s` }}
                 >
-                  <Card className="border-0 shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer">
-                    <div className="relative h-48 overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                  <div className="rounded-2xl overflow-hidden glass-effect border border-border/50 hover:border-accent/50 transition-all duration-500 hover:shadow-2xl">
+                    <div className="relative h-56 overflow-hidden">
                       <Image
                         src={
                           similarRoom.images[0]?.filePath ||
-                          "/hotel-building-exterior-modern-architecture.jpg"
+                          "/hotel-building-exterior-modern-architecture.jpg" ||
+                          "/placeholder.svg"
                         }
                         alt={similarRoom.typeName}
                         fill
                         className="object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-serif text-lg font-bold mb-2">
+                    <div className="p-6 space-y-4">
+                      <h3 className="font-serif text-xl font-bold group-hover:text-accent transition-colors">
                         {similarRoom.typeName}
                       </h3>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5" />
-                            <span>{similarRoom.maxOccupancy}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Maximize className="w-3.5 h-3.5" />
-                            <span>{similarRoom.roomSize}m²</span>
-                          </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-4 h-4" />
+                          <span>{similarRoom.maxOccupancy}</span>
                         </div>
-                        <p className="font-bold text-[#ff5e7e]">
+                        <div className="flex items-center gap-1.5">
+                          <Maximize className="w-4 h-4" />
+                          <span>{similarRoom.roomSize}m²</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                        <span className="text-sm text-muted-foreground">
+                          Từ
+                        </span>
+                        <p className="text-xl font-bold luxury-text-gradient">
                           {formatPrice(similarRoom.basePriceNight)}
                         </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>
           </div>
         )}
       </div>
-
-      {/* Booking Modal */}
-      <BookingModal
-        open={bookingModalOpen}
-        onOpenChange={setBookingModalOpen}
-        room={{
-          roomId: roomType.roomTypeId,
-          roomType: roomType.typeName,
-          pricePerNight: roomType.basePriceNight,
-        }}
-      />
     </div>
   );
 }

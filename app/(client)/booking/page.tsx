@@ -222,9 +222,10 @@ export default function BookingPage() {
       }
 
       if (response.isSuccess && response.data.paymentUrl) {
-        router.push(
-          `/booking/success?bookingId=${response.data.bookingId}&paymentUrl=${encodeURIComponent(response.data.paymentUrl)}`,
-        )
+        // router.push(
+        //   `/booking/success?bookingId=${response.data.bookingId}&paymentUrl=${encodeURIComponent(response.data.paymentUrl)}`,
+        // )
+        router.push(response.data.paymentUrl)
       } else {
         router.push("/booking/failure?reason=payment_failed")
       }

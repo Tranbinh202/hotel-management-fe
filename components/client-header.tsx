@@ -178,7 +178,7 @@ export function ClientHeader() {
                   <DropdownMenuItem asChild>
                     <Link href="/my-bookings" className="flex items-center cursor-pointer">
                       <CalendarCheck className="mr-2 h-4 w-4" />
-                      <span>Đặt phòng của tôi</span>
+                      <span>Lịch sử đặt phòng</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

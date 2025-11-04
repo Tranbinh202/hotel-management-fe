@@ -2,9 +2,10 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +13,7 @@ import { Lock, Mail, Shield, CheckCircle2 } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const router = useRouter()
+  const { isAuthenticated, isInitializing } = useAuth()
   const [formData, setFormData] = useState({
     email: "",
     code: "",
@@ -19,6 +21,12 @@ export default function ForgotPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [codeSent, setCodeSent] = useState(false)
+
+  useEffect(() => {
+    if (!isInitializing && isAuthenticated) {
+      router.push("/")
+    }
+  }, [isAuthenticated, isInitializing, router])
 
   const validateEmail = () => {
     const newErrors: Record<string, string> = {}
@@ -76,6 +84,21 @@ export default function ForgotPasswordPage() {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground leading-loose">Đang tải...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (isAuthenticated) {
+    return null
   }
 
   return (

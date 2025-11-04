@@ -112,3 +112,12 @@ export function useConfirmBooking() {
     },
   })
 }
+
+export function useBookingWithKey(id: number, key: string) {
+  return useQuery({
+    queryKey: ["bookings", id, "verify", key],
+    queryFn: () => bookingsApi.getByIdWithKey(id, key),
+    enabled: !!id && !!key,
+    retry: false,
+  })
+}

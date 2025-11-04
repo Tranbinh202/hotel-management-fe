@@ -2,9 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useGoogleLogin } from "@/lib/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,14 +14,22 @@ import { useToast } from "@/hooks/use-toast"
 import { Eye, EyeOff, Hotel, Shield, Clock, Award } from "lucide-react"
 
 export default function LoginPage() {
-  const { login, isLoading, isInitializing } = useAuth()
+  const { login, isLoading, isInitializing, isAuthenticated } = useAuth()
+  const googleLogin = useGoogleLogin()
   const { toast } = useToast()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     username: "",
     password: "",
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    if (!isInitializing && isAuthenticated) {
+      router.push("/")
+    }
+  }, [isAuthenticated, isInitializing, router])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -58,8 +68,12 @@ export default function LoginPage() {
     }
   }
 
-  const handleGoogleLogin = () => {
-    console.log("Google login clicked")
+  const handleGoogleLogin = async () => {
+    try {
+      await googleLogin.mutateAsync()
+    } catch (error) {
+      console.error("Google login error:", error)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +93,10 @@ export default function LoginPage() {
         </div>
       </div>
     )
+  }
+
+  if (isAuthenticated) {
+    return null
   }
 
   return (
@@ -163,6 +181,7 @@ export default function LoginPage() {
             <Button
               type="button"
               onClick={handleGoogleLogin}
+              disabled={googleLogin.isPending}
               variant="outline"
               className="w-full flex items-center justify-center gap-3 bg-transparent hover:bg-muted"
             >
@@ -184,7 +203,7 @@ export default function LoginPage() {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Đăng nhập với Google
+              {googleLogin.isPending ? "Đang kết nối..." : "Đăng nhập với Google"}
             </Button>
 
             <p className="text-center text-muted-foreground mt-6 leading-loose">

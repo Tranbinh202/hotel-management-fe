@@ -15,14 +15,12 @@ export const authApi = {
     return response
   },
 
-  register: async (data: RegisterDto): Promise<AuthResponse> => {
-    const response = await apiClient.post<AuthResponse>("/authentication/register", data)
-
-    if (typeof window !== "undefined" && response.token) {
-      localStorage.setItem("access_token", response.token)
-      localStorage.setItem("refresh_token", response.refreshToken)
-    }
-
+  register: async (data: RegisterDto): Promise<ApiResponse<{ accountId: number; email: string; message: string }>> => {
+    const response = await apiClient.post<ApiResponse<{ accountId: number; email: string; message: string }>>(
+      "/authentication/register",
+      data,
+    )
+    // Don't save tokens here - user needs to activate account first
     return response
   },
 
@@ -68,6 +66,26 @@ export const authApi = {
     return response
   },
 
+  activateAccount: async (token: string): Promise<ApiResponse<AuthResponse>> => {
+    const response = await apiClient.get<ApiResponse<AuthResponse>>(`/Authentication/activate-account/${token}`)
+
+    // Save tokens for auto-login after activation
+    if (typeof window !== "undefined" && response.data?.token) {
+      localStorage.setItem("access_token", response.data.token)
+      localStorage.setItem("refresh_token", response.data.refreshToken)
+    }
+
+    return response
+  },
+
+  resendActivationEmail: async (email: string): Promise<ApiResponse<{ email: string; message: string }>> => {
+    const response = await apiClient.post<ApiResponse<{ email: string; message: string }>>(
+      "/Authentication/resend-activation-email",
+      { email },
+    )
+    return response
+  },
+
   forgotPassword: async (email: string): Promise<void> => {
     await apiClient.post("/authentication/forgot-password", { email })
   },
@@ -89,5 +107,25 @@ export const authApi = {
       return !!localStorage.getItem("access_token")
     }
     return false
+  },
+
+  loginGoogle: async (): Promise<ApiResponse<{ url: string }>> => {
+    const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/login-google")
+    console.log("[v0] Google login API response:", response)
+    return response
+  },
+
+  callbackGoogle: async (code: string): Promise<ApiResponse<AuthResponse>> => {
+    console.log("[v0] Calling Google callback with code:", code)
+    const response = await apiClient.get<ApiResponse<AuthResponse>>(`/Authentication/callback-google?code=${code}`)
+    console.log("[v0] Google callback response:", response)
+
+    if (typeof window !== "undefined" && response.data?.token) {
+      console.log("[v0] Saving tokens to localStorage")
+      localStorage.setItem("access_token", response.data.token)
+      localStorage.setItem("refresh_token", response.data.refreshToken)
+    }
+
+    return response
   },
 }

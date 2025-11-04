@@ -13,21 +13,21 @@ function CallbackContent() {
     const code = searchParams.get("code")
     const error = searchParams.get("error")
 
-    console.log("[v0] Google callback page loaded")
-    console.log("[v0] Code:", code)
-    console.log("[v0] Error:", error)
+    console.log("Google callback page loaded")
+    console.log("Code:", code)
+    console.log("Error:", error)
 
     if (error) {
-      console.error("[v0] OAuth error:", error)
+      console.error("OAuth error:", error)
       window.location.href = "/login?error=google_auth_failed"
       return
     }
 
     if (code) {
-      console.log("[v0] Processing Google OAuth code...")
+      console.log("Processing Google OAuth code...")
       googleCallback.mutate(code)
     } else {
-      console.error("[v0] No code found in callback URL")
+      console.error("No code found in callback URL")
       window.location.href = "/login?error=no_code"
     }
   }, [searchParams])

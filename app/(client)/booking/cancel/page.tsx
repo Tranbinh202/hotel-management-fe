@@ -19,7 +19,7 @@ export default function BookingCancelPage() {
 
   useEffect(() => {
     // Log cancellation for debugging
-    console.log("[v0] Payment cancelled:", {
+    console.log("Payment cancelled:", {
       code,
       bookingId,
       cancel,

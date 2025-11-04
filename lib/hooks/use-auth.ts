@@ -182,19 +182,19 @@ export function useGoogleLogin() {
   return useMutation({
     mutationFn: authApi.loginGoogle,
     onSuccess: (response) => {
-      console.log("[v0] Google login response:", response)
+      console.log("Google login response:", response)
 
       // The API client returns res.data, so response structure is:
       // { isSuccess: true, data: { url: "..." }, message: "...", statusCode: 200 }
       const googleUrl = response.data?.url || response.url
 
-      console.log("[v0] Google OAuth URL:", googleUrl)
+      console.log("Google OAuth URL:", googleUrl)
 
       if (googleUrl) {
-        console.log("[v0] Redirecting to Google OAuth...")
+        console.log("Redirecting to Google OAuth...")
         window.location.href = googleUrl
       } else {
-        console.error("[v0] No URL found in response:", response)
+        console.error("No URL found in response:", response)
         toast({
           title: "Lỗi đăng nhập Google",
           description: "Không thể lấy URL đăng nhập từ server",
@@ -203,7 +203,7 @@ export function useGoogleLogin() {
       }
     },
     onError: (error: any) => {
-      console.error("[v0] Google login error:", error)
+      console.error("Google login error:", error)
       toast({
         title: "Lỗi đăng nhập Google",
         description: error.message || "Không thể kết nối với Google",
@@ -220,7 +220,7 @@ export function useGoogleCallback() {
   return useMutation({
     mutationFn: authApi.callbackGoogle,
     onSuccess: async (response) => {
-      console.log("[v0] Google callback success:", response)
+      console.log("Google callback success:", response)
       queryClient.clear()
       toast({
         title: "Đăng nhập thành công",
@@ -228,25 +228,25 @@ export function useGoogleCallback() {
       })
 
       try {
-        console.log("[v0] Fetching user data...")
+        console.log("Fetching user data...")
         const userData = await accountApi.getSummary(0)
         if (userData.isSuccess) {
-          console.log("[v0] User data fetched:", userData.data)
+          console.log("User data fetched:", userData.data)
           localStorage.setItem("user", JSON.stringify(userData.data))
         }
       } catch (error) {
-        console.error("[v0] Failed to fetch user data after Google login:", error)
+        console.error("Failed to fetch user data after Google login:", error)
       }
 
       // Redirect to home page
-      console.log("[v0] Redirecting to home page...")
+      console.log("Redirecting to home page...")
       setTimeout(() => {
         router.push("/")
         router.refresh()
       }, 1000)
     },
     onError: (error: any) => {
-      console.error("[v0] Google callback error:", error)
+      console.error("Google callback error:", error)
       toast({
         title: "Đăng nhập thất bại",
         description: error.message || "Mã xác thực không hợp lệ",
@@ -256,6 +256,69 @@ export function useGoogleCallback() {
       setTimeout(() => {
         router.push("/login")
       }, 2000)
+    },
+  })
+}
+
+export function useSendOtpEmail() {
+  return useMutation({
+    mutationFn: authApi.sendOtpEmail,
+    onSuccess: () => {
+      toast({
+        title: "Đã gửi mã OTP",
+        description: "Vui lòng kiểm tra email để nhận mã xác thực",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Gửi mã thất bại",
+        description: error.message || "Không tìm thấy tài khoản với email này",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+export function useVerifyOtp() {
+  return useMutation({
+    mutationFn: ({ email, otp }: { email: string; otp: string }) => authApi.verifyOtp(email, otp),
+    onSuccess: () => {
+      toast({
+        title: "Xác thực thành công",
+        description: "Mã OTP hợp lệ. Vui lòng nhập mật khẩu mới",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Xác thực thất bại",
+        description: error.message || "Mã OTP không hợp lệ hoặc đã hết hạn",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+export function useChangePasswordWithOtp() {
+  const router = useRouter()
+
+  return useMutation({
+    mutationFn: ({ email, otp, newPassword }: { email: string; otp: string; newPassword: string }) =>
+      authApi.changePasswordWithOtp(email, otp, newPassword),
+    onSuccess: () => {
+      toast({
+        title: "Đổi mật khẩu thành công",
+        description: "Bạn có thể đăng nhập với mật khẩu mới",
+      })
+      setTimeout(() => {
+        router.push("/login")
+      }, 1500)
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Đổi mật khẩu thất bại",
+        description: error.message || "Mã OTP không hợp lệ hoặc đã hết hạn",
+        variant: "destructive",
+      })
     },
   })
 }

@@ -86,6 +86,31 @@ export const authApi = {
     return response
   },
 
+  sendOtpEmail: async (email: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await apiClient.post<ApiResponse<{ message: string }>>("/Authentication/send-otp-email", { email })
+    return response
+  },
+
+  verifyOtp: async (email: string, otp: string): Promise<ApiResponse<{ message: string }>> => {
+    const response = await apiClient.post<ApiResponse<{ message: string }>>("/Authentication/verify-otp", {
+      email,
+      otp,
+    })
+    return response
+  },
+
+  changePasswordWithOtp: async (
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<ApiResponse<{ message: string }>> => {
+    const response = await apiClient.post<ApiResponse<{ message: string }>>(
+      "/Authentication/change-password-with-otp",
+      { email, otp, newPassword },
+    )
+    return response
+  },
+
   forgotPassword: async (email: string): Promise<void> => {
     await apiClient.post("/authentication/forgot-password", { email })
   },
@@ -111,17 +136,17 @@ export const authApi = {
 
   loginGoogle: async (): Promise<ApiResponse<{ url: string }>> => {
     const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/login-google")
-    console.log("[v0] Google login API response:", response)
+    console.log("Google login API response:", response)
     return response
   },
 
   callbackGoogle: async (code: string): Promise<ApiResponse<AuthResponse>> => {
-    console.log("[v0] Calling Google callback with code:", code)
+    console.log("Calling Google callback with code:", code)
     const response = await apiClient.get<ApiResponse<AuthResponse>>(`/Authentication/callback-google?code=${code}`)
-    console.log("[v0] Google callback response:", response)
+    console.log("Google callback response:", response)
 
     if (typeof window !== "undefined" && response.data?.token) {
-      console.log("[v0] Saving tokens to localStorage")
+      console.log("Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
     }

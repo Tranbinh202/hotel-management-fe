@@ -24,6 +24,15 @@ export const bookingsApi = {
     return apiClient.post<BookingResponse>("/Booking/guest", data)
   },
 
+  getByIdWithKey: async (
+    id: number,
+    key: string,
+  ): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
+    return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(
+      `/Booking/${id}/verify?key=${encodeURIComponent(key)}`,
+    )
+  },
+
   // Get booking by ID
   getById: async (id: number): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
     return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(`/Booking/${id}`)

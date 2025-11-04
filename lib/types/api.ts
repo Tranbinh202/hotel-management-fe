@@ -50,6 +50,8 @@ export interface AuthResponse {
   token: string
   refreshToken: string
   roles: string[]
+  email?: string
+  username?: string
 }
 
 export interface Account {

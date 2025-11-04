@@ -40,6 +40,7 @@ interface AuthContextType {
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
+  isInitializing: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   refreshUserData: () => Promise<void>
@@ -50,7 +51,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AccountSummary | null>(null)
   const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInitializing, setIsInitializing] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      setIsLoading(false)
+      setIsInitializing(false)
     }
 
     initializeAuth()
@@ -152,6 +154,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userData = await fetchUserSummary()
       localStorage.setItem("user", JSON.stringify(userData))
       setUser(userData)
+
+      if (userData.isLocked) {
+        // Clear tokens and redirect to locked page
+        localStorage.removeItem("access_token")
+        localStorage.removeItem("refresh_token")
+        localStorage.removeItem("user")
+        setToken(null)
+        setUser(null)
+        router.push("/account-locked")
+        throw new Error("Tài khoản đã bị khóa")
+      }
 
       // Role-based routing
       const userRoles = userData.roles || roles
@@ -230,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     token,
     isLoading,
     isAuthenticated: !!token && !!user,
+    isInitializing,
     login,
     logout,
     refreshUserData,

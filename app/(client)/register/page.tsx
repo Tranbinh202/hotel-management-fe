@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +14,8 @@ import { Sparkles, UserPlus, Shield, CheckCircle2 } from "lucide-react"
 
 export default function RegisterPage() {
   const { mutate: register, isPending } = useRegister()
+  const { isAuthenticated, isInitializing } = useAuth()
+  const router = useRouter()
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -24,6 +28,12 @@ export default function RegisterPage() {
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!isInitializing && isAuthenticated) {
+      router.push("/")
+    }
+  }, [isAuthenticated, isInitializing, router])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -104,13 +114,27 @@ export default function RegisterPage() {
     }
   }
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground leading-loose">Đang tải...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (isAuthenticated) {
+    return null
+  }
+
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-[oklch(0.99_0.005_85)] via-white to-[oklch(0.96_0.01_85)]">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-xl animate-fade-in-up">
           <div className="mb-10">
-            
             <h1 className="text-5xl font-serif font-bold text-foreground mb-3 leading-tight">Đăng ký tài khoản</h1>
             <p className="text-muted-foreground text-lg leading-loose">Điền thông tin để tạo tài khoản mới</p>
           </div>

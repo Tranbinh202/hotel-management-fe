@@ -319,6 +319,113 @@ export interface UpdateRoomTypeDto extends CreateRoomTypeDto {
   roomTypeId: number
 }
 
+// Attendance types
+export interface AttendanceRecord {
+  attendanceId: number
+  employeeId: number
+  employeeName: string
+  deviceEmployeeId: string | null
+  checkIn: string
+  checkOut: string | null
+  shiftDate: string
+  workedHours: number
+  normalHours: number
+  overtimeHours: number
+  lateMinutes: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface AttendanceSummary {
+  employeeId: number
+  employeeName: string
+  month: number
+  year: number
+  baseSalary: number
+  hourlyRate: number
+  totalWorkDays: number
+  totalWorkedHours: number
+  totalNormalHours: number
+  totalOvertimeHours: number
+  normalPay: number
+  overtimePay: number
+  totalGrossPay: number
+  taxDeduction: number
+  insuranceDeduction: number
+  netPay: number
+}
+
+export interface CreateAttendanceDto {
+  employeeId: number
+  deviceEmployeeId?: string
+  checkIn: string
+  checkOut?: string
+  shiftDate: string
+  notes?: string
+}
+
+export interface UpdateAttendanceDto {
+  checkIn?: string
+  checkOut?: string
+  notes?: string
+}
+
+// Payroll types
+export interface PayrollDisbursement {
+  payrollDisbursementId: number
+  employeeId: number
+  employeeName: string
+  payrollMonth: number
+  payrollYear: number
+  baseSalary: number
+  totalAmount: number
+  disbursedAmount: number
+  statusId: number
+  statusName: string
+  disbursedAt: string | null
+  createdAt: string
+  createdBy: number | null
+  updatedAt: string | null
+  updatedBy: number | null
+}
+
+export interface PayrollCalculation {
+  employeeId: number
+  employeeName: string
+  month: number
+  year: number
+  baseSalary: number
+  hourlyRate: number
+  totalWorkDays: number
+  totalWorkedHours: number
+  totalNormalHours: number
+  totalOvertimeHours: number
+  normalPay: number
+  overtimePay: number
+  allowances: number
+  totalGrossPay: number
+  taxDeduction: number
+  insuranceDeduction: number
+  otherDeductions: number
+  netPay: number
+}
+
+export interface CreatePayrollDisbursementDto {
+  employeeId: number
+  payrollMonth: number
+  payrollYear: number
+}
+
+export interface ApprovePayrollDto {
+  payrollDisbursementId: number
+}
+
+export interface DisbursePayrollDto {
+  payrollDisbursementId: number
+  disbursedAmount: number
+}
+
 // AccountSummary types to match /Account/summary API response
 export interface EmployeeProfileDetails {
   employeeId: number

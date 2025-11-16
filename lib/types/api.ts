@@ -441,6 +441,7 @@ export interface EmployeeProfileDetails {
 export interface CustomerProfileDetails {
   customerId: number
   fullName: string
+  email: string
   phoneNumber: string
   identityCard: string
   address: string
@@ -482,4 +483,97 @@ export interface UpdateAccountProfileDto {
   address?: string
   identityCard?: string
   avatarUrl?: string
+}
+
+// Offline booking types for receptionist booking management
+export interface CustomerSearchResult {
+  customerId: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  identityCard: string
+  address: string
+  totalBookings: number
+  lastBookingDate: string
+}
+
+export interface AvailableRoomsRequest {
+  roomTypes: BookingRoomType[]
+  checkInDate: string
+  checkOutDate: string
+}
+
+export interface AvailableRoomsResponse {
+  isSuccess: boolean
+  data: {
+    isAllAvailable: boolean
+    message: string
+    roomTypes: RoomTypeAvailability[]
+    checkInDate: string
+    checkOutDate: string
+    totalNights: number
+  }
+}
+
+export interface CreateOfflineBookingDto {
+  fullName: string
+  email: string
+  phoneNumber: string
+  identityCard?: string
+  address?: string
+  roomTypes: BookingRoomType[]
+  checkInDate: string
+  checkOutDate: string
+  specialRequests?: string
+  depositAmount: number
+  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentNote?: string
+}
+
+export interface UpdateOfflineBookingDto {
+  fullName?: string
+  phoneNumber?: string
+  specialRequests?: string
+}
+
+export interface OfflineBookingDetails extends BookingDetails {
+  depositPaidAmount: number
+  remainingAmount: number
+  transactions: TransactionHistory[]
+}
+
+export interface TransactionHistory {
+  transactionId: number
+  amount: number
+  paymentMethod: string
+  paymentNote: string
+  transactionReference: string
+  transactionType: 'Deposit' | 'FullPayment'
+  processedBy: string
+  processedAt: string
+}
+
+export interface OfflineBookingsFilter {
+  fromDate?: string
+  toDate?: string
+  paymentStatus?: string
+  depositStatus?: string
+  customerName?: string
+  phoneNumber?: string
+  pageNumber?: number
+  pageSize?: number
+}
+
+export interface ConfirmDepositDto {
+  depositAmount: number
+  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentNote?: string
+  transactionReference?: string
+}
+
+export interface ConfirmPaymentDto {
+  paidAmount: number
+  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentNote?: string
+  transactionReference?: string
 }

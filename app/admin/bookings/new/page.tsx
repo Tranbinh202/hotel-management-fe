@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { DatePicker } from "@/components/ui/date-picker"
 import { useSearchCustomer, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
 import { useRoomTypes } from "@/lib/hooks/use-room-type"
 import { format } from "date-fns"
@@ -32,27 +33,29 @@ export default function NewBookingPage() {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null)
   const [availableDrafts, setAvailableDrafts] = useState<Array<{ id: string; timestamp: number; preview: string }>>([])
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null)
-  
+
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSearchResult | null>(null)
 
   const [formData, setFormData] = useState<CreateOfflineBookingDto>(() => {
     const saved = storage.load<CreateOfflineBookingDto>(STORAGE_KEY)
-    return saved || {
-      fullName: "",
-      email: "",
-      phoneNumber: "",
-      identityCard: "",
-      address: "",
-      roomTypes: [],
-      checkInDate: "",
-      checkOutDate: "",
-      specialRequests: "",
-      depositAmount: 0,
-      paymentMethod: "Cash",
-      paymentNote: "",
-    }
+    return (
+      saved || {
+        fullName: "",
+        email: "",
+        phoneNumber: "",
+        identityCard: "",
+        address: "",
+        roomTypes: [],
+        checkInDate: "",
+        checkOutDate: "",
+        specialRequests: "",
+        depositAmount: 0,
+        paymentMethod: "Cash",
+        paymentNote: "",
+      }
+    )
   })
 
   const [roomSelections, setRoomSelections] = useState<{ roomTypeId: number; quantity: number }[]>(() => {
@@ -79,7 +82,7 @@ export default function NewBookingPage() {
       const draftList = Object.entries(drafts).map(([id, draft]) => ({
         id,
         timestamp: draft.timestamp,
-        preview: `${draft.data.fullName || 'Chưa có tên'} - ${draft.data.roomTypes?.length || 0} phòng`,
+        preview: `${draft.data.fullName || "Chưa có tên"} - ${draft.data.roomTypes?.length || 0} phòng`,
       }))
       // Sort by timestamp descending (newest first)
       draftList.sort((a, b) => b.timestamp - a.timestamp)
@@ -89,29 +92,37 @@ export default function NewBookingPage() {
 
   useEffect(() => {
     const dataToSave = { ...formData, roomTypes: roomSelections }
-    
+
     // Only save if there's some data entered
     if (formData.fullName || formData.email || formData.phoneNumber || roomSelections.length > 0) {
       if (!currentDraftId) {
         const newDraftId = storage.generateDraftId()
         setCurrentDraftId(newDraftId)
         storage.saveDraft(STORAGE_KEY, dataToSave, newDraftId)
-        
+
         // Update available drafts list
-        setAvailableDrafts(prev => [{
-          id: newDraftId,
-          timestamp: Date.now(),
-          preview: `${dataToSave.fullName || 'Chưa có tên'} - ${dataToSave.roomTypes?.length || 0} phòng`,
-        }, ...prev])
+        setAvailableDrafts((prev) => [
+          {
+            id: newDraftId,
+            timestamp: Date.now(),
+            preview: `${dataToSave.fullName || "Chưa có tên"} - ${dataToSave.roomTypes?.length || 0} phòng`,
+          },
+          ...prev,
+        ])
       } else {
         storage.saveDraft(STORAGE_KEY, dataToSave, currentDraftId)
-        
+
         // Update preview in available drafts
-        setAvailableDrafts(prev => prev.map(draft => 
-          draft.id === currentDraftId 
-            ? { ...draft, preview: `${dataToSave.fullName || 'Chưa có tên'} - ${dataToSave.roomTypes?.length || 0} phòng` }
-            : draft
-        ))
+        setAvailableDrafts((prev) =>
+          prev.map((draft) =>
+            draft.id === currentDraftId
+              ? {
+                  ...draft,
+                  preview: `${dataToSave.fullName || "Chưa có tên"} - ${dataToSave.roomTypes?.length || 0} phòng`,
+                }
+              : draft,
+          ),
+        )
       }
     }
   }, [formData, roomSelections, currentDraftId])
@@ -138,7 +149,7 @@ export default function NewBookingPage() {
   }
 
   const handleAddRoom = (roomType: RoomType) => {
-    const existingIndex = roomSelections.findIndex(r => r.roomTypeId === roomType.roomTypeId)
+    const existingIndex = roomSelections.findIndex((r) => r.roomTypeId === roomType.roomTypeId)
     if (existingIndex >= 0) {
       const updated = [...roomSelections]
       updated[existingIndex].quantity += 1
@@ -153,21 +164,19 @@ export default function NewBookingPage() {
   }
 
   const handleRemoveRoom = (roomTypeId: number) => {
-    setRoomSelections(roomSelections.filter(r => r.roomTypeId !== roomTypeId))
+    setRoomSelections(roomSelections.filter((r) => r.roomTypeId !== roomTypeId))
   }
 
   const updateRoomQuantity = (roomTypeId: number, quantity: number) => {
     if (quantity <= 0) {
       handleRemoveRoom(roomTypeId)
     } else {
-      const updated = roomSelections.map(r =>
-        r.roomTypeId === roomTypeId ? { ...r, quantity } : r
-      )
+      const updated = roomSelections.map((r) => (r.roomTypeId === roomTypeId ? { ...r, quantity } : r))
       setRoomSelections(updated)
     }
   }
 
-  const filteredRooms = roomTypes.filter(room => {
+  const filteredRooms = roomTypes.filter((room) => {
     if (filters.roomTypeId !== "all" && room.roomTypeId !== Number(filters.roomTypeId)) return false
     if (filters.maxOccupancy && room.maxOccupancy < Number(filters.maxOccupancy)) return false
     if (filters.minPrice && room.basePriceNight < Number(filters.minPrice)) return false
@@ -178,17 +187,21 @@ export default function NewBookingPage() {
   const calculateTotal = () => {
     if (!formData.checkInDate || !formData.checkOutDate) return 0
     const nights = Math.ceil(
-      (new Date(formData.checkOutDate).getTime() - new Date(formData.checkInDate).getTime()) / (1000 * 60 * 60 * 24)
+      (new Date(formData.checkOutDate).getTime() - new Date(formData.checkInDate).getTime()) / (1000 * 60 * 60 * 24),
     )
     return roomSelections.reduce((total, selection) => {
-      const room = roomTypes.find(r => r.roomTypeId === selection.roomTypeId)
+      const room = roomTypes.find((r) => r.roomTypeId === selection.roomTypeId)
       return total + (room?.basePriceNight || 0) * selection.quantity * nights
     }, 0)
   }
 
-  const totalNights = formData.checkInDate && formData.checkOutDate
-    ? Math.ceil((new Date(formData.checkOutDate).getTime() - new Date(formData.checkInDate).getTime()) / (1000 * 60 * 60 * 24))
-    : 0
+  const totalNights =
+    formData.checkInDate && formData.checkOutDate
+      ? Math.ceil(
+          (new Date(formData.checkOutDate).getTime() - new Date(formData.checkInDate).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : 0
 
   const handleLoadDraft = (draftId: string) => {
     const draftData = storage.loadDraft<CreateOfflineBookingDto>(STORAGE_KEY, draftId)
@@ -205,15 +218,15 @@ export default function NewBookingPage() {
 
   const handleDeleteDraft = (draftId: string) => {
     storage.removeDraft(STORAGE_KEY, draftId)
-    setAvailableDrafts(prev => prev.filter(d => d.id !== draftId))
-    
+    setAvailableDrafts((prev) => prev.filter((d) => d.id !== draftId))
+
     if (currentDraftId === draftId) {
       // If deleting current draft, create a new one
       handleNewDraft()
     }
-    
+
     setDraftToDelete(null)
-    
+
     toast({
       title: "Đã xóa đơn nháp",
       description: "Đơn hàng nháp đã được xóa khỏi danh sách",
@@ -278,11 +291,11 @@ export default function NewBookingPage() {
         roomTypes: roomSelections,
       }
       const result = await createBooking.mutateAsync(bookingData)
-      
+
       if (currentDraftId) {
         storage.removeDraft(STORAGE_KEY, currentDraftId)
       }
-      
+
       toast({
         title: "Thành công",
         description: `Đã tạo booking #${result.data.bookingId}`,
@@ -322,7 +335,7 @@ export default function NewBookingPage() {
             <Button
               variant="outline"
               onClick={handleNewDraft}
-              className="rounded-xl h-11 px-5 border-2 border-gray-300 font-semibold hover:bg-gray-50"
+              className="rounded-xl h-11 px-5 border-2 border-gray-300 font-semibold hover:bg-gray-50 bg-transparent"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -332,8 +345,8 @@ export default function NewBookingPage() {
 
             {availableDrafts.length > 0 && (
               <>
-                <Select 
-                  value={currentDraftId || "none"} 
+                <Select
+                  value={currentDraftId || "none"}
                   onValueChange={(value) => {
                     if (value !== "none") {
                       handleLoadDraft(value)
@@ -345,12 +358,15 @@ export default function NewBookingPage() {
                       {currentDraftId ? (
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">
-                            {availableDrafts.find(d => d.id === currentDraftId)?.preview}
+                            {availableDrafts.find((d) => d.id === currentDraftId)?.preview}
                           </span>
                           <span className="text-xs text-gray-500">
-                            {availableDrafts.find(d => d.id === currentDraftId)?.timestamp && 
-                              format(new Date(availableDrafts.find(d => d.id === currentDraftId)!.timestamp), "dd/MM/yyyy HH:mm", { locale: vi })
-                            }
+                            {availableDrafts.find((d) => d.id === currentDraftId)?.timestamp &&
+                              format(
+                                new Date(availableDrafts.find((d) => d.id === currentDraftId)!.timestamp),
+                                "dd/MM/yyyy HH:mm",
+                                { locale: vi },
+                              )}
                           </span>
                         </div>
                       ) : (
@@ -384,13 +400,26 @@ export default function NewBookingPage() {
                       className="h-11 w-11 rounded-xl border-2 border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
                       </svg>
                     </Button>
 
-                    <Badge variant="outline" className="border-[#8C68E6] text-[#8C68E6] bg-purple-50 px-4 py-2 h-11 flex items-center gap-2">
+                    <Badge
+                      variant="outline"
+                      className="border-[#8C68E6] text-[#8C68E6] bg-purple-50 px-4 py-2 h-11 flex items-center gap-2"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
                       </svg>
                       <span className="font-semibold">Đang chỉnh sửa đơn nháp</span>
                     </Badge>
@@ -403,7 +432,7 @@ export default function NewBookingPage() {
 
         <div className="mb-10">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Thông tin khách hàng</h2>
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Customer Search - Takes 2 columns */}
             <Card className="bg-white shadow-sm border-0 rounded-xl lg:col-span-2">
@@ -418,11 +447,21 @@ export default function NewBookingPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pr-10 h-12 rounded-lg border-gray-200 focus:border-[#8C68E6] focus:ring-[#8C68E6] focus:ring-2"
                   />
-                  <svg className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <svg
+                    className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
                   </svg>
                 </div>
-                
+
                 {customerSearchResult?.data && (
                   <div className="p-5 bg-green-50 border border-green-200 rounded-xl">
                     <div className="flex items-start justify-between">
@@ -430,14 +469,34 @@ export default function NewBookingPage() {
                         <p className="font-bold text-gray-900 text-lg mb-2">{customerSearchResult.data.fullName}</p>
                         <div className="space-y-1">
                           <p className="text-sm text-gray-700 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            <svg
+                              className="w-4 h-4 text-gray-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                              />
                             </svg>
                             {customerSearchResult.data.email}
                           </p>
                           <p className="text-sm text-gray-700 flex items-center gap-2">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            <svg
+                              className="w-4 h-4 text-gray-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                              />
                             </svg>
                             {customerSearchResult.data.phoneNumber}
                           </p>
@@ -457,7 +516,9 @@ export default function NewBookingPage() {
                   </div>
                 )}
                 {debouncedSearch && !customerSearchResult?.data && (
-                  <p className="text-sm text-gray-500 py-3">Không tìm thấy khách hàng. Vui lòng nhập thông tin mới bên phải.</p>
+                  <p className="text-sm text-gray-500 py-3">
+                    Không tìm thấy khách hàng. Vui lòng nhập thông tin mới bên phải.
+                  </p>
                 )}
               </CardContent>
             </Card>
@@ -507,7 +568,9 @@ export default function NewBookingPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address" className="text-sm font-medium text-gray-700">Địa chỉ</Label>
+                    <Label htmlFor="address" className="text-sm font-medium text-gray-700">
+                      Địa chỉ
+                    </Label>
                     <Input
                       id="address"
                       value={formData.address}
@@ -537,20 +600,33 @@ export default function NewBookingPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700">Ngày nhận phòng</Label>
-                      <Input
-                        type="datetime-local"
-                        value={formData.checkInDate}
-                        onChange={(e) => setFormData({ ...formData, checkInDate: e.target.value })}
-                        className="h-11 rounded-lg border-gray-200 focus:border-[#8C68E6] focus:ring-[#8C68E6] focus:ring-2"
+                      <DatePicker
+                        value={formData.checkInDate ? new Date(formData.checkInDate) : undefined}
+                        onChange={(date) => {
+                          if (date) {
+                            setFormData({ ...formData, checkInDate: date.toISOString() })
+                          } else {
+                            setFormData({ ...formData, checkInDate: "" })
+                          }
+                        }}
+                        placeholder="Chọn ngày nhận phòng"
+                        minDate={new Date()}
+                        maxDate={formData.checkOutDate ? new Date(formData.checkOutDate) : undefined}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700">Ngày trả phòng</Label>
-                      <Input
-                        type="datetime-local"
-                        value={formData.checkOutDate}
-                        onChange={(e) => setFormData({ ...formData, checkOutDate: e.target.value })}
-                        className="h-11 rounded-lg border-gray-200 focus:border-[#8C68E6] focus:ring-[#8C68E6] focus:ring-2"
+                      <DatePicker
+                        value={formData.checkOutDate ? new Date(formData.checkOutDate) : undefined}
+                        onChange={(date) => {
+                          if (date) {
+                            setFormData({ ...formData, checkOutDate: date.toISOString() })
+                          } else {
+                            setFormData({ ...formData, checkOutDate: "" })
+                          }
+                        }}
+                        placeholder="Chọn ngày trả phòng"
+                        minDate={formData.checkInDate ? new Date(formData.checkInDate) : new Date()}
                       />
                     </div>
                   </div>
@@ -566,14 +642,19 @@ export default function NewBookingPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-gray-700">Loại phòng</Label>
-                      <Select value={filters.roomTypeId} onValueChange={(value) => setFilters({ ...filters, roomTypeId: value })}>
+                      <Select
+                        value={filters.roomTypeId}
+                        onValueChange={(value) => setFilters({ ...filters, roomTypeId: value })}
+                      >
                         <SelectTrigger className="h-11 rounded-lg border-gray-200">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Tất cả</SelectItem>
-                          {roomTypes.map(rt => (
-                            <SelectItem key={rt.roomTypeId} value={String(rt.roomTypeId)}>{rt.typeName}</SelectItem>
+                          {roomTypes.map((rt) => (
+                            <SelectItem key={rt.roomTypeId} value={String(rt.roomTypeId)}>
+                              {rt.typeName}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -617,7 +698,12 @@ export default function NewBookingPage() {
                       className="rounded-lg border-gray-300 hover:bg-gray-50"
                     >
                       <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
                       </svg>
                       Đặt lại bộ lọc
                     </Button>
@@ -632,7 +718,12 @@ export default function NewBookingPage() {
                     <div className="text-center">
                       <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-gray-100 flex items-center justify-center">
                         <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.5}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                          />
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-gray-700 mb-2">Không tìm thấy phòng nào phù hợp</h3>
@@ -643,7 +734,10 @@ export default function NewBookingPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                   {filteredRooms.map((room) => (
-                    <Card key={room.roomTypeId} className="bg-white shadow-sm border-0 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                    <Card
+                      key={room.roomTypeId}
+                      className="bg-white shadow-sm border-0 rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 group"
+                    >
                       <div className="relative h-52 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                         {room.images && room.images.length > 0 ? (
                           <img
@@ -653,8 +747,18 @@ export default function NewBookingPage() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <svg
+                              className="w-16 h-16 text-gray-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                              />
                             </svg>
                           </div>
                         )}
@@ -670,7 +774,7 @@ export default function NewBookingPage() {
                           <h3 className="font-bold text-gray-900 text-lg mb-2 line-clamp-1">{room.typeName}</h3>
                           <div className="flex items-baseline gap-2">
                             <p className="text-3xl font-bold text-[#8C68E6]">
-                              {room.basePriceNight.toLocaleString('vi-VN')}
+                              {room.basePriceNight.toLocaleString("vi-VN")}
                             </p>
                             <span className="text-sm font-normal text-gray-500">VNĐ/đêm</span>
                           </div>
@@ -678,22 +782,54 @@ export default function NewBookingPage() {
 
                         <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-5">
                           <div className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            <svg
+                              className="w-4 h-4 text-gray-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
                             </svg>
                             <span className="font-medium">{room.maxOccupancy} người</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                            <svg
+                              className="w-4 h-4 text-gray-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                              />
                             </svg>
                             <span className="font-medium">{room.roomSize}m²</span>
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M3 7v1a3 3 0 003 3h12a3 3 0 003-3V7m-18 0V4h18v3M3 7h18" />
+                            <svg
+                              className="w-4 h-4 text-gray-500"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 21h18M3 7v1a3 3 0 003 3h12a3 3 0 003-3V7m-18 0V4h18v3M3 7h18"
+                              />
                             </svg>
-                            <span className="font-medium">{room.numberOfBeds} {room.bedType}</span>
+                            <span className="font-medium">
+                              {room.numberOfBeds} {room.bedType}
+                            </span>
                           </div>
                         </div>
 
@@ -701,7 +837,12 @@ export default function NewBookingPage() {
                           onClick={() => handleAddRoom(room)}
                           className="w-full bg-[#8C68E6] hover:bg-[#7B59D5] rounded-lg h-11 font-semibold text-base group"
                         >
-                          <svg className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                           </svg>
                           Chọn phòng
@@ -725,11 +866,15 @@ export default function NewBookingPage() {
                       <div className="space-y-3 pb-5 border-b border-gray-200">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 font-medium">Nhận phòng:</span>
-                          <span className="font-bold text-gray-900">{format(new Date(formData.checkInDate), "dd/MM/yyyy", { locale: vi })}</span>
+                          <span className="font-bold text-gray-900">
+                            {format(new Date(formData.checkInDate), "dd/MM/yyyy", { locale: vi })}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-gray-600 font-medium">Trả phòng:</span>
-                          <span className="font-bold text-gray-900">{format(new Date(formData.checkOutDate), "dd/MM/yyyy", { locale: vi })}</span>
+                          <span className="font-bold text-gray-900">
+                            {format(new Date(formData.checkOutDate), "dd/MM/yyyy", { locale: vi })}
+                          </span>
                         </div>
                         <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-100">
                           <span className="text-gray-600 font-medium">Số đêm:</span>
@@ -747,29 +892,49 @@ export default function NewBookingPage() {
                       {roomSelections.length === 0 ? (
                         <div className="text-center py-16">
                           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            <svg
+                              className="w-8 h-8 text-gray-300"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={1.5}
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                              />
                             </svg>
                           </div>
                           <p className="text-sm text-gray-500 font-medium">Chưa chọn phòng nào</p>
                         </div>
                       ) : (
                         roomSelections.map((selection) => {
-                          const room = roomTypes.find(r => r.roomTypeId === selection.roomTypeId)
+                          const room = roomTypes.find((r) => r.roomTypeId === selection.roomTypeId)
                           if (!room) return null
                           return (
-                            <div key={selection.roomTypeId} className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100">
+                            <div
+                              key={selection.roomTypeId}
+                              className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-100"
+                            >
                               <div className="flex justify-between items-start mb-3">
                                 <div className="flex-1 pr-2">
                                   <p className="font-bold text-sm text-gray-900 mb-1">{room.typeName}</p>
-                                  <p className="text-xs text-gray-600">{room.basePriceNight.toLocaleString('vi-VN')} VNĐ/đêm</p>
+                                  <p className="text-xs text-gray-600">
+                                    {room.basePriceNight.toLocaleString("vi-VN")} VNĐ/đêm
+                                  </p>
                                 </div>
                                 <button
                                   onClick={() => handleRemoveRoom(selection.roomTypeId)}
                                   className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-lg transition-colors"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2.5}
+                                      d="M6 18L18 6M6 6l12 12"
+                                    />
                                   </svg>
                                 </button>
                               </div>
@@ -784,13 +949,20 @@ export default function NewBookingPage() {
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" />
                                     </svg>
                                   </button>
-                                  <span className="text-base font-bold text-[#8C68E6] w-8 text-center">{selection.quantity}</span>
+                                  <span className="text-base font-bold text-[#8C68E6] w-8 text-center">
+                                    {selection.quantity}
+                                  </span>
                                   <button
                                     onClick={() => updateRoomQuantity(selection.roomTypeId, selection.quantity + 1)}
                                     className="w-8 h-8 rounded-lg bg-[#8C68E6] flex items-center justify-center hover:bg-[#7B59D5] text-white transition-all"
                                   >
                                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={3}
+                                        d="M12 4v16m8-8H4"
+                                      />
                                     </svg>
                                   </button>
                                 </div>
@@ -805,13 +977,15 @@ export default function NewBookingPage() {
                     <div className="pt-5 border-t-2 border-gray-200 space-y-3">
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-600 font-medium">Tổng số phòng:</span>
-                        <span className="font-bold text-gray-900">{roomSelections.reduce((sum, r) => sum + r.quantity, 0)} phòng</span>
+                        <span className="font-bold text-gray-900">
+                          {roomSelections.reduce((sum, r) => sum + r.quantity, 0)} phòng
+                        </span>
                       </div>
                       <div className="flex justify-between items-center pt-3">
                         <span className="font-bold text-gray-900 text-base">Tổng tiền:</span>
                         <div className="text-right">
                           <p className="font-bold text-3xl text-[#8C68E6]">
-                            {calculateTotal().toLocaleString('vi-VN')}
+                            {calculateTotal().toLocaleString("vi-VN")}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">VNĐ</p>
                         </div>
@@ -853,19 +1027,25 @@ export default function NewBookingPage() {
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">Nhận phòng</p>
                       <p className="font-semibold text-gray-900">
-                        {formData.checkInDate ? format(new Date(formData.checkInDate), "dd/MM/yyyy HH:mm", { locale: vi }) : "---"}
+                        {formData.checkInDate
+                          ? format(new Date(formData.checkInDate), "dd/MM/yyyy HH:mm", { locale: vi })
+                          : "---"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">Trả phòng</p>
                       <p className="font-semibold text-gray-900">
-                        {formData.checkOutDate ? format(new Date(formData.checkOutDate), "dd/MM/yyyy HH:mm", { locale: vi }) : "---"}
+                        {formData.checkOutDate
+                          ? format(new Date(formData.checkOutDate), "dd/MM/yyyy HH:mm", { locale: vi })
+                          : "---"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">Tổng tiền phòng</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-2">
+                        Tổng tiền phòng
+                      </p>
                       <p className="font-bold text-3xl text-[#8C68E6]">
-                        {calculateTotal().toLocaleString('vi-VN')} <span className="text-base">VNĐ</span>
+                        {calculateTotal().toLocaleString("vi-VN")} <span className="text-base">VNĐ</span>
                       </p>
                     </div>
                   </div>
@@ -877,15 +1057,18 @@ export default function NewBookingPage() {
                     <p className="text-sm font-bold text-gray-700 mb-4">Chi tiết phòng đã chọn:</p>
                     <div className="space-y-3">
                       {roomSelections.map((selection) => {
-                        const room = roomTypes.find(r => r.roomTypeId === selection.roomTypeId)
+                        const room = roomTypes.find((r) => r.roomTypeId === selection.roomTypeId)
                         if (!room) return null
                         return (
-                          <div key={selection.roomTypeId} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                          <div
+                            key={selection.roomTypeId}
+                            className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                          >
                             <span className="text-sm font-medium text-gray-700">
                               {room.typeName} × {selection.quantity}
                             </span>
                             <span className="font-bold text-gray-900">
-                              {(room.basePriceNight * selection.quantity * totalNights).toLocaleString('vi-VN')} VNĐ
+                              {(room.basePriceNight * selection.quantity * totalNights).toLocaleString("vi-VN")} VNĐ
                             </span>
                           </div>
                         )
@@ -904,18 +1087,18 @@ export default function NewBookingPage() {
               <CardContent className="space-y-5">
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { value: 'Cash', label: 'Tiền mặt', icon: '💵' },
-                    { value: 'Card', label: 'Thẻ (POS)', icon: '💳' },
-                    { value: 'Bank', label: 'Chuyển khoản', icon: '🏦' },
-                    { value: 'EWallet', label: 'Ví điện tử', icon: '📱' },
+                    { value: "Cash", label: "Tiền mặt", icon: "💵" },
+                    { value: "Card", label: "Thẻ (POS)", icon: "💳" },
+                    { value: "Bank", label: "Chuyển khoản", icon: "🏦" },
+                    { value: "EWallet", label: "Ví điện tử", icon: "📱" },
                   ].map((method) => (
                     <button
                       key={method.value}
                       onClick={() => setFormData({ ...formData, paymentMethod: method.value as any })}
                       className={`p-4 border-2 rounded-xl text-center transition-all ${
                         formData.paymentMethod === method.value
-                          ? 'border-[#8C68E6] bg-purple-50 shadow-md'
-                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          ? "border-[#8C68E6] bg-purple-50 shadow-md"
+                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >
                       <div className="text-3xl mb-2">{method.icon}</div>
@@ -941,7 +1124,9 @@ export default function NewBookingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="paymentNote" className="text-sm font-medium text-gray-700">Ghi chú</Label>
+                  <Label htmlFor="paymentNote" className="text-sm font-medium text-gray-700">
+                    Ghi chú
+                  </Label>
                   <Textarea
                     id="paymentNote"
                     value={formData.paymentNote}
@@ -956,9 +1141,7 @@ export default function NewBookingPage() {
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-gray-900">Tổng số tiền thanh toán:</span>
                   </div>
-                  <p className="text-4xl font-bold text-[#8C68E6]">
-                    {calculateTotal().toLocaleString('vi-VN')}
-                  </p>
+                  <p className="text-4xl font-bold text-[#8C68E6]">{calculateTotal().toLocaleString("vi-VN")}</p>
                   <p className="text-sm text-gray-500 mt-1">VNĐ</p>
                 </div>
               </CardContent>
@@ -973,12 +1156,17 @@ export default function NewBookingPage() {
             <div className="flex items-center gap-8">
               <div>
                 <p className="text-sm text-gray-600 font-medium mb-1">Tổng tiền</p>
-                <p className="text-3xl font-bold text-[#8C68E6]">{calculateTotal().toLocaleString('vi-VN')} VNĐ</p>
+                <p className="text-3xl font-bold text-[#8C68E6]">{calculateTotal().toLocaleString("vi-VN")} VNĐ</p>
               </div>
               <div className="h-12 w-px bg-gray-300"></div>
               <div className="space-y-1">
-                <p className="text-sm text-gray-700 font-semibold">Số phòng: <span className="text-[#8C68E6]">{roomSelections.reduce((sum, r) => sum + r.quantity, 0)}</span></p>
-                <p className="text-sm text-gray-700 font-semibold">Số đêm: <span className="text-[#8C68E6]">{totalNights}</span></p>
+                <p className="text-sm text-gray-700 font-semibold">
+                  Số phòng:{" "}
+                  <span className="text-[#8C68E6]">{roomSelections.reduce((sum, r) => sum + r.quantity, 0)}</span>
+                </p>
+                <p className="text-sm text-gray-700 font-semibold">
+                  Số đêm: <span className="text-[#8C68E6]">{totalNights}</span>
+                </p>
               </div>
             </div>
 
@@ -1025,11 +1213,7 @@ export default function NewBookingPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDraftToDelete(null)}
-              className="rounded-xl"
-            >
+            <Button variant="outline" onClick={() => setDraftToDelete(null)} className="rounded-xl">
               Hủy
             </Button>
             <Button

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import { CalendarIcon, X } from "lucide-react"
+import { CalendarIcon, X, CalendarIcon as CalendarIconSolid } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -35,14 +35,16 @@ export function DatePicker({
   const formatDateRange = () => {
     if (!minDate && !maxDate) return null
 
-    const parts = []
+    if (minDate && maxDate) {
+      return `${format(minDate, "dd/MM/yyyy", { locale: vi })} - ${format(maxDate, "dd/MM/yyyy", { locale: vi })}`
+    }
     if (minDate) {
-      parts.push(`Từ ${format(minDate, "dd/MM/yyyy", { locale: vi })}`)
+      return `Từ ${format(minDate, "dd/MM/yyyy", { locale: vi })}`
     }
     if (maxDate) {
-      parts.push(`đến ${format(maxDate, "dd/MM/yyyy", { locale: vi })}`)
+      return `Đến ${format(maxDate, "dd/MM/yyyy", { locale: vi })}`
     }
-    return parts.join(" ")
+    return null
   }
 
   return (
@@ -52,26 +54,25 @@ export function DatePicker({
           <Button
             variant="outline"
             className={cn(
-              "w-full justify-between text-left font-normal h-12 px-4 border-2 transition-all duration-200",
+              "w-full justify-between text-left font-normal h-10 px-3 transition-colors",
               !value && "text-muted-foreground",
               error && "border-red-500 focus-visible:ring-red-500",
-              "hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/20",
+              !error && "hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
               disabled && "opacity-50 cursor-not-allowed",
               className,
             )}
             disabled={disabled}
           >
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-primary" />
-              {value ? (
-                <span className="font-medium">{format(value, "dd/MM/yyyy", { locale: vi })}</span>
-              ) : (
-                <span>{placeholder}</span>
-              )}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <CalendarIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm truncate">
+                {value ? format(value, "dd/MM/yyyy", { locale: vi }) : placeholder}
+              </span>
             </div>
+
             {value && !disabled && (
               <X
-                className="h-4 w-4 opacity-50 hover:opacity-100 transition-opacity"
+                className="h-4 w-4 text-muted-foreground hover:text-foreground flex-shrink-0"
                 onClick={(e) => {
                   e.stopPropagation()
                   onChange(undefined)
@@ -80,11 +81,23 @@ export function DatePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 shadow-xl border-2" align="start">
-          <div className="luxury-gradient text-white px-4 py-3 rounded-t-lg">
-            <p className="font-serif font-semibold text-sm leading-relaxed">{placeholder}</p>
-            {formatDateRange() && <p className="text-xs opacity-90 mt-1 leading-relaxed">{formatDateRange()}</p>}
+
+        <PopoverContent className="w-auto p-0" align="start">
+          {/* Light header with primary color accent instead of dark gradient */}
+          <div className="bg-primary/5 border-b px-4 py-3">
+            <div className="flex items-center gap-2">
+              <CalendarIconSolid className="h-4 w-4 text-primary" />
+              <p className="text-sm font-medium text-foreground">{placeholder}</p>
+            </div>
+
+            {formatDateRange() && (
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <p className="text-xs text-muted-foreground">{formatDateRange()}</p>
+              </div>
+            )}
           </div>
+
+          {/* Clean white background for calendar */}
           <div className="p-3">
             <Calendar
               mode="single"
@@ -99,11 +112,12 @@ export function DatePicker({
                 return false
               }}
               initialFocus
-              className="rounded-md"
             />
           </div>
         </PopoverContent>
       </Popover>
+
+      {error && <p className="text-xs text-red-500 px-1">Vui lòng chọn ngày hợp lệ</p>}
     </div>
   )
 }

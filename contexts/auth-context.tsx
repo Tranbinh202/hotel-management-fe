@@ -61,61 +61,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const storedRefreshToken = localStorage.getItem("refresh_token")
       const storedUser = localStorage.getItem("user")
 
+      console.log(" Initializing auth...")
+      console.log(" Has stored token:", !!storedToken)
+      console.log(" Has stored refresh token:", !!storedRefreshToken)
+      console.log(" Has stored user:", !!storedUser)
+
       // Clean up old token keys if they exist
       localStorage.removeItem("token")
       localStorage.removeItem("refreshToken")
 
       if (storedToken && storedUser) {
         // Check if token is expired
-        if (isTokenExpired(storedToken)) {
-          console.log("Access token expired on load, attempting refresh...")
+        const tokenExpired = isTokenExpired(storedToken)
+        console.log(" Token expired:", tokenExpired)
+
+        if (tokenExpired) {
+          console.log(" Access token expired on load, attempting refresh...")
 
           if (storedRefreshToken) {
             try {
               const accountId = getAccountIdFromToken(storedToken)
+              console.log(" Account ID from token:", accountId)
 
               if (accountId) {
                 // Attempt to refresh the token
                 const refreshResult = await authApi.refreshToken(accountId, storedRefreshToken)
+                console.log(" Refresh result:", refreshResult)
 
                 if (refreshResult.isSuccess && refreshResult.data.token) {
-                  console.log("Token refreshed successfully on load")
+                  console.log(" Token refreshed successfully on load")
                   setToken(refreshResult.data.token)
                   const parsedUser = JSON.parse(storedUser)
                   setUser(parsedUser)
                 } else {
-                  console.log("Token refresh failed, clearing auth data")
+                  console.log(" Token refresh failed, clearing auth data")
                   localStorage.removeItem("access_token")
                   localStorage.removeItem("refresh_token")
                   localStorage.removeItem("user")
                 }
               } else {
-                console.log("Could not extract accountId, clearing auth data")
+                console.log(" Could not extract accountId, clearing auth data")
                 localStorage.removeItem("access_token")
                 localStorage.removeItem("refresh_token")
                 localStorage.removeItem("user")
               }
             } catch (error) {
-              console.error("Error refreshing token on load:", error)
+              console.error(" Error refreshing token on load:", error)
               localStorage.removeItem("access_token")
               localStorage.removeItem("refresh_token")
               localStorage.removeItem("user")
             }
           } else {
-            console.log("No refresh token available, clearing auth data")
+            console.log(" No refresh token available, clearing auth data")
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
             localStorage.removeItem("user")
           }
         } else {
           // Token is still valid
+          console.log(" Token is still valid, setting auth state")
           setToken(storedToken)
           const parsedUser = JSON.parse(storedUser)
           setUser(parsedUser)
         }
+      } else {
+        console.log(" No stored auth data found")
       }
 
       setIsInitializing(false)
+      console.log(" Auth initialization complete")
     }
 
     initializeAuth()
@@ -200,40 +214,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const refreshUserData = async () => {
-    if (!token) return
+    if (!token) {
+      console.log(" No token available for refresh")
+      return
+    }
 
     // Check if token is expired before fetching
-    if (isTokenExpired(token)) {
-      console.log("Token expired, refreshing before fetching user data...")
+    const tokenExpired = isTokenExpired(token)
+    console.log(" Refreshing user data, token expired:", tokenExpired)
+
+    if (tokenExpired) {
+      console.log(" Token expired, refreshing before fetching user data...")
       const refreshToken = localStorage.getItem("refresh_token")
       const accountId = getAccountIdFromToken(token)
+
+      console.log(" Has refresh token:", !!refreshToken)
+      console.log(" Account ID:", accountId)
 
       if (refreshToken && accountId) {
         try {
           const refreshResult = await authApi.refreshToken(accountId, refreshToken)
+          console.log(" Token refresh result:", refreshResult)
+
           if (refreshResult.isSuccess && refreshResult.data.token) {
             setToken(refreshResult.data.token)
+            console.log(" Token refreshed successfully")
           } else {
+            console.log(" Token refresh failed, logging out")
             logout()
             return
           }
         } catch (error) {
-          console.error("Failed to refresh token:", error)
+          console.error(" Failed to refresh token:", error)
           logout()
           return
         }
       } else {
+        console.log(" Missing refresh token or account ID, logging out")
         logout()
         return
       }
     }
 
     try {
+      console.log(" Fetching user summary...")
       const userData = await fetchUserSummary()
       localStorage.setItem("user", JSON.stringify(userData))
       setUser(userData)
+      console.log(" User data refreshed successfully")
     } catch (error) {
-      console.error("Failed to refresh user data:", error)
+      console.error(" Failed to refresh user data:", error)
       logout()
     }
   }

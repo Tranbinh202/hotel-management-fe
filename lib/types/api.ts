@@ -526,7 +526,7 @@ export interface CreateOfflineBookingDto {
   checkOutDate: string
   specialRequests?: string
   depositAmount: number
-  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
   paymentNote?: string
 }
 
@@ -548,7 +548,7 @@ export interface TransactionHistory {
   paymentMethod: string
   paymentNote: string
   transactionReference: string
-  transactionType: 'Deposit' | 'FullPayment'
+  transactionType: "Deposit" | "FullPayment"
   processedBy: string
   processedAt: string
 }
@@ -566,14 +566,130 @@ export interface OfflineBookingsFilter {
 
 export interface ConfirmDepositDto {
   depositAmount: number
-  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
   paymentNote?: string
   transactionReference?: string
 }
 
 export interface ConfirmPaymentDto {
   paidAmount: number
-  paymentMethod: 'Cash' | 'Card' | 'Bank' | 'EWallet'
+  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
   paymentNote?: string
   transactionReference?: string
+}
+
+// Booking management types
+export interface BookingManagementFilter {
+  pageNumber?: number
+  pageSize?: number
+  fromDate?: string
+  toDate?: string
+  paymentStatus?: string
+  bookingType?: string
+  customerName?: string
+  phoneNumber?: string
+  email?: string
+  depositStatus?: string
+  sortBy?: string
+  isDescending?: boolean
+}
+
+export interface BookingStatisticsFilter {
+  fromDate: string
+  toDate: string
+  groupBy?: "day" | "week" | "month" | "year"
+}
+
+export interface BookingStatistics {
+  period: string
+  totalBookings: number
+  totalRevenue: number
+  onlineBookings: number
+  offlineBookings: number
+  paidBookings: number
+  unpaidBookings: number
+  cancelledBookings: number
+}
+
+export interface UpdateBookingStatusDto {
+  status: "Confirmed" | "CheckedIn" | "CheckedOut" | "Cancelled"
+  note?: string
+}
+
+export interface CancelBookingDto {
+  reason: string
+}
+
+export interface BookingManagementDetails extends BookingDetails {
+  bookingCode: string
+  email: string
+  phoneNumber: string
+  identityCard?: string
+  address?: string
+  depositPaidAmount: number
+  paidAmount: number
+  remainingAmount: number
+  subTotal: number
+  taxAmount: number
+  serviceCharge: number
+  totalNights: number
+  status: string
+  bookingStatus: string
+  note?: string
+  specialRequests?: string
+  customer?: {
+    customerId: number
+    fullName: string
+    email: string
+    phoneNumber: string
+    identityCard?: string
+    address?: string
+    dateOfBirth?: string | null
+    gender?: string | null
+    totalBookings: number
+    lastBookingDate: string
+    totalSpent: number
+  }
+  rooms?: {
+    bookingRoomId: number
+    roomId: number
+    roomNumber: string
+    roomTypeName: string
+    roomTypeCode: string
+    pricePerNight: number
+    numberOfNights: number
+    subTotal: number
+    status: string
+    roomImages: string[]
+    maxOccupancy: number
+    roomSize: number
+    bedType: string
+    amenities: string[]
+  }[]
+  paymentHistory?: {
+    transactionId: number
+    transactionCode: string
+    amount: number
+    paymentMethod: string
+    transactionType: string
+    status: string
+    note?: string
+    transactionReference?: string
+    processedAt: string
+    processedBy: string
+  }[]
+  bookingHistory?: {
+    changeId: number
+    changeType: string
+    oldValue?: string
+    newValue?: string
+    reason?: string
+    changedAt: string
+    changedBy: string
+  }[]
+  createdByEmployee?: string | null
+  updatedByEmployee?: string | null
+  cancelledBy?: string | null
+  cancellationReason?: string | null
+  cancelledAt?: string | null
 }

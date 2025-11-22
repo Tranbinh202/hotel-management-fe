@@ -18,17 +18,17 @@ import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
-  useOfflineBookings,
-  useConfirmDeposit,
-  useConfirmPayment,
-  useCancelOfflineBooking,
-  useResendEmail,
-} from "@/lib/hooks/use-offline-bookings"
+  useBookingManagement,
+  useUpdateBookingStatus,
+  useCancelBookingManagement,
+  useResendBookingConfirmation,
+} from "@/lib/hooks/use-bookings"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import Link from "next/link"
-import { toast } from "@/hooks/use-toast"
-import type { OfflineBookingDetails } from "@/lib/types/api"
+import type { BookingManagementDetails } from "@/lib/types/api"
+import { useBookingManagementDetail } from "@/lib/hooks/use-bookings"
+import { BookingDetailModal } from "@/components/booking-detail-modal"
 
 export default function AdminBookingsPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -39,9 +39,9 @@ export default function AdminBookingsPage() {
   const [advancedFilters, setAdvancedFilters] = useState({
     paymentStatus: "",
     depositStatus: "",
-    roomType: "",
-    priceFrom: "",
-    priceTo: "",
+    bookingType: "",
+    sortBy: "",
+    isDescending: true,
   })
   const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
   const [pageNumber, setPageNumber] = useState(1)
@@ -50,80 +50,47 @@ export default function AdminBookingsPage() {
   const filters = {
     customerName: searchQuery.includes("@") ? "" : searchQuery,
     phoneNumber: searchQuery.match(/^\d+$/) ? searchQuery : "",
-    fromDate: dateRange.fromDate ? format(dateRange.fromDate, "yyyy-MM-dd") : "",
-    toDate: dateRange.toDate ? format(dateRange.toDate, "yyyy-MM-dd") : "",
-    ...advancedFilters,
+    email: searchQuery.includes("@") ? searchQuery : "",
+    fromDate: dateRange.fromDate ? format(dateRange.fromDate, "yyyy-MM-dd") : undefined,
+    toDate: dateRange.toDate ? format(dateRange.toDate, "yyyy-MM-dd") : undefined,
+    paymentStatus: advancedFilters.paymentStatus || undefined,
+    depositStatus: advancedFilters.depositStatus || undefined,
+    bookingType: advancedFilters.bookingType || undefined,
+    sortBy: advancedFilters.sortBy || undefined,
+    isDescending: advancedFilters.isDescending,
     pageNumber,
     pageSize,
   }
 
-  const [selectedBooking, setSelectedBooking] = useState<OfflineBookingDetails | null>(null)
-  const [depositDialog, setDepositDialog] = useState(false)
-  const [paymentDialog, setPaymentDialog] = useState(false)
+  const [selectedBooking, setSelectedBooking] = useState<BookingManagementDetails | null>(null)
+  const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
-  const [depositData, setDepositData] = useState({
-    depositAmount: 0,
-    paymentMethod: "Cash",
-    paymentNote: "",
-    transactionReference: "",
-  })
-  const [paymentData, setPaymentData] = useState({
-    paidAmount: 0,
-    paymentMethod: "Cash",
-    paymentNote: "",
-    transactionReference: "",
+  const [statusData, setStatusData] = useState({
+    status: "Confirmed" as "Confirmed" | "CheckedIn" | "CheckedOut" | "Cancelled",
+    note: "",
   })
   const [cancelReason, setCancelReason] = useState("")
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
 
-  const { data: bookingsData, isLoading, refetch } = useOfflineBookings(filters)
-  const confirmDeposit = useConfirmDeposit()
-  const confirmPayment = useConfirmPayment()
-  const cancelBooking = useCancelOfflineBooking()
-  const resendEmail = useResendEmail()
+  const { data: bookingsData, isLoading, refetch } = useBookingManagement(filters)
+  const updateStatus = useUpdateBookingStatus()
+  const cancelBooking = useCancelBookingManagement()
+  const resendEmail = useResendBookingConfirmation()
+  const { data: bookingDetailData, isLoading: isLoadingDetail } = useBookingManagementDetail(selectedBookingId || 0)
 
-  const handleConfirmDeposit = async () => {
+  const handleUpdateStatus = async () => {
     if (!selectedBooking) return
 
     try {
-      await confirmDeposit.mutateAsync({
+      await updateStatus.mutateAsync({
         id: selectedBooking.bookingId,
-        data: depositData,
+        data: statusData,
       })
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận đặt cọc",
-      })
-      setDepositDialog(false)
+      setStatusDialog(false)
       refetch()
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể xác nhận đặt cọc",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleConfirmPayment = async () => {
-    if (!selectedBooking) return
-
-    try {
-      await confirmPayment.mutateAsync({
-        id: selectedBooking.bookingId,
-        data: paymentData,
-      })
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận thanh toán",
-      })
-      setPaymentDialog(false)
-      refetch()
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể xác nhận thanh toán",
-        variant: "destructive",
-      })
+      // Error handled by hook
     }
   }
 
@@ -133,37 +100,21 @@ export default function AdminBookingsPage() {
     try {
       await cancelBooking.mutateAsync({
         id: selectedBooking.bookingId,
-        reason: cancelReason,
-      })
-      toast({
-        title: "Thành công",
-        description: "Đã hủy booking",
+        data: { reason: cancelReason },
       })
       setCancelDialog(false)
       setCancelReason("")
       refetch()
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể hủy booking",
-        variant: "destructive",
-      })
+      // Error handled by hook
     }
   }
 
   const handleResendEmail = async (bookingId: number) => {
     try {
       await resendEmail.mutateAsync(bookingId)
-      toast({
-        title: "Thành công",
-        description: "Đã gửi lại email xác nhận",
-      })
     } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể gửi email",
-        variant: "destructive",
-      })
+      // Error handled by hook
     }
   }
 
@@ -173,12 +124,18 @@ export default function AdminBookingsPage() {
       Unpaid: "bg-amber-100 text-amber-700 border-amber-200",
       Cancelled: "bg-red-100 text-red-700 border-red-200",
       Pending: "bg-blue-100 text-blue-700 border-blue-200",
+      Confirmed: "bg-cyan-100 text-cyan-700 border-cyan-200",
+      CheckedIn: "bg-purple-100 text-purple-700 border-purple-200",
+      CheckedOut: "bg-slate-100 text-slate-700 border-slate-200",
     }
     const labels: Record<string, string> = {
       Paid: "Đã thanh toán",
       Unpaid: "Chưa thanh toán",
       Cancelled: "Đã hủy",
       Pending: "Chờ xử lý",
+      Confirmed: "Đã xác nhận",
+      CheckedIn: "Đã check-in",
+      CheckedOut: "Đã check-out",
     }
     return (
       <Badge
@@ -196,9 +153,9 @@ export default function AdminBookingsPage() {
     setAdvancedFilters({
       paymentStatus: "",
       depositStatus: "",
-      roomType: "",
-      priceFrom: "",
-      priceTo: "",
+      bookingType: "",
+      sortBy: "",
+      isDescending: true,
     })
     setPageNumber(1)
   }
@@ -206,6 +163,11 @@ export default function AdminBookingsPage() {
   const handleApplyFilters = () => {
     setPageNumber(1)
     setFilterSidebarOpen(false)
+  }
+
+  const handleViewDetail = (bookingId: number) => {
+    setSelectedBookingId(bookingId)
+    setDetailModalOpen(true)
   }
 
   return (
@@ -242,7 +204,7 @@ export default function AdminBookingsPage() {
             />
           </svg>
           <Input
-            placeholder="Tìm kiếm tên khách hàng hoặc số điện thoại..."
+            placeholder="Tìm kiếm tên, email hoặc số điện thoại..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 h-9 border-slate-200 focus:border-[#8C68E6] focus:ring-[#8C68E6]/20 text-sm"
@@ -287,7 +249,7 @@ export default function AdminBookingsPage() {
               Lọc
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full  sm:max-w-md flex flex-col">
+          <SheetContent className="w-full sm:max-w-md flex flex-col">
             <SheetHeader className="space-y-3 pb-6 border-b">
               <SheetTitle className="text-2xl font-bold">Bộ lọc nâng cao</SheetTitle>
               <SheetDescription className="text-slate-600">
@@ -337,47 +299,60 @@ export default function AdminBookingsPage() {
                 </Select>
               </div>
 
-              {/* Room Type */}
+              {/* Booking Type */}
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Loại phòng</Label>
+                <Label className="text-sm font-semibold text-slate-700">Loại booking</Label>
                 <Select
-                  value={advancedFilters.roomType || "all"}
+                  value={advancedFilters.bookingType || "all"}
                   onValueChange={(value) =>
-                    setAdvancedFilters({ ...advancedFilters, roomType: value === "all" ? "" : value })
+                    setAdvancedFilters({ ...advancedFilters, bookingType: value === "all" ? "" : value })
                   }
                 >
                   <SelectTrigger className="w-full border-slate-300">
-                    <SelectValue placeholder="Chọn loại phòng" />
+                    <SelectValue placeholder="Chọn loại" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả</SelectItem>
-                    <SelectItem value="Single">Phòng đơn</SelectItem>
-                    <SelectItem value="Double">Phòng đôi</SelectItem>
-                    <SelectItem value="Suite">Suite</SelectItem>
-                    <SelectItem value="Deluxe">Deluxe</SelectItem>
+                    <SelectItem value="Online">Online</SelectItem>
+                    <SelectItem value="Walkin">Walk-in</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Price Range */}
+              {/* Sort By */}
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">Khoảng giá (VNĐ)</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    type="number"
-                    placeholder="Giá từ"
-                    value={advancedFilters.priceFrom}
-                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, priceFrom: e.target.value })}
-                    className="border-slate-300"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Giá đến"
-                    value={advancedFilters.priceTo}
-                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, priceTo: e.target.value })}
-                    className="border-slate-300"
-                  />
-                </div>
+                <Label className="text-sm font-semibold text-slate-700">Sắp xếp theo</Label>
+                <Select
+                  value={advancedFilters.sortBy || "CheckInDate"}
+                  onValueChange={(value) => setAdvancedFilters({ ...advancedFilters, sortBy: value })}
+                >
+                  <SelectTrigger className="w-full border-slate-300">
+                    <SelectValue placeholder="Chọn cách sắp xếp" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CheckInDate">Ngày check-in</SelectItem>
+                    <SelectItem value="CheckOutDate">Ngày check-out</SelectItem>
+                    <SelectItem value="TotalAmount">Tổng tiền</SelectItem>
+                    <SelectItem value="CreatedAt">Ngày tạo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sort Order */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">Thứ tự</Label>
+                <Select
+                  value={advancedFilters.isDescending ? "desc" : "asc"}
+                  onValueChange={(value) => setAdvancedFilters({ ...advancedFilters, isDescending: value === "desc" })}
+                >
+                  <SelectTrigger className="w-full border-slate-300">
+                    <SelectValue placeholder="Chọn thứ tự" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Giảm dần</SelectItem>
+                    <SelectItem value="asc">Tăng dần</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -390,9 +365,9 @@ export default function AdminBookingsPage() {
                   setAdvancedFilters({
                     paymentStatus: "",
                     depositStatus: "",
-                    roomType: "",
-                    priceFrom: "",
-                    priceTo: "",
+                    bookingType: "",
+                    sortBy: "",
+                    isDescending: true,
                   })
                 }}
               >
@@ -426,7 +401,12 @@ export default function AdminBookingsPage() {
 
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
-          <h2 className="text-sm font-medium text-slate-700">Danh sách booking</h2>
+          <h2 className="text-sm font-medium text-slate-700">
+            Danh sách booking
+            {bookingsData?.data?.totalCount !== undefined && (
+              <span className="ml-2 text-slate-500">({bookingsData.data.totalCount} kết quả)</span>
+            )}
+          </h2>
         </div>
 
         <div className="p-4">
@@ -465,7 +445,7 @@ export default function AdminBookingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {bookingsData?.data?.items?.map((booking: any) => (
+              {bookingsData?.data?.items?.map((booking: BookingManagementDetails) => (
                 <div
                   key={booking.bookingId}
                   className="group flex items-center justify-between p-4 bg-white rounded-lg border border-slate-200 hover:border-[#8C68E6]/50 hover:shadow-md transition-all duration-200"
@@ -476,43 +456,30 @@ export default function AdminBookingsPage() {
                       <span className="font-medium text-slate-800 text-sm">{booking.customerName}</span>
                       {getStatusBadge(booking.paymentStatus)}
                       {getStatusBadge(booking.depositStatus)}
+                      {booking.status && getStatusBadge(booking.status)}
                       <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
                         {booking.bookingType}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-5 text-xs text-slate-600">
-                      <span className="flex items-center gap-1.5">
-                        <svg
-                          className="w-3.5 h-3.5 text-slate-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                          />
-                        </svg>
-                        {booking.phoneNumber}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <svg
-                          className="w-3.5 h-3.5 text-slate-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                          />
-                        </svg>
-                        {booking.roomNames?.join(", ") || `${booking.roomTypes?.length || 0} phòng`}
-                      </span>
+                      {booking.phoneNumber && (
+                        <span className="flex items-center gap-1.5">
+                          <svg
+                            className="w-3.5 h-3.5 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                            />
+                          </svg>
+                          {booking.phoneNumber}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1.5">
                         <svg
                           className="w-3.5 h-3.5 text-slate-400"
@@ -530,129 +497,128 @@ export default function AdminBookingsPage() {
                         {format(new Date(booking.checkInDate), "dd/MM/yyyy", { locale: vi })} -{" "}
                         {format(new Date(booking.checkOutDate), "dd/MM/yyyy", { locale: vi })}
                       </span>
+                      <span className="flex items-center gap-1.5">
+                        <svg
+                          className="w-3.5 h-3.5 text-slate-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                          booking.totalAmount,
+                        )}
+                      </span>
+                      {booking.roomNames && booking.roomNames.length > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <svg
+                            className="w-3.5 h-3.5 text-slate-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                          </svg>
+                          {booking.roomNames.join(", ")}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="text-right pr-3 border-r border-slate-200">
-                      <div className="font-bold text-slate-900 text-base">
-                        {booking.totalAmount.toLocaleString("vi-VN")}đ
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Cọc: {booking.depositAmount.toLocaleString("vi-VN")}đ
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {booking.depositStatus === "Unpaid" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedBooking(booking)
-                            setDepositData({
-                              depositAmount: 0,
-                              paymentMethod: "Cash",
-                              paymentNote: "",
-                              transactionReference: "",
-                            })
-                            setDepositDialog(true)
-                          }}
-                          className="h-8 text-xs hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700"
-                        >
-                          Xác nhận cọc
-                        </Button>
-                      )}
-                      {booking.paymentStatus === "Unpaid" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedBooking(booking)
-                            setPaymentData({
-                              paidAmount: 0,
-                              paymentMethod: "Cash",
-                              paymentNote: "",
-                              transactionReference: "",
-                            })
-                            setPaymentDialog(true)
-                          }}
-                          className="h-8 text-xs hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700"
-                        >
-                          Xác nhận thanh toán
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleResendEmail(booking.bookingId)}
-                        className="h-8 text-xs hover:bg-slate-100"
-                      >
-                        Gửi lại email
-                      </Button>
-                      {booking.paymentStatus !== "Cancelled" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setSelectedBooking(booking)
-                            setCancelReason("")
-                            setCancelDialog(true)
-                          }}
-                          className="h-8 text-xs hover:bg-red-50 text-red-600 hover:text-red-700"
-                        >
-                          Hủy booking
-                        </Button>
-                      )}
-                    </div>
+
+                  <div className="flex items-center gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewDetail(booking.bookingId)}
+                      className="h-8 text-xs border-[#8C68E6]/30 text-[#8C68E6] hover:bg-purple-50"
+                    >
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      Chi tiết
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBooking(booking)
+                        setStatusData({ status: "Confirmed", note: "" })
+                        setStatusDialog(true)
+                      }}
+                      className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                    >
+                      Cập nhật trạng thái
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleResendEmail(booking.bookingId)}
+                      className="h-8 text-xs"
+                    >
+                      Gửi lại email
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedBooking(booking)
+                        setCancelDialog(true)
+                      }}
+                      className="h-8 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      Hủy
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
           )}
 
+          {/* Pagination */}
           {bookingsData?.data && bookingsData.data.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-600">
-                Hiển thị {(pageNumber - 1) * pageSize + 1} -{" "}
-                {Math.min(pageNumber * pageSize, bookingsData.data.totalCount)} trong tổng số{" "}
-                {bookingsData.data.totalCount} booking
+              <p className="text-sm text-slate-600">
+                Trang {bookingsData.data.pageIndex} / {bookingsData.data.totalPages} ({bookingsData.data.totalCount} kết
+                quả)
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPageNumber(pageNumber - 1)}
+                  onClick={() => setPageNumber((prev) => Math.max(1, prev - 1))}
                   disabled={pageNumber === 1}
-                  className="border-slate-300 h-8 text-xs"
+                  className="h-8 text-xs"
                 >
                   Trước
                 </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, bookingsData.data.totalPages) }, (_, i) => {
-                    const pageNum = pageNumber > 3 ? pageNumber - 2 + i : i + 1
-                    if (pageNum > bookingsData.data.totalPages) return null
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={pageNum === pageNumber ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setPageNumber(pageNum)}
-                        className={
-                          pageNum === pageNumber
-                            ? "bg-[#8C68E6] hover:bg-[#7a5ad1] border-[#8C68E6] h-8 min-w-[32px] text-xs"
-                            : "border-slate-300 h-8 min-w-[32px] text-xs"
-                        }
-                      >
-                        {pageNum}
-                      </Button>
-                    )
-                  })}
-                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPageNumber(pageNumber + 1)}
+                  onClick={() => setPageNumber((prev) => Math.min(bookingsData.data.totalPages, prev + 1))}
                   disabled={pageNumber === bookingsData.data.totalPages}
-                  className="border-slate-300 h-8 text-xs"
+                  className="h-8 text-xs"
                 >
                   Sau
                 </Button>
@@ -662,169 +628,75 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      <Dialog open={depositDialog} onOpenChange={setDepositDialog}>
-        <DialogContent>
+      {/* BookingDetailModal */}
+      <BookingDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        booking={bookingDetailData?.data || null}
+        isLoading={isLoadingDetail}
+      />
+
+      {/* Update Status Dialog */}
+      <Dialog open={statusDialog} onOpenChange={setStatusDialog}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Xác nhận đặt cọc</DialogTitle>
-            <DialogDescription>
-              Booking #{selectedBooking?.bookingId} - {selectedBooking?.customerName}
-            </DialogDescription>
+            <DialogTitle>Cập nhật trạng thái booking</DialogTitle>
+            <DialogDescription>Cập nhật trạng thái cho booking #{selectedBooking?.bookingId}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="depositAmount">Số tiền đặt cọc (VNĐ)</Label>
-              <Input
-                id="depositAmount"
-                type="number"
-                min="0"
-                value={depositData.depositAmount}
-                onChange={(e) => setDepositData({ ...depositData, depositAmount: Number(e.target.value) })}
-                placeholder="500000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="depositPaymentMethod">Phương thức thanh toán</Label>
+              <Label>Trạng thái</Label>
               <Select
-                value={depositData.paymentMethod}
-                onValueChange={(value) => setDepositData({ ...depositData, paymentMethod: value })}
+                value={statusData.status}
+                onValueChange={(value: any) => setStatusData({ ...statusData, status: value })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Cash">Tiền mặt</SelectItem>
-                  <SelectItem value="Card">Thẻ tín dụng/ghi nợ</SelectItem>
-                  <SelectItem value="Bank">Chuyển khoản ngân hàng</SelectItem>
-                  <SelectItem value="EWallet">Ví điện tử</SelectItem>
+                  <SelectItem value="Confirmed">Đã xác nhận</SelectItem>
+                  <SelectItem value="CheckedIn">Đã check-in</SelectItem>
+                  <SelectItem value="CheckedOut">Đã check-out</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="depositReference">Mã giao dịch</Label>
-              <Input
-                id="depositReference"
-                value={depositData.transactionReference}
-                onChange={(e) => setDepositData({ ...depositData, transactionReference: e.target.value })}
-                placeholder="VD: CARD-TXN-20251116-001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="depositNote">Ghi chú</Label>
+              <Label>Ghi chú (tùy chọn)</Label>
               <Textarea
-                id="depositNote"
-                value={depositData.paymentNote}
-                onChange={(e) => setDepositData({ ...depositData, paymentNote: e.target.value })}
-                placeholder="Ghi chú về giao dịch..."
+                value={statusData.note}
+                onChange={(e) => setStatusData({ ...statusData, note: e.target.value })}
+                placeholder="Nhập ghi chú về thay đổi trạng thái..."
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDepositDialog(false)}>
+            <Button variant="outline" onClick={() => setStatusDialog(false)}>
               Hủy
             </Button>
-            <Button
-              onClick={handleConfirmDeposit}
-              disabled={confirmDeposit.isPending}
-              className="bg-[#8C68E6] hover:bg-[#7a5ad1]"
-            >
-              {confirmDeposit.isPending ? "Đang xử lý..." : "Xác nhận"}
+            <Button onClick={handleUpdateStatus} className="bg-[#8C68E6] hover:bg-[#7a5ad1]">
+              Cập nhật
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={paymentDialog} onOpenChange={setPaymentDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Xác nhận thanh toán</DialogTitle>
-            <DialogDescription>
-              Booking #{selectedBooking?.bookingId} - {selectedBooking?.customerName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="paidAmount">Số tiền thanh toán (VNĐ)</Label>
-              <Input
-                id="paidAmount"
-                type="number"
-                min="0"
-                value={paymentData.paidAmount}
-                onChange={(e) => setPaymentData({ ...paymentData, paidAmount: Number(e.target.value) })}
-                placeholder="1000000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="paymentPaymentMethod">Phương thức thanh toán</Label>
-              <Select
-                value={paymentData.paymentMethod}
-                onValueChange={(value) => setPaymentData({ ...paymentData, paymentMethod: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Cash">Tiền mặt</SelectItem>
-                  <SelectItem value="Card">Thẻ tín dụng/ghi nợ</SelectItem>
-                  <SelectItem value="Bank">Chuyển khoản ngân hàng</SelectItem>
-                  <SelectItem value="EWallet">Ví điện tử</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="paymentReference">Mã giao dịch</Label>
-              <Input
-                id="paymentReference"
-                value={paymentData.transactionReference}
-                onChange={(e) => setPaymentData({ ...paymentData, transactionReference: e.target.value })}
-                placeholder="VD: CASH-FULL-001"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="paymentNote">Ghi chú</Label>
-              <Textarea
-                id="paymentNote"
-                value={paymentData.paymentNote}
-                onChange={(e) => setPaymentData({ ...paymentData, paymentNote: e.target.value })}
-                placeholder="Ghi chú về giao dịch..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialog(false)}>
-              Hủy
-            </Button>
-            <Button
-              onClick={handleConfirmPayment}
-              disabled={confirmPayment.isPending}
-              className="bg-[#8C68E6] hover:bg-[#7a5ad1]"
-            >
-              {confirmPayment.isPending ? "Đang xử lý..." : "Xác nhận"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      {/* Cancel Dialog */}
       <Dialog open={cancelDialog} onOpenChange={setCancelDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Hủy booking</DialogTitle>
-            <DialogDescription>
-              Booking #{selectedBooking?.bookingId} - {selectedBooking?.customerName}
-            </DialogDescription>
+            <DialogDescription>Bạn có chắc chắn muốn hủy booking #{selectedBooking?.bookingId}?</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="cancelReason">Lý do hủy (tối thiểu 10 ký tự)</Label>
+              <Label>Lý do hủy</Label>
               <Textarea
-                id="cancelReason"
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="VD: Khách hủy do thay đổi lịch trình công tác..."
-                rows={4}
+                placeholder="Nhập lý do hủy booking..."
+                rows={3}
               />
-              <p className="text-xs text-slate-500">{cancelReason.length}/10 ký tự</p>
             </div>
           </div>
           <DialogFooter>
@@ -833,10 +705,10 @@ export default function AdminBookingsPage() {
             </Button>
             <Button
               onClick={handleCancelBooking}
-              disabled={cancelBooking.isPending || cancelReason.length < 10}
-              variant="destructive"
+              disabled={!cancelReason || cancelReason.trim().length < 10}
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {cancelBooking.isPending ? "Đang hủy..." : "Xác nhận hủy"}
+              Xác nhận hủy
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -291,17 +291,17 @@ export default function NewBookingPage() {
         roomTypes: roomSelections,
       }
       console.log("Creating booking with data:", bookingData)
-      // const result = await createBooking.mutateAsync(bookingData)
-      // console.log("Create booking result:", result)
+      const result = await createBooking.mutateAsync(bookingData)
+      console.log("Create booking result:", result)
 
-      // if (currentDraftId) {
-      //   storage.removeDraft(STORAGE_KEY, currentDraftId)
-      // }
+      if (currentDraftId) {
+        storage.removeDraft(STORAGE_KEY, currentDraftId)
+      }
 
-      // toast({
-      //   title: "Thành công",
-      //   description: `Đã tạo booking #${result.data.bookingId}`,
-      // })
+      toast({
+        title: "Thành công",
+        description: `Đã tạo booking #${result.data.bookingId}`,
+      })
       router.push("/admin/bookings")
     } catch (error: any) {
       toast({

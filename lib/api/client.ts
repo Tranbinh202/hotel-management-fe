@@ -130,8 +130,12 @@ class ApiClient {
     const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
     const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
 
+    console.log(" handleTokenRefresh called")
+    console.log(" Has refresh token:", !!refreshToken)
+    console.log(" Has access token:", !!accessToken)
+
     if (!refreshToken) {
-      console.error("No refresh token available")
+      console.error(" No refresh token available")
       return null
     }
 
@@ -140,27 +144,33 @@ class ApiClient {
       let accountId: number | null = null
       if (accessToken) {
         accountId = getAccountIdFromToken(accessToken)
+        console.log(" Extracted accountId:", accountId)
       }
 
       let response: any
 
       if (accountId) {
         // Use POST endpoint with accountId and refreshToken
-        console.log("Refreshing token with POST endpoint (accountId:", accountId, ")")
+        console.log(" Refreshing token with POST endpoint (accountId:", accountId, ")")
         response = await refreshClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
           accountId,
           refreshToken,
         })
       } else {
         // Fallback to GET endpoint (from cache)
-        console.log("Refreshing token with GET endpoint (from cache)")
+        console.log(" Refreshing token with GET endpoint (from cache)")
         response = await refreshClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
           headers: { Authorization: `Bearer ${refreshToken}` },
         })
       }
 
+      console.log(" Refresh response:", response.data)
+
       const newAccessToken = response.data?.data?.token || response.data?.token
       const newRefreshToken = response.data?.data?.refreshToken || response.data?.refreshToken
+
+      console.log(" New access token received:", !!newAccessToken)
+      console.log(" New refresh token received:", !!newRefreshToken)
 
       if (!newAccessToken) {
         throw new Error("No access token in refresh response")
@@ -174,10 +184,11 @@ class ApiClient {
         }
       }
 
-      console.log("Token refreshed successfully")
+      console.log(" Token refreshed successfully")
       return newAccessToken
-    } catch (error) {
-      console.error("Token refresh error:", error)
+    } catch (error: any) {
+      console.error(" Token refresh error:", error)
+      console.error(" Error response:", error.response?.data)
       throw error
     }
   }

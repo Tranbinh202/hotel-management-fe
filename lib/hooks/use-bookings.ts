@@ -1,10 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { bookingsApi } from "@/lib/api"
+import { bookingsApi, bookingManagementApi } from "@/lib/api/bookings"
 import { toast } from "@/hooks/use-toast"
+import type {
+  BookingManagementFilter,
+  UpdateBookingStatusDto,
+  CancelBookingDto,
+  BookingStatisticsFilter,
+} from "@/lib/types/api"
 
-export function useBookings() {
+export function useBookings(params?: Record<string, any>) {
   return useQuery({
-    queryKey: ["bookings"],
+    queryKey: ["bookings", params],
     queryFn: bookingsApi.getAll,
   })
 }
@@ -119,5 +125,92 @@ export function useBookingWithKey(id: number, key: string) {
     queryFn: () => bookingsApi.getByIdWithKey(id, key),
     enabled: !!id && !!key,
     retry: false,
+  })
+}
+
+export function useBookingManagement(filters: BookingManagementFilter) {
+  return useQuery({
+    queryKey: ["booking-management", filters],
+    queryFn: () => bookingManagementApi.getBookings(filters),
+  })
+}
+
+export function useBookingManagementDetail(id: number) {
+  return useQuery({
+    queryKey: ["booking-management", id, "detail"],
+    queryFn: () => bookingManagementApi.getBookingDetail(id),
+    enabled: !!id && id > 0,
+  })
+}
+
+export function useUpdateBookingStatus() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateBookingStatusDto }) =>
+      bookingManagementApi.updateBookingStatus(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["booking-management"] })
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật trạng thái booking",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể cập nhật trạng thái",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+export function useCancelBookingManagement() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CancelBookingDto }) => bookingManagementApi.cancelBooking(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["booking-management"] })
+      toast({
+        title: "Thành công",
+        description: "Đã hủy booking",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể hủy booking",
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+export function useBookingStatistics(filters: BookingStatisticsFilter) {
+  return useQuery({
+    queryKey: ["booking-statistics", filters],
+    queryFn: () => bookingManagementApi.getStatistics(filters),
+    enabled: !!filters.fromDate && !!filters.toDate,
+  })
+}
+
+export function useResendBookingConfirmation() {
+  return useMutation({
+    mutationFn: (id: number) => bookingManagementApi.resendConfirmationEmail(id),
+    onSuccess: () => {
+      toast({
+        title: "Thành công",
+        description: "Đã gửi lại email xác nhận",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể gửi email",
+        variant: "destructive",
+      })
+    },
   })
 }

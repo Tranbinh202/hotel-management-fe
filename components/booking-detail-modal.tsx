@@ -41,7 +41,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
           }
         })
         .catch((error) => {
-          console.error("[v0] Error fetching payment link:", error)
+          console.error("Error fetching payment link:", error)
           setPaymentError("Lỗi khi tạo link thanh toán")
         })
         .finally(() => {

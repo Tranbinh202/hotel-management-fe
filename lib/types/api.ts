@@ -693,3 +693,15 @@ export interface BookingManagementDetails extends BookingDetails {
   cancellationReason?: string | null
   cancelledAt?: string | null
 }
+
+export interface PayOSPaymentLinkRequest {
+  bookingId: number
+}
+
+export interface PayOSPaymentLinkResponse {
+  paymentUrl: string
+  orderId: string
+  amount: number
+  expiresAt: string
+}
+// </CHANGE>

@@ -7,6 +7,10 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { BookingManagementDetails } from "@/lib/types/api"
+import { useEffect, useState } from "react"
+import { bookingManagementApi } from "@/lib/api/bookings"
+import { QRCodeSVG } from "qrcode.react"
+import { CheckCircle2, Loader2 } from "lucide-react"
 
 interface BookingDetailModalProps {
   open: boolean
@@ -16,6 +20,39 @@ interface BookingDetailModalProps {
 }
 
 export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: BookingDetailModalProps) {
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
+  const [isLoadingPayment, setIsLoadingPayment] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  const hasRemainingAmount = booking && booking.remainingAmount > 0
+
+  useEffect(() => {
+    if (open && booking && hasRemainingAmount) {
+      setIsLoadingPayment(true)
+      setPaymentError(null)
+
+      bookingManagementApi
+        .getPayOSPaymentLink({ bookingId: booking.bookingId })
+        .then((response) => {
+          if (response.isSuccess && response.data.paymentUrl) {
+            setPaymentUrl(response.data.paymentUrl)
+          } else {
+            setPaymentError("Không thể tạo link thanh toán")
+          }
+        })
+        .catch((error) => {
+          console.error("[v0] Error fetching payment link:", error)
+          setPaymentError("Lỗi khi tạo link thanh toán")
+        })
+        .finally(() => {
+          setIsLoadingPayment(false)
+        })
+    } else {
+      setPaymentUrl(null)
+      setPaymentError(null)
+    }
+  }, [open, booking, hasRemainingAmount])
+
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,7 +91,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-6xl max-h-[90vh] p-0">
+      <DialogContent className="min-w-5xl max-h-[90vh] p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <div className="flex items-center justify-between">
             <div>
@@ -242,132 +279,184 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
               </div>
 
               <div className="space-y-6">
-                <div className="sticky top-0">
-                  <h3 className="text-sm font-semibold text-slate-900 mb-3">Tổng hợp thanh toán</h3>
-                  <div className="bg-slate-50 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Tổng tiền phòng</span>
-                      <span className="font-medium text-slate-900">
-                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                          booking.subTotal,
-                        )}
-                      </span>
-                    </div>
-                    {booking.taxAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Thuế</span>
-                        <span className="font-medium text-slate-900">
-                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                            booking.taxAmount,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {booking.serviceCharge > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Phí dịch vụ</span>
-                        <span className="font-medium text-slate-900">
-                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                            booking.serviceCharge,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between text-base font-bold">
-                      <span className="text-slate-900">Tổng cộng</span>
-                      <span className="text-[#8C68E6]">
-                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                          booking.totalAmount,
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Đã thanh toán</span>
-                      <span className="font-medium text-green-600">
-                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                          booking.paidAmount,
-                        )}
-                      </span>
-                    </div>
-                    {booking.remainingAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Còn lại</span>
-                        <span className="font-medium text-red-600">
-                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                            booking.remainingAmount,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {booking.paymentHistory && booking.paymentHistory.length > 0 && (
+                <div className="sticky top-0 space-y-6">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Lịch sử thanh toán</h3>
-                    <div className="space-y-2">
-                      {booking.paymentHistory.map((payment) => (
-                        <div key={payment.transactionId} className="bg-slate-50 rounded-lg p-3 text-xs">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-slate-900 text-xs truncate">
-                              {payment.transactionCode}
-                            </span>
-                            {getStatusBadge(payment.status)}
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Tổng hợp thanh toán</h3>
+                    <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600">Tổng tiền phòng</span>
+                        <span className="font-medium text-slate-900">
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                            booking.subTotal,
+                          )}
+                        </span>
+                      </div>
+                      {booking.taxAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Thuế</span>
+                          <span className="font-medium text-slate-900">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                              booking.taxAmount,
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {booking.serviceCharge > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Phí dịch vụ</span>
+                          <span className="font-medium text-slate-900">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                              booking.serviceCharge,
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between text-base font-bold">
+                        <span className="text-slate-900">Tổng cộng</span>
+                        <span className="text-[#8C68E6]">
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                            booking.totalAmount,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-600">Đã thanh toán</span>
+                        <span className="font-medium text-green-600">
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                            booking.paidAmount,
+                          )}
+                        </span>
+                      </div>
+                      {booking.remainingAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Còn lại</span>
+                          <span className="font-medium text-red-600">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                              booking.remainingAmount,
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {hasRemainingAmount ? (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-3">Thanh toán</h3>
+                      <div className="bg-gradient-to-br from-[#8C68E6]/5 to-[#D4A574]/5 rounded-lg p-4 border border-[#8C68E6]/20">
+                        {isLoadingPayment ? (
+                          <div className="flex flex-col items-center justify-center py-8">
+                            <Loader2 className="w-8 h-8 text-[#8C68E6] animate-spin mb-2" />
+                            <p className="text-sm text-slate-600">Đang tạo mã QR...</p>
                           </div>
-                          <div className="space-y-1 text-slate-600">
-                            <div>
-                              <span className="text-slate-500">Số tiền:</span>{" "}
-                              <span className="font-medium">
-                                {new Intl.NumberFormat("vi-VN").format(payment.amount)}đ
+                        ) : paymentError ? (
+                          <div className="text-center py-4">
+                            <p className="text-sm text-red-600">{paymentError}</p>
+                          </div>
+                        ) : paymentUrl ? (
+                          <div className="flex flex-col items-center">
+                            <div className="bg-white p-4 rounded-lg mb-3 shadow-sm">
+                              <QRCodeSVG value={paymentUrl} size={180} level="H" includeMargin />
+                            </div>
+                            <p className="text-xs text-slate-600 text-center mb-2">Quét mã QR để thanh toán</p>
+                            <p className="text-sm font-semibold text-[#8C68E6] text-center">
+                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                                booking.remainingAmount,
+                              )}
+                            </p>
+                            <a
+                              href={paymentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-3 text-xs text-[#8C68E6] hover:text-[#7552cc] underline"
+                            >
+                              Hoặc nhấn để mở link thanh toán
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : booking.remainingAmount === 0 && booking.paidAmount > 0 ? (
+                    <div>
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-900">Đã thanh toán đầy đủ</p>
+                            <p className="text-xs text-green-700 mt-1">Booking này đã được thanh toán hoàn tất</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {booking.paymentHistory && booking.paymentHistory.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-3">Lịch sử thanh toán</h3>
+                      <div className="space-y-2">
+                        {booking.paymentHistory.map((payment) => (
+                          <div key={payment.transactionId} className="bg-slate-50 rounded-lg p-3 text-xs">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-slate-900 text-xs truncate">
+                                {payment.transactionCode}
+                              </span>
+                              {getStatusBadge(payment.status)}
+                            </div>
+                            <div className="space-y-1 text-slate-600">
+                              <div>
+                                <span className="text-slate-500">Số tiền:</span>{" "}
+                                <span className="font-medium">
+                                  {new Intl.NumberFormat("vi-VN").format(payment.amount)}đ
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">PT:</span> {payment.paymentMethod}
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Loại:</span> {payment.transactionType}
+                              </div>
+                            </div>
+                            <div className="text-slate-500 mt-1 text-xs">
+                              {payment.processedBy} -{" "}
+                              {format(new Date(payment.processedAt), "dd/MM/yyyy HH:mm", { locale: vi })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {booking.bookingHistory && booking.bookingHistory.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-900 mb-3">Lịch sử thay đổi</h3>
+                      <div className="space-y-2">
+                        {booking.bookingHistory.map((history, index) => (
+                          <div key={index} className="bg-slate-50 rounded-lg p-3 text-xs">
+                            <div className="flex items-start justify-between mb-1 gap-2">
+                              <span className="font-medium text-slate-900 text-xs">{history.changeType}</span>
+                              <span className="text-slate-500 text-xs whitespace-nowrap">
+                                {format(new Date(history.changedAt), "dd/MM HH:mm", { locale: vi })}
                               </span>
                             </div>
-                            <div>
-                              <span className="text-slate-500">PT:</span> {payment.paymentMethod}
-                            </div>
-                            <div>
-                              <span className="text-slate-500">Loại:</span> {payment.transactionType}
-                            </div>
+                            {(history.oldValue || history.newValue) && (
+                              <div className="text-slate-600 text-xs">
+                                {history.oldValue && <span className="line-through mr-2">{history.oldValue}</span>}
+                                {history.newValue && (
+                                  <span className="font-medium text-[#8C68E6]">{history.newValue}</span>
+                                )}
+                              </div>
+                            )}
+                            {history.reason && (
+                              <p className="text-slate-500 italic mt-1 text-xs">Lý do: {history.reason}</p>
+                            )}
+                            <p className="text-slate-500 mt-1 text-xs">Bởi: {history.changedBy}</p>
                           </div>
-                          <div className="text-slate-500 mt-1 text-xs">
-                            {payment.processedBy} -{" "}
-                            {format(new Date(payment.processedAt), "dd/MM/yyyy HH:mm", { locale: vi })}
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {booking.bookingHistory && booking.bookingHistory.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Lịch sử thay đổi</h3>
-                    <div className="space-y-2">
-                      {booking.bookingHistory.map((history, index) => (
-                        <div key={index} className="bg-slate-50 rounded-lg p-3 text-xs">
-                          <div className="flex items-start justify-between mb-1 gap-2">
-                            <span className="font-medium text-slate-900 text-xs">{history.changeType}</span>
-                            <span className="text-slate-500 text-xs whitespace-nowrap">
-                              {format(new Date(history.changedAt), "dd/MM HH:mm", { locale: vi })}
-                            </span>
-                          </div>
-                          {(history.oldValue || history.newValue) && (
-                            <div className="text-slate-600 text-xs">
-                              {history.oldValue && <span className="line-through mr-2">{history.oldValue}</span>}
-                              {history.newValue && (
-                                <span className="font-medium text-[#8C68E6]">{history.newValue}</span>
-                              )}
-                            </div>
-                          )}
-                          {history.reason && (
-                            <p className="text-slate-500 italic mt-1 text-xs">Lý do: {history.reason}</p>
-                          )}
-                          <p className="text-slate-500 mt-1 text-xs">Bởi: {history.changedBy}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>

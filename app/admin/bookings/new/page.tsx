@@ -12,11 +12,13 @@ import { Badge } from "@/components/ui/badge"
 import { DatePicker } from "@/components/ui/date-picker"
 import { useSearchCustomer, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
 import { useRoomTypes } from "@/lib/hooks/use-room-type"
+import { bookingManagementApi } from "@/lib/api/bookings"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { CustomerSearchResult, CreateOfflineBookingDto, RoomType } from "@/lib/types/api"
 import { toast } from "@/hooks/use-toast"
 import { storage } from "@/lib/utils/storage"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   Dialog,
   DialogContent,
@@ -30,6 +32,7 @@ const STORAGE_KEY = "new_booking_form"
 
 export default function NewBookingPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(null)
   const [availableDrafts, setAvailableDrafts] = useState<Array<{ id: string; timestamp: number; preview: string }>>([])
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null)
@@ -290,18 +293,34 @@ export default function NewBookingPage() {
         ...formData,
         roomTypes: roomSelections,
       }
-      console.log("Creating booking with data:", bookingData)
       const result = await createBooking.mutateAsync(bookingData)
-      console.log("Create booking result:", result)
 
       if (currentDraftId) {
         storage.removeDraft(STORAGE_KEY, currentDraftId)
       }
 
+      await queryClient.invalidateQueries({ queryKey: ["booking-management"] })
+      await queryClient.invalidateQueries({ queryKey: ["bookings"] })
+
       toast({
         title: "Thành công",
         description: `Đã tạo booking #${result.data.bookingId}`,
       })
+
+      try {
+        const paymentLinkResult = await bookingManagementApi.getPayOSPaymentLink({
+          bookingId: result.data.bookingId,
+        })
+
+        if (paymentLinkResult.isSuccess && paymentLinkResult.data.paymentUrl) {
+          // Open payment QR in new tab
+          window.open(paymentLinkResult.data.paymentUrl, "_blank")
+        }
+      } catch (paymentError) {
+        console.error("Failed to get payment link:", paymentError)
+        // Don't show error to user, just continue
+      }
+
       router.push("/admin/bookings")
     } catch (error: any) {
       toast({

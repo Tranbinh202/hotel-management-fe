@@ -190,9 +190,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Role-based routing
       const userRoles = userData.roles || roles
-      const isAdminOrManager = userRoles.some((role) => role === "Admin" || role === "Manager")
+      const isAdminOrManagerOrReceptionist = userRoles.some(
+        (role) => role === "Admin" || role === "Manager" || role === "Receptionist",
+      )
 
-      if (isAdminOrManager) {
+      if (isAdminOrManagerOrReceptionist) {
         router.push("/admin/dashboard")
       } else {
         router.push("/")

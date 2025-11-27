@@ -13,6 +13,8 @@ import type {
   CancelBookingDto,
   BookingStatisticsFilter,
   BookingStatistics,
+  PayOSPaymentLinkRequest, // Import PayOS types
+  PayOSPaymentLinkResponse,
 } from "@/lib/types/api"
 
 export const bookingsApi = {
@@ -169,4 +171,18 @@ export const bookingManagementApi = {
       {},
     )
   },
+
+  getPayOSPaymentLink: async (
+    data: PayOSPaymentLinkRequest,
+  ): Promise<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }> => {
+    if (!data.bookingId || data.bookingId <= 0) {
+      throw new Error("Mã booking không hợp lệ")
+    }
+
+    return apiClient.post<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }>(
+      "/Transaction/payment/payos/link",
+      data,
+    )
+  },
+  // </CHANGE>
 }

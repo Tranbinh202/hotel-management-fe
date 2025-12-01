@@ -73,7 +73,8 @@ export default function AdminBookingsPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
 
-  const { data: bookingsData, isLoading, refetch } = useBookingManagement(filters)
+  const { data: bookings, isLoading, refetch } = useBookingManagement(filters)
+  const bookingsData = bookings?.pages?.flatMap(page => page.data.items)
   const updateStatus = useUpdateBookingStatus()
   const cancelBooking = useCancelBookingManagement()
   const resendEmail = useResendBookingConfirmation()
@@ -403,8 +404,8 @@ export default function AdminBookingsPage() {
         <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-sm font-medium text-slate-700">
             Danh sách booking
-            {bookingsData?.data?.totalCount !== undefined && (
-              <span className="ml-2 text-slate-500">({bookingsData.data.totalCount} kết quả)</span>
+            {bookings?.pages?.[0]?.data?.totalRecords !== undefined && (
+              <span className="ml-2 text-slate-500">({bookings?.pages?.[0]?.data?.totalRecords} kết quả)</span>
             )}
           </h2>
         </div>
@@ -445,7 +446,7 @@ export default function AdminBookingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {bookingsData?.data?.items?.map((booking: BookingManagementDetails) => (
+              {bookingsData?.map((booking: BookingManagementDetails) => (
                 <div
                   key={booking.bookingId}
                   className="group flex items-center justify-between p-4 bg-white rounded-lg border border-slate-200 hover:border-[#8C68E6]/50 hover:shadow-md transition-all duration-200"
@@ -597,10 +598,10 @@ export default function AdminBookingsPage() {
           )}
 
           {/* Pagination */}
-          {bookingsData?.data && bookingsData.data.totalPages > 1 && (
+          {bookings?.pages?.[0]?.data?.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
               <p className="text-sm text-slate-600">
-                Trang {bookingsData.data.pageIndex} / {bookingsData.data.totalPages} ({bookingsData.data.totalCount} kết
+                Trang {bookings?.pages?.[0]?.data?.pageIndex} / {bookings?.pages?.[0]?.data?.totalPages} ({bookings?.pages?.[0]?.data?.totalRecords} kết
                 quả)
               </p>
               <div className="flex items-center gap-2">
@@ -616,8 +617,8 @@ export default function AdminBookingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPageNumber((prev) => Math.min(bookingsData.data.totalPages, prev + 1))}
-                  disabled={pageNumber === bookingsData.data.totalPages}
+                  onClick={() => setPageNumber((prev) => Math.min(bookings?.pages?.[0]?.data?.totalPages, prev + 1))}
+                  disabled={pageNumber === bookings?.pages?.[0]?.data?.totalPages}
                   className="h-8 text-xs"
                 >
                   Sau

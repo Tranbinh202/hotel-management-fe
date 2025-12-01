@@ -88,7 +88,7 @@ class ApiClient {
 
               // Retry original request with new token
               if (!original.headers) original.headers = new AxiosHeaders()
-              ;(original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
+                ; (original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
 
               return this.instance(original)
             } catch (e) {
@@ -100,6 +100,7 @@ class ApiClient {
               if (typeof window !== "undefined") {
                 localStorage.removeItem("access_token")
                 localStorage.removeItem("refresh_token")
+                localStorage.removeItem("account_id")
                 localStorage.removeItem("user")
                 window.location.href = "/login"
               }
@@ -114,7 +115,7 @@ class ApiClient {
                   return
                 }
                 if (!original.headers) original.headers = new AxiosHeaders()
-                ;(original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
+                  ; (original.headers as AxiosHeaders).set("Authorization", `Bearer ${newToken}`)
                 resolve(this.instance(original))
               })
             })
@@ -140,29 +141,39 @@ class ApiClient {
     }
 
     try {
-      // Try to get accountId from current access token
+      // Try to get accountId from current access token first
       let accountId: number | null = null
       if (accessToken) {
         accountId = getAccountIdFromToken(accessToken)
-        console.log("[v0] Extracted accountId:", accountId)
+        console.log("[v0] Extracted accountId from access token:", accountId)
       }
 
-      let response: any
-
-      if (accountId) {
-        // Use POST endpoint with accountId and refreshToken
-        console.log("[v0] Refreshing token with POST endpoint (accountId:", accountId, ")")
-        response = await refreshClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
-          accountId,
-          refreshToken,
-        })
-      } else {
-        // Fallback to GET endpoint (from cache)
-        console.log("[v0] Refreshing token with GET endpoint (from cache)")
-        response = await refreshClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
-          headers: { Authorization: `Bearer ${refreshToken}` },
-        })
+      // If access token doesn't have accountId, try refresh token
+      if (!accountId) {
+        accountId = getAccountIdFromToken(refreshToken)
+        console.log("[v0] Extracted accountId from refresh token:", accountId)
       }
+
+      // If still no accountId, check localStorage for cached value
+      if (!accountId) {
+        const cachedAccountId = typeof window !== "undefined" ? localStorage.getItem("account_id") : null
+        if (cachedAccountId) {
+          accountId = parseInt(cachedAccountId, 10)
+          console.log("[v0] Using cached accountId from localStorage:", accountId)
+        }
+      }
+
+      if (!accountId) {
+        console.error("[v0] No accountId available - cannot refresh token")
+        throw new Error("Cannot refresh token: accountId not found in access token, refresh token, or localStorage")
+      }
+
+      // Use POST endpoint with accountId and refreshToken
+      console.log("[v0] Refreshing token with POST endpoint (accountId:", accountId, ")")
+      const response = await refreshClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
+        accountId,
+        refreshToken,
+      })
 
       console.log("[v0] Refresh response:", response.data)
 
@@ -183,6 +194,8 @@ class ApiClient {
         if (newRefreshToken) {
           localStorage.setItem("refresh_token", newRefreshToken)
         }
+        // Cache accountId for future refresh attempts
+        localStorage.setItem("account_id", accountId.toString())
       }
 
       console.log("[v0] Token refreshed successfully")

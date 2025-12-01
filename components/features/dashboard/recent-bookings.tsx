@@ -65,7 +65,7 @@ export function RecentBookings({ bookings }: RecentBookingsProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-slate-900">₫{booking.totalPrice.toLocaleString("vi-VN")}</div>
+                  <div className="font-semibold text-slate-900">₫{booking.totalAmount.toLocaleString("vi-VN")}</div>
                   <span
                     className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}
                   >

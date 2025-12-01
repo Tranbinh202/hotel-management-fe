@@ -1,188 +1,191 @@
 import { apiClient } from "./client"
 import type {
-  CheckAvailabilityRequest,
-  CheckAvailabilityResponse,
-  CreateAuthenticatedBookingRequest,
-  CreateGuestBookingRequest,
-  BookingResponse,
-  BookingDetails,
-  BookingManagementFilter,
-  PaginatedResponse,
-  BookingManagementDetails,
-  UpdateBookingStatusDto,
-  CancelBookingDto,
-  BookingStatisticsFilter,
-  BookingStatistics,
-  PayOSPaymentLinkRequest, // Import PayOS types
-  PayOSPaymentLinkResponse,
+    CheckAvailabilityRequest,
+    CheckAvailabilityResponse,
+    CreateAuthenticatedBookingRequest,
+    CreateGuestBookingRequest,
+    BookingResponse,
+    BookingDetails,
+    BookingManagementFilter,
+    PaginatedResponse,
+    BookingManagementDetails,
+    UpdateBookingStatusDto,
+    CancelBookingDto,
+    BookingStatisticsFilter,
+    BookingStatistics,
+    PayOSPaymentLinkRequest, // Import PayOS types
+    PayOSPaymentLinkResponse,
 } from "@/lib/types/api"
 
 export const bookingsApi = {
-  // Check room availability (public endpoint)
-  checkAvailability: async (data: CheckAvailabilityRequest): Promise<CheckAvailabilityResponse> => {
-    return apiClient.post<CheckAvailabilityResponse>("/Booking/check-availability", data)
-  },
 
-  // Create booking for authenticated user
-  create: async (data: CreateAuthenticatedBookingRequest): Promise<BookingResponse> => {
-    return apiClient.post<BookingResponse>("/Booking", data)
-  },
+    // Check room availability (public endpoint)
+    checkAvailability: async (data: CheckAvailabilityRequest): Promise<CheckAvailabilityResponse> => {
+        return apiClient.post<CheckAvailabilityResponse>("/Booking/check-availability", data)
+    },
 
-  // Create booking for guest (no authentication required)
-  createByGuest: async (data: CreateGuestBookingRequest): Promise<BookingResponse> => {
-    return apiClient.post<BookingResponse>("/Booking/guest", data)
-  },
+    // Create booking for authenticated user
+    create: async (data: CreateAuthenticatedBookingRequest): Promise<BookingResponse> => {
+        return apiClient.post<BookingResponse>("/Booking", data)
+    },
 
-  getByIdWithKey: async (
-    id: number,
-    key: string,
-  ): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
-    return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(
-      `/Booking/${id}/verify?key=${encodeURIComponent(key)}`,
-    )
-  },
+    // Create booking for guest (no authentication required)
+    createByGuest: async (data: CreateGuestBookingRequest): Promise<BookingResponse> => {
+        return apiClient.post<BookingResponse>("/Booking/guest", data)
+    },
 
-  // Get booking by ID
-  getById: async (id: number): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
-    return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(`/Booking/${id}`)
-  },
+    getByIdWithKey: async (
+        id: number,
+        key: string,
+    ): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
+        return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(
+            `/Booking/${id}/verify?key=${encodeURIComponent(key)}`,
+        )
+    },
 
-  // Get all my bookings (authenticated)
-  getMyBookings: async (): Promise<{ isSuccess: boolean; data: BookingDetails[]; message: string }> => {
-    return apiClient.get<{ isSuccess: boolean; data: BookingDetails[]; message: string }>("/Booking/my-bookings")
-  },
+    // Get booking by ID
+    getById: async (id: number): Promise<{ isSuccess: boolean; data: BookingDetails; message: string }> => {
+        return apiClient.get<{ isSuccess: boolean; data: BookingDetails; message: string }>(`/Booking/${id}`)
+    },
 
-  // Cancel booking
-  cancel: async (id: number): Promise<{ isSuccess: boolean; message: string }> => {
-    return apiClient.delete<{ isSuccess: boolean; message: string }>(`/Booking/${id}`)
-  },
+    // Get all my bookings (authenticated)
+    getMyBookings: async (): Promise<{ isSuccess: boolean; data: BookingDetails[]; message: string }> => {
+        return apiClient.get<{ isSuccess: boolean; data: BookingDetails[]; message: string }>("/Booking/my-bookings")
+    },
 
-  // Confirm payment (webhook endpoint - for reference)
-  confirmPayment: async (data: {
-    bookingId: number
-    orderCode: string
-    status: string
-  }): Promise<{ isSuccess: boolean; message: string }> => {
-    return apiClient.post<{ isSuccess: boolean; message: string }>("/Booking/confirm-payment", data)
-  },
+    // Cancel booking
+    cancel: async (id: number): Promise<{ isSuccess: boolean; message: string }> => {
+        return apiClient.delete<{ isSuccess: boolean; message: string }>(`/Booking/${id}`)
+    },
+
+    // Confirm payment (webhook endpoint - for reference)
+    confirmPayment: async (data: {
+        bookingId: number
+        orderCode: string
+        status: string
+    }): Promise<{ isSuccess: boolean; message: string }> => {
+        return apiClient.post<{ isSuccess: boolean; message: string }>("/Booking/confirm-payment", data)
+    },
 }
 
 // Legacy exports for backward compatibility
 export type BookingRequest = CreateGuestBookingRequest
+
 export async function createBooking(data: BookingRequest): Promise<BookingResponse> {
-  return bookingsApi.createByGuest(data)
+    return bookingsApi.createByGuest(data)
 }
 
 // Booking management APIs
 export const bookingManagementApi = {
-  // Get all bookings with advanced filters and pagination
-  getBookings: async (
-    filters: BookingManagementFilter,
-  ): Promise<{ isSuccess: boolean; data: PaginatedResponse<BookingManagementDetails> }> => {
-    const params = new URLSearchParams()
+    // Get all bookings with advanced filters and pagination
+    getBookings: async (
+        filters: BookingManagementFilter,
+    ): Promise<{ isSuccess: boolean; data: PaginatedResponse<BookingManagementDetails>, hasNextPage: boolean }> => {
+        const params = new URLSearchParams()
 
-    const pageNumber = filters.pageNumber && filters.pageNumber > 0 ? filters.pageNumber : 1
-    const pageSize = filters.pageSize && filters.pageSize > 0 && filters.pageSize <= 100 ? filters.pageSize : 20
+        const pageNumber = filters.pageNumber && filters.pageNumber > 0 ? filters.pageNumber : 1
+        const pageSize = filters.pageSize && filters.pageSize > 0 && filters.pageSize <= 100 ? filters.pageSize : 20
 
-    params.append("pageNumber", String(pageNumber))
-    params.append("pageSize", String(pageSize))
+        params.append("pageNumber", String(pageNumber))
+        params.append("pageSize", String(pageSize))
 
-    if (filters.fromDate) params.append("fromDate", filters.fromDate)
-    if (filters.toDate) params.append("toDate", filters.toDate)
-    if (filters.paymentStatus) params.append("paymentStatus", filters.paymentStatus)
-    if (filters.bookingType) params.append("bookingType", filters.bookingType)
-    if (filters.customerName) params.append("customerName", filters.customerName.trim())
-    if (filters.phoneNumber) params.append("phoneNumber", filters.phoneNumber.trim())
-    if (filters.email) params.append("email", filters.email.trim())
-    if (filters.depositStatus) params.append("depositStatus", filters.depositStatus)
-    if (filters.sortBy) params.append("sortBy", filters.sortBy)
-    if (filters.isDescending !== undefined) params.append("isDescending", String(filters.isDescending))
+        if (filters.fromDate) params.append("fromDate", filters.fromDate)
+        if (filters.toDate) params.append("toDate", filters.toDate)
+        if (filters.paymentStatus) params.append("paymentStatus", filters.paymentStatus)
+        if (filters.bookingType) params.append("bookingType", filters.bookingType)
+        if (filters.customerName) params.append("customerName", filters.customerName.trim())
+        if (filters.phoneNumber) params.append("phoneNumber", filters.phoneNumber.trim())
+        if (filters.email) params.append("email", filters.email.trim())
+        if (filters.depositStatus) params.append("depositStatus", filters.depositStatus)
+        if (filters.sortBy) params.append("sortBy", filters.sortBy)
+        if (filters.isDescending !== undefined) params.append("isDescending", String(filters.isDescending))
 
-    return apiClient.get<{ isSuccess: boolean; data: PaginatedResponse<BookingManagementDetails> }>(
-      `/BookingManagement/bookings?${params.toString()}`,
-    )
-  },
+        return apiClient.get<{ isSuccess: boolean; data: PaginatedResponse<BookingManagementDetails>, hasNextPage: boolean }>(
+            `/BookingManagement/bookings`,
+            { params }
+        )
+    },
 
-  // Get booking detail
-  getBookingDetail: async (
-    id: number,
-  ): Promise<{ isSuccess: boolean; data: BookingManagementDetails; message: string }> => {
-    if (!id || id <= 0) {
-      throw new Error("Mã booking không hợp lệ")
-    }
+    // Get booking detail
+    getBookingDetail: async (
+        id: number,
+    ): Promise<{ isSuccess: boolean; data: BookingManagementDetails; message: string }> => {
+        if (!id || id <= 0) {
+            throw new Error("Mã booking không hợp lệ")
+        }
 
-    return apiClient.get<{ isSuccess: boolean; data: BookingManagementDetails; message: string }>(
-      `/BookingManagement/booking/${id}/detail`,
-    )
-  },
+        return apiClient.get<{ isSuccess: boolean; data: BookingManagementDetails; message: string }>(
+            `/BookingManagement/booking/${id}/detail`,
+        )
+    },
 
-  // Update booking status
-  updateBookingStatus: async (
-    id: number,
-    data: UpdateBookingStatusDto,
-  ): Promise<{ isSuccess: boolean; message: string }> => {
-    if (!id || id <= 0) {
-      throw new Error("Mã booking không hợp lệ")
-    }
+    // Update booking status
+    updateBookingStatus: async (
+        id: number,
+        data: UpdateBookingStatusDto,
+    ): Promise<{ isSuccess: boolean; message: string }> => {
+        if (!id || id <= 0) {
+            throw new Error("Mã booking không hợp lệ")
+        }
 
-    if (!data.status) {
-      throw new Error("Vui lòng chọn trạng thái")
-    }
+        if (!data.status) {
+            throw new Error("Vui lòng chọn trạng thái")
+        }
 
-    return apiClient.put<{ isSuccess: boolean; message: string }>(`/BookingManagement/booking/${id}/status`, data)
-  },
+        return apiClient.put<{ isSuccess: boolean; message: string }>(`/BookingManagement/booking/${id}/status`, data)
+    },
 
-  // Cancel booking
-  cancelBooking: async (id: number, data: CancelBookingDto): Promise<{ isSuccess: boolean; message: string }> => {
-    if (!id || id <= 0) {
-      throw new Error("Mã booking không hợp lệ")
-    }
+    // Cancel booking
+    cancelBooking: async (id: number, data: CancelBookingDto): Promise<{ isSuccess: boolean; message: string }> => {
+        if (!id || id <= 0) {
+            throw new Error("Mã booking không hợp lệ")
+        }
 
-    if (!data.reason || data.reason.trim().length === 0) {
-      throw new Error("Vui lòng nhập lý do hủy booking")
-    }
+        if (!data.reason || data.reason.trim().length === 0) {
+            throw new Error("Vui lòng nhập lý do hủy booking")
+        }
 
-    return apiClient.post<{ isSuccess: boolean; message: string }>(`/BookingManagement/booking/${id}/cancel`, data)
-  },
+        return apiClient.post<{ isSuccess: boolean; message: string }>(`/BookingManagement/booking/${id}/cancel`, data)
+    },
 
-  // Get booking statistics
-  getStatistics: async (
-    filters: BookingStatisticsFilter,
-  ): Promise<{ isSuccess: boolean; data: BookingStatistics[] | BookingStatistics }> => {
-    const params = new URLSearchParams()
+    // Get booking statistics
+    getStatistics: async (
+        filters: BookingStatisticsFilter,
+    ): Promise<{ isSuccess: boolean; data: BookingStatistics[] | BookingStatistics }> => {
+        const params = new URLSearchParams()
 
-    params.append("fromDate", filters.fromDate)
-    params.append("toDate", filters.toDate)
-    if (filters.groupBy) params.append("groupBy", filters.groupBy)
+        params.append("fromDate", filters.fromDate)
+        params.append("toDate", filters.toDate)
+        if (filters.groupBy) params.append("groupBy", filters.groupBy)
 
-    return apiClient.get<{ isSuccess: boolean; data: BookingStatistics[] | BookingStatistics }>(
-      `/BookingManagement/statistics?${params.toString()}`,
-    )
-  },
+        return apiClient.get<{ isSuccess: boolean; data: BookingStatistics[] | BookingStatistics }>(
+            `/BookingManagement/statistics?${params.toString()}`,
+        )
+    },
 
-  // Resend confirmation email
-  resendConfirmationEmail: async (id: number): Promise<{ isSuccess: boolean; message: string }> => {
-    if (!id || id <= 0) {
-      throw new Error("Mã booking không hợp lệ")
-    }
+    // Resend confirmation email
+    resendConfirmationEmail: async (id: number): Promise<{ isSuccess: boolean; message: string }> => {
+        if (!id || id <= 0) {
+            throw new Error("Mã booking không hợp lệ")
+        }
 
-    return apiClient.post<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/booking/${id}/resend-confirmation`,
-      {},
-    )
-  },
+        return apiClient.post<{ isSuccess: boolean; message: string }>(
+            `/BookingManagement/booking/${id}/resend-confirmation`,
+            {},
+        )
+    },
 
-  getPayOSPaymentLink: async (
-    data: PayOSPaymentLinkRequest,
-  ): Promise<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }> => {
-    if (!data.bookingId || data.bookingId <= 0) {
-      throw new Error("Mã booking không hợp lệ")
-    }
+    getPayOSPaymentLink: async (
+        data: PayOSPaymentLinkRequest,
+    ): Promise<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }> => {
+        if (!data.bookingId || data.bookingId <= 0) {
+            throw new Error("Mã booking không hợp lệ")
+        }
 
-    return apiClient.post<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }>(
-      "/Transaction/payment/payos/link",
-      data,
-    )
-  },
-  // </CHANGE>
+        return apiClient.post<{ isSuccess: boolean; data: PayOSPaymentLinkResponse; message: string }>(
+            "/Transaction/payment/payos/link",
+            data,
+        )
+    },
+    // </CHANGE>
 }

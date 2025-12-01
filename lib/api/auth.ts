@@ -1,5 +1,6 @@
 import { apiClient } from "./client"
 import type { LoginDto, RegisterDto, AuthResponse, ApiResponse } from "@/lib/types/api"
+import { getAccountIdFromToken } from "@/lib/utils/token"
 
 export const authApi = {
   login: async (data: LoginDto): Promise<ApiResponse<AuthResponse>> => {
@@ -10,6 +11,12 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data.token) {
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response
@@ -31,6 +38,7 @@ export const authApi = {
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
+        localStorage.removeItem("account_id")
         localStorage.removeItem("user")
       }
     }
@@ -53,6 +61,8 @@ export const authApi = {
         localStorage.setItem("refresh_token", response.data.refreshToken)
         console.log("[v0] New refresh token saved")
       }
+      // Cache accountId for future refresh attempts
+      localStorage.setItem("account_id", accountId.toString())
     }
 
     return response
@@ -78,6 +88,12 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response
@@ -154,6 +170,12 @@ export const authApi = {
       console.log("[v0] Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response
@@ -168,6 +190,12 @@ export const authApi = {
       console.log("Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response

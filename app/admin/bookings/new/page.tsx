@@ -198,6 +198,29 @@ export default function NewBookingPage() {
     }, 0)
   }
 
+  const getStartOfToday = () => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return today
+  }
+
+  /**
+   * Checks if a given date string is valid and later than the current time
+   * @param dateTimeString - a date string in the format "YYYY-MM-DDTHH:mm:ssZ"
+   * @returns true if the date string is valid and later than the current time, false otherwise
+   */
+  const isDateTimeValid = (dateTimeString: string): boolean => {
+    if (!dateTimeString) return true
+    const selectedDate = new Date(dateTimeString)
+    const now = new Date()
+    
+    // Compare only dates, ignoring time
+    selectedDate.setHours(0, 0, 0, 0)
+    now.setHours(0, 0, 0, 0)
+    
+    return selectedDate >= now
+  }
+
   const totalNights =
     formData.checkInDate && formData.checkOutDate
       ? Math.ceil(
@@ -620,34 +643,52 @@ export default function NewBookingPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">Ngày nhận phòng</Label>
+                      <Label className="text-base font-semibold">Ngày nhận phòng</Label>
                       <DatePicker
                         value={formData.checkInDate ? new Date(formData.checkInDate) : undefined}
                         onChange={(date) => {
                           if (date) {
+                            const isToday = date.toDateString() === new Date().toDateString()
+                            if (isToday) {
+                              const now = new Date()
+                              date.setHours(now.getHours(), now.getMinutes(), 0, 0)
+                            } else {
+                              date.setHours(14, 0, 0, 0)
+                            }
                             setFormData({ ...formData, checkInDate: date.toISOString() })
                           } else {
                             setFormData({ ...formData, checkInDate: "" })
                           }
                         }}
                         placeholder="Chọn ngày nhận phòng"
-                        minDate={new Date()}
+                        minDate={getStartOfToday()}
                         maxDate={formData.checkOutDate ? new Date(formData.checkOutDate) : undefined}
+                        className="h-12"
                       />
+                      {formData.checkInDate && !isDateTimeValid(formData.checkInDate) && (
+                        <p className="text-xs text-red-500">Không thể chọn thời gian trong quá khứ</p>
+                      )}
                     </div>
+
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">Ngày trả phòng</Label>
+                      <Label className="text-base font-semibold">Ngày trả phòng</Label>
                       <DatePicker
                         value={formData.checkOutDate ? new Date(formData.checkOutDate) : undefined}
                         onChange={(date) => {
                           if (date) {
+                            date.setHours(12, 0, 0, 0)
                             setFormData({ ...formData, checkOutDate: date.toISOString() })
                           } else {
                             setFormData({ ...formData, checkOutDate: "" })
                           }
                         }}
                         placeholder="Chọn ngày trả phòng"
-                        minDate={formData.checkInDate ? new Date(formData.checkInDate) : new Date()}
+                        minDate={
+                          formData.checkInDate
+                            ? new Date(new Date(formData.checkInDate).getTime())
+                            : getStartOfToday()
+                        }
+                        className="h-12"
                       />
                     </div>
                   </div>

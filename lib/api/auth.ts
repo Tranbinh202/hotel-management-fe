@@ -37,21 +37,21 @@ export const authApi = {
   },
 
   refreshToken: async (accountId: number, refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
-    console.log(" authApi.refreshToken called with accountId:", accountId)
+    console.log("[v0] authApi.refreshToken called with accountId:", accountId)
 
     const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
       accountId,
       refreshToken,
     })
 
-    console.log(" authApi.refreshToken response:", response)
+    console.log("[v0] authApi.refreshToken response:", response)
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       // Update refresh token if a new one is provided
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken)
-        console.log(" New refresh token saved")
+        console.log("[v0] New refresh token saved")
       }
     }
 
@@ -61,7 +61,7 @@ export const authApi = {
   refreshTokenFromCache: async (): Promise<ApiResponse<AuthResponse>> => {
     const response = await apiClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token")
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken)
@@ -140,8 +140,22 @@ export const authApi = {
   },
 
   loginGoogle: async (): Promise<ApiResponse<{ url: string }>> => {
-    const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/login-google")
+    const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/google-login-url")
     console.log("Google login API response:", response)
+    return response
+  },
+
+  exchangeGoogleCode: async (code: string): Promise<ApiResponse<AuthResponse>> => {
+    console.log("[v0] Exchanging Google authorization code:", code)
+    const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/exchange-google", { code })
+    console.log("[v0] Exchange response:", response)
+
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
+      console.log("[v0] Saving tokens to localStorage")
+      localStorage.setItem("access_token", response.data.token)
+      localStorage.setItem("refresh_token", response.data.refreshToken)
+    }
+
     return response
   },
 
@@ -150,7 +164,7 @@ export const authApi = {
     const response = await apiClient.get<ApiResponse<AuthResponse>>(`/Authentication/callback-google?code=${code}`)
     console.log("Google callback response:", response)
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       console.log("Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)

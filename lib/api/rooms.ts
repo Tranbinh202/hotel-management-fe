@@ -1,95 +1,89 @@
-import { apiClient } from "./client";
-import type {
-  CreateRoomDto,
-  UpdateRoomDto,
-  PaginatedResponse,
-  ApiResponse,
-  IPaginationParams,
-} from "@/lib/types/api";
+import { apiClient, publicApiClient } from "./client"
+import type { CreateRoomDto, UpdateRoomDto, PaginatedResponse, ApiResponse, IPaginationParams } from "@/lib/types/api"
 
 export interface GetAllRoomsParams extends IPaginationParams {
-  NumberOfGuests: number;
-  MinPrice: number;
-  MaxPrice: number;
-  BedType: string;
-  MinRoomSize: number;
-  CheckInDate: string;
-  CheckOutDate: string;
-  OnlyActive: boolean;
+  NumberOfGuests?: number
+  MinPrice?: number
+  MaxPrice?: number
+  BedType?: string
+  MinRoomSize?: number
+  CheckInDate?: string
+  CheckOutDate?: string
+  OnlyActive?: boolean
+  Search?: string
+  SortBy?: string
+  SortDesc?: boolean
 }
 
 export interface RoomTypeImage {
-  mediaId: number;
-  filePath: string;
-  description: string;
-  referenceTable: string;
-  referenceKey: string;
-  isActive: boolean;
+  mediaId: number
+  filePath: string
+  description: string
+  referenceTable: string
+  referenceKey: string
+  isActive: boolean
 }
 
 export interface Room {
-  roomTypeId: number;
-  typeName: string;
-  typeCode: string;
-  description: string;
-  basePriceNight: number;
-  maxOccupancy: number;
-  roomSize: number;
-  numberOfBeds: number;
-  bedType: string;
-  isActive: boolean;
-  images: RoomTypeImage[];
-  amenities: string[];
-  availableRoomCount: number | null;
-  totalRoomCount: number;
+  roomId: number
+  roomNumber: string
+  roomTypeId: number
+  floorNumber: number
+  roomStatus: string
+  notes: string | null
+  isActive: boolean
+  roomType: {
+    roomTypeId: number
+    typeName: string
+    typeCode: string
+    description: string
+    basePriceNight: number
+    maxOccupancy: number
+    roomSize: number
+    numberOfBeds: number
+    bedType: string
+    isActive: boolean
+    images: RoomTypeImage[]
+  }
 }
 
 export interface GetRoomParams {
-  id: number;
-  checkInDate?: string;
-  checkOutDate?: string;
+  id: number
+  checkInDate?: string
+  checkOutDate?: string
 }
 
 export const roomsApi = {
-  getAll: async (
-    params: Partial<GetAllRoomsParams>
-  ): Promise<PaginatedResponse<Room>> => {
-    const res = await apiClient.get<ApiResponse<PaginatedResponse<Room>>>(
-      "/room/search",
-      { params }
-    );
-    return res.data;
+  getAll: async (params: Partial<GetAllRoomsParams> = {}): Promise<PaginatedResponse<Room>> => {
+    const res = await publicApiClient.get<ApiResponse<PaginatedResponse<Room>>>("/Room/search", { params })
+    return res.data.data
   },
 
   getById: async (params: GetRoomParams): Promise<Room> => {
-    const { id, ...rest } = params;
-    const res = await apiClient.get<ApiResponse<Room>>(`/room/search/${id}`, {
+    const { id, ...rest } = params
+    const res = await publicApiClient.get<ApiResponse<Room>>(`/Room/${id}`, {
       params: rest,
-    });
-    return res.data;
-  },
-
-  getAvailable: async (checkIn: string, checkOut: string): Promise<Room[]> => {
-    return apiClient.get<Room[]>("/rooms/available", {
-      params: { checkIn, checkOut },
-    });
+    })
+    return res.data.data
   },
 
   create: async (data: CreateRoomDto): Promise<Room> => {
-    return apiClient.post<Room>("/rooms", data);
+    const res = await apiClient.post<ApiResponse<Room>>("/Room", data)
+    return res.data
   },
 
   update: async (data: UpdateRoomDto): Promise<Room> => {
-    const { roomId, ...updateData } = data;
-    return apiClient.put<Room>(`/rooms/${roomId}`, updateData);
+    const { roomId, ...updateData } = data
+    const res = await apiClient.put<ApiResponse<Room>>(`/Room/${roomId}`, updateData)
+    return res.data
   },
 
   delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/rooms/${id}`);
+    await apiClient.delete(`/Room/${id}`)
   },
 
   toggleAvailability: async (id: number): Promise<Room> => {
-    return apiClient.patch<Room>(`/rooms/${id}/toggle-availability`);
+    const res = await apiClient.patch<ApiResponse<Room>>(`/Room/${id}/toggle-availability`)
+    return res.data
   },
-  
-};
+}

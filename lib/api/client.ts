@@ -130,12 +130,12 @@ class ApiClient {
     const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null
     const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null
 
-    console.log(" handleTokenRefresh called")
-    console.log(" Has refresh token:", !!refreshToken)
-    console.log(" Has access token:", !!accessToken)
+    console.log("[v0] handleTokenRefresh called")
+    console.log("[v0] Has refresh token:", !!refreshToken)
+    console.log("[v0] Has access token:", !!accessToken)
 
     if (!refreshToken) {
-      console.error(" No refresh token available")
+      console.error("[v0] No refresh token available")
       return null
     }
 
@@ -144,33 +144,34 @@ class ApiClient {
       let accountId: number | null = null
       if (accessToken) {
         accountId = getAccountIdFromToken(accessToken)
-        console.log(" Extracted accountId:", accountId)
+        console.log("[v0] Extracted accountId:", accountId)
       }
 
       let response: any
 
       if (accountId) {
         // Use POST endpoint with accountId and refreshToken
-        console.log(" Refreshing token with POST endpoint (accountId:", accountId, ")")
+        console.log("[v0] Refreshing token with POST endpoint (accountId:", accountId, ")")
         response = await refreshClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
           accountId,
           refreshToken,
         })
       } else {
         // Fallback to GET endpoint (from cache)
-        console.log(" Refreshing token with GET endpoint (from cache)")
+        console.log("[v0] Refreshing token with GET endpoint (from cache)")
         response = await refreshClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
           headers: { Authorization: `Bearer ${refreshToken}` },
         })
       }
 
-      console.log(" Refresh response:", response.data)
+      console.log("[v0] Refresh response:", response.data)
 
-      const newAccessToken = response.data?.data?.token || response.data?.token
-      const newRefreshToken = response.data?.data?.refreshToken || response.data?.refreshToken
+      const apiResponse = response.data as ApiResponse<AuthResponse>
+      const newAccessToken = apiResponse.isSuccess ? apiResponse.data?.token : null
+      const newRefreshToken = apiResponse.isSuccess ? apiResponse.data?.refreshToken : null
 
-      console.log(" New access token received:", !!newAccessToken)
-      console.log(" New refresh token received:", !!newRefreshToken)
+      console.log("[v0] New access token received:", !!newAccessToken)
+      console.log("[v0] New refresh token received:", !!newRefreshToken)
 
       if (!newAccessToken) {
         throw new Error("No access token in refresh response")
@@ -184,11 +185,11 @@ class ApiClient {
         }
       }
 
-      console.log(" Token refreshed successfully")
+      console.log("[v0] Token refreshed successfully")
       return newAccessToken
     } catch (error: any) {
-      console.error(" Token refresh error:", error)
-      console.error(" Error response:", error.response?.data)
+      console.error("[v0] Token refresh error:", error)
+      console.error("[v0] Error response:", error.response?.data)
       throw error
     }
   }
@@ -233,6 +234,32 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+export const publicApiClient = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api",
+  timeout: 10000,
+  headers: { "Content-Type": "application/json" },
+})
+
+// Public API client with error handling but no auth
+publicApiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response) {
+      const data = error.response.data as any
+      return Promise.reject({
+        message: data?.message || "Đã xảy ra lỗi từ máy chủ",
+        code: data?.code,
+        status: error.response.status,
+        errors: data?.errors,
+      })
+    } else if (error.request) {
+      return Promise.reject({ message: "Không thể kết nối đến máy chủ", code: "NETWORK_ERROR" })
+    } else {
+      return Promise.reject({ message: error.message || "Đã xảy ra lỗi không xác định", code: "UNKNOWN_ERROR" })
+    }
+  },
+)
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 5 * 60 * 1000 }, mutations: { retry: 1 } },

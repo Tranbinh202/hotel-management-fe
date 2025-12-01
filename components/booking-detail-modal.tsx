@@ -377,9 +377,9 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                         ) : null}
                       </div>
                     </div>
-                  ) : booking.remainingAmount === 0 && booking.paidAmount > 0 ? (
+                  ) : booking.remainingAmount === 0 && booking.paidAmount > 0 && !booking.cancelledAt ? (
                     <div>
-                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
+                      {/* <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
                         <div className="flex items-center gap-3 mb-2">
                           <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
                           <div>
@@ -387,7 +387,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                             <p className="text-xs text-green-700 mt-1">Booking này đã được thanh toán hoàn tất</p>
                           </div>
                         </div>
-                      </div>
+                      </div> */}
                     </div>
                   ) : null}
 

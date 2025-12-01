@@ -232,13 +232,21 @@ export function useGoogleCallback() {
         const userData = await accountApi.getSummary(0)
         if (userData.isSuccess) {
           console.log("User data fetched:", userData.data)
+
+          if (userData.data.isLocked) {
+            console.log("Account is locked, redirecting to locked page")
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            router.push("/account-locked")
+            return
+          }
+
           localStorage.setItem("user", JSON.stringify(userData.data))
         }
       } catch (error) {
         console.error("Failed to fetch user data after Google login:", error)
       }
 
-      // Redirect to home page
       console.log("Redirecting to home page...")
       setTimeout(() => {
         router.push("/")
@@ -319,6 +327,60 @@ export function useChangePasswordWithOtp() {
         description: error.message || "Mã OTP không hợp lệ hoặc đã hết hạn",
         variant: "destructive",
       })
+    },
+  })
+}
+
+export function useGoogleExchange() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: authApi.exchangeGoogleCode,
+    onSuccess: async (response) => {
+      console.log("[v0] Google exchange success:", response)
+      queryClient.clear()
+      toast({
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn đến với StayHub!",
+      })
+
+      try {
+        console.log("[v0] Fetching user data...")
+        const userData = await accountApi.getSummary(0)
+        if (userData.isSuccess) {
+          console.log("[v0] User data fetched:", userData.data)
+
+          if (userData.data.isLocked) {
+            console.log("[v0] Account is locked, redirecting to locked page")
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            router.push("/account-locked")
+            return
+          }
+
+          localStorage.setItem("user", JSON.stringify(userData.data))
+        }
+      } catch (error) {
+        console.error("[v0] Failed to fetch user data after Google login:", error)
+      }
+
+      console.log("[v0] Redirecting to home page...")
+      setTimeout(() => {
+        router.push("/")
+        router.refresh()
+      }, 1000)
+    },
+    onError: (error: any) => {
+      console.error("[v0] Google exchange error:", error)
+      toast({
+        title: "Đăng nhập thất bại",
+        description: error.message || "Mã xác thực không hợp lệ",
+        variant: "destructive",
+      })
+      setTimeout(() => {
+        router.push("/login")
+      }, 2000)
     },
   })
 }

@@ -12,13 +12,13 @@ export function useRoomTypes(
 ) {
   return useInfiniteQuery({
     queryKey: ["roomTypes", params],
-    queryFn: ({ pageParam }) =>
+    queryFn: ({ pageParam = 1 }) =>
       roomTypesApi.getAll({
         ...params,
         PageIndex: pageParam,
         PageSize: params.PageSize || 10,
       }),
-    initialPageParam: 0,
+    initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       if (lastPage.pageIndex < lastPage.totalPages - 1) {
         return lastPage.pageIndex + 1;

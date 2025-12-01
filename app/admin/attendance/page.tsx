@@ -51,7 +51,7 @@ export default function AttendancePage() {
   })
 
   const { data: employeesData } = useEmployees({
-    PageIndex: 0,
+    PageIndex: 1,
     PageSize: 50,
     Search: "",
     SortBy: "FullName",

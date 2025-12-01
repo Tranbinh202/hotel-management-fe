@@ -34,6 +34,7 @@ export default function RoomTypesManagement() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useRoomTypes({
     Search: debouncedSearchTerm,
     PageSize: 10,
+    PageIndex: 1,
   })
 
   const createMutation = useCreateRoomType()

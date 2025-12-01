@@ -38,7 +38,7 @@ export default function RoomsPage() {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const { data: roomTypesData } = useRoomTypes({ PageSize: 50 })
+  const { data: roomTypesData } = useRoomTypes({ PageSize: 100 })
   const roomTypes = roomTypesData?.pages.flatMap((page) => page.items) ?? []
 
   const {
@@ -81,6 +81,18 @@ export default function RoomsPage() {
       style: "currency",
       currency: "VND",
     }).format(price)
+
+  const handleBookNow = (room: any) => {
+    sessionStorage.setItem(
+      "bookingData",
+      JSON.stringify({
+        roomId: room.roomTypeId,
+        roomType: room.roomType.typeName,
+        price: room.roomType.basePriceNight,
+      }),
+    )
+    router.push("/booking")
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -259,11 +271,10 @@ export default function RoomsPage() {
                                   {room.roomNumber}
                                 </span>
                                 <span
-                                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg ${
-                                    room.roomStatus === "Available"
-                                      ? "bg-green-500 text-white"
-                                      : "bg-gray-500 text-white"
-                                  }`}
+                                  className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg ${room.roomStatus === "Available"
+                                    ? "bg-green-500 text-white"
+                                    : "bg-gray-500 text-white"
+                                    }`}
                                 >
                                   {room.roomStatus === "Available" ? "Còn trống" : "Đã đặt"}
                                 </span>
@@ -272,7 +283,7 @@ export default function RoomsPage() {
 
                             <CardContent className="p-5 space-y-4">
                               <div>
-                                <div className="inline-flex items-center gap-2 px-2 py-1 rounded-md bg-accent/10 text-accent text-xs font-semibold mb-2 border border-accent/20">
+                                <div className="inline-flex items-center gap-2 px-2 py-1.5 rounded-md bg-accent/10 text-accent text-xs font-semibold mb-2 border border-accent/20">
                                   <Home className="w-3 h-3" />
                                   {room.roomType.typeName}
                                 </div>
@@ -309,11 +320,7 @@ export default function RoomsPage() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     e.preventDefault()
-                                    router.push(
-                                      `/booking?roomId=${room.roomTypeId}` +
-                                        `&roomType=${encodeURIComponent(room.roomType.typeName)}` +
-                                        `&price=${room.roomType.basePriceNight}`,
-                                    )
+                                    handleBookNow(room)
                                   }}
                                 >
                                   {room.roomStatus === "Available" ? "Đặt ngay" : "Đã đặt"}

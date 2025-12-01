@@ -5,11 +5,11 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useRegister } from "@/lib/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { useRegister } from "@/lib/hooks"
 import { Sparkles, UserPlus, Shield, CheckCircle2 } from "lucide-react"
 
 export default function RegisterPage() {
@@ -109,8 +109,12 @@ export default function RegisterPage() {
         phoneNumber: formData.phoneNumber,
       }
       console.log("Form submitted:", registrationData)
-      // Handle registration logic here
-      register(registrationData)
+      register(registrationData, {
+        onSuccess: () => {
+          sessionStorage.setItem("registrationEmail", formData.email)
+          router.push("/registration-success")
+        },
+      })
     }
   }
 

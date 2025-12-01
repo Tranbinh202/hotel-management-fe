@@ -40,8 +40,11 @@ export function useRegister() {
         title: "Đăng ký thành công",
         description: "Vui lòng kiểm tra email để kích hoạt tài khoản",
       })
-      // Redirect to registration success page with email
-      router.push(`/registration-success?email=${encodeURIComponent(response.data.email)}`)
+      const email = response.data?.email || response.email
+      if (email) {
+        sessionStorage.setItem("registrationEmail", email)
+      }
+      router.push("/registration-success")
     },
     onError: (error: any) => {
       toast({

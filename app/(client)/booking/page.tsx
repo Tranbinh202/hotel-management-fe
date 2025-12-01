@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
@@ -57,36 +57,37 @@ const amenityIcons: Record<string, any> = {
   minibar: Coffee,
 }
 
-export default function BookingPage() {
+function BookingPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuth()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [room, setRoom] = useState<Room | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
 
-  const roomId = Number.parseInt(searchParams.get("roomId") || "0")
-  const roomType = searchParams.get("roomType") || ""
-  const pricePerNight = Number.parseInt(searchParams.get("price") || "0")
+  const [bookingData, setBookingData] = useState<{
+    roomId: number
+    roomType: string
+    pricePerNight: number
+  } | null>(null)
 
   useEffect(() => {
-    const fetchRoomDetails = async () => {
-      if (!roomId) return
-
-      try {
-        setIsLoadingRoom(true)
-        const roomData = await roomsApi.getById({ id: roomId })
-        setRoom(roomData)
-      } catch (error) {
-        console.error("Error fetching room details:", error)
-      } finally {
-        setIsLoadingRoom(false)
-      }
+    const data = sessionStorage.getItem("bookingData")
+    if (data) {
+      const parsed = JSON.parse(data)
+      setBookingData({
+        roomId: parsed.roomId,
+        roomType: parsed.roomType,
+        pricePerNight: parsed.price,
+      })
+    } else {
+      router.push("/rooms")
     }
+  }, [router])
 
-    fetchRoomDetails()
-  }, [roomId])
+  const roomId = bookingData?.roomId || 0
+  const roomType = bookingData?.roomType || ""
+  const pricePerNight = bookingData?.pricePerNight || 0
 
   const {
     control: datesControl,
@@ -237,6 +238,24 @@ export default function BookingPage() {
       setIsSubmitting(false)
     }
   }
+
+  useEffect(() => {
+    const fetchRoomDetails = async () => {
+      if (!roomId) return
+
+      try {
+        setIsLoadingRoom(true)
+        const roomData = await roomsApi.getById({ id: roomId })
+        setRoom(roomData)
+      } catch (error) {
+        console.error("Error fetching room details:", error)
+      } finally {
+        setIsLoadingRoom(false)
+      }
+    }
+
+    fetchRoomDetails()
+  }, [roomId])
 
   if (isLoadingRoom) {
     return (
@@ -846,5 +865,22 @@ export default function BookingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-muted-foreground">Đang tải...</span>
+          </div>
+        </div>
+      }
+    >
+      <BookingPageContent />
+    </Suspense>
   )
 }

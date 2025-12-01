@@ -36,7 +36,7 @@ export default function RoomsListPage() {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const { data: roomTypesData } = useRoomTypes({ PageSize: 100 })
+  const { data: roomTypesData } = useRoomTypes({ PageSize: 50 })
   const roomTypes = roomTypesData?.pages.flatMap((page) => page.items) ?? []
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useRooms({

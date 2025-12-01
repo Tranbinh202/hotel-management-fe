@@ -37,7 +37,7 @@ export default function IndividualRoomsManagement() {
         return () => clearTimeout(timer)
     }, [searchTerm])
 
-    const { data: roomTypesData } = useRoomTypes({ PageSize: 100 })
+    const { data: roomTypesData } = useRoomTypes({ PageSize: 50 })
     const roomTypes = roomTypesData?.pages.flatMap((page) => page.items) ?? []
 
     const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useRooms({
@@ -150,8 +150,8 @@ export default function IndividualRoomsManagement() {
             <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}
             >
-        {statusStyle.label}
-      </span>
+                {statusStyle.label}
+            </span>
         )
     }
 
@@ -189,8 +189,8 @@ export default function IndividualRoomsManagement() {
                     </Select>
 
                     <span className="text-xs text-slate-500">
-            {filteredRooms.length} / {data?.pages[0]?.totalCount || 0} phòng
-          </span>
+                        {filteredRooms.length} / {data?.pages[0]?.totalCount || 0} phòng
+                    </span>
                 </div>
 
                 <Button

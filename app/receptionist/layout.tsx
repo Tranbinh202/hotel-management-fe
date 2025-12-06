@@ -40,9 +40,15 @@ export default function ReceptionistLayout({ children }: { children: React.React
       }
 
       const isReceptionist = user?.roles?.some((role) => role === "Receptionist")
+      const isAdminOrManager = user?.roles?.some((role) => role === "Admin" || role === "Manager")
 
       if (!isReceptionist) {
+        // Not a receptionist at all, redirect to home
         router.push("/")
+        setIsAuthorized(false)
+      } else if (isAdminOrManager) {
+        // Has Admin or Manager role, redirect to admin dashboard
+        router.push("/admin/dashboard")
         setIsAuthorized(false)
       } else {
         setIsAuthorized(true)
@@ -59,7 +65,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#14b8a6] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-[oklch(0.72_0.12_75)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Đang tải...</p>
         </div>
       </div>
@@ -98,7 +104,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-cyan-50/50">
+    <div className="min-h-screen bg-slate-50">
       {/* Sidebar */}
       <aside
         className={`fixed top-0 left-0 z-40 h-screen transition-transform ${
@@ -107,9 +113,9 @@ export default function ReceptionistLayout({ children }: { children: React.React
       >
         <div className="h-full flex flex-col">
           {/* Logo */}
-          <div className="p-6 border-b border-slate-200 bg-gradient-to-br from-teal-50 to-cyan-50">
+          <div className="p-6 border-b border-slate-200">
             <Link href="/receptionist/bookings" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00008b] to-[#ffd700] flex items-center justify-center shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -136,7 +142,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                     isActive
-                      ? "bg-gradient-to-r from-[#14b8a6] to-[#06b6d4] text-white shadow-lg"
+                      ? "bg-gradient-to-r from-[#00008b] to-[#ffd700] text-white shadow-lg"
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >
@@ -152,7 +158,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center text-white font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00008b] to-[#ffd700] flex items-center justify-center text-white font-semibold">
                     {user?.profileDetails?.fullName?.charAt(0) || user?.username?.charAt(0) || "R"}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
@@ -203,7 +209,7 @@ export default function ReceptionistLayout({ children }: { children: React.React
       {/* Main Content */}
       <div className={`transition-all ${sidebarOpen ? "ml-64" : "ml-0"}`}>
         {/* Top Bar */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
           <div className="flex items-center justify-between px-6 py-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}

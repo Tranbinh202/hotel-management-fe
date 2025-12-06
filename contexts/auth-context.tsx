@@ -188,15 +188,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Tài khoản đã bị khóa")
       }
 
-      // Role-based routing
       const userRoles = userData.roles || roles
-      const isAdminOrManagerOrReceptionist = userRoles.some(
-        (role) => role === "Admin" || role === "Manager" || role === "Receptionist",
-      )
+      const isReceptionist = userRoles.some((role) => role === "Receptionist")
+      const isAdminOrManager = userRoles.some((role) => role === "Admin" || role === "Manager")
 
-      if (isAdminOrManagerOrReceptionist) {
+      if (isReceptionist && !isAdminOrManager) {
+        // Receptionist only - go to receptionist dashboard
+        router.push("/receptionist/bookings")
+      } else if (isAdminOrManager) {
+        // Admin or Manager - go to admin dashboard
         router.push("/admin/dashboard")
       } else {
+        // Regular user - go to homepage
         router.push("/")
       }
     } catch (error) {

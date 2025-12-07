@@ -1,7 +1,5 @@
 import { apiClient, publicApiClient } from "./client"
 import type {
-  CreateRoomDto,
-  UpdateRoomDto,
   PaginatedResponse,
   ApiResponse,
   IPaginationParams,
@@ -14,6 +12,7 @@ import type {
   ChangeRoomStatusDto,
   BulkChangeRoomStatusDto,
   BulkChangeRoomStatusResponse,
+  RoomType,
 } from "@/lib/types/api"
 
 export interface GetAllRoomsParams extends IPaginationParams {
@@ -69,36 +68,27 @@ export interface GetRoomParams {
 }
 
 export const roomsApi = {
-  getAll: async (params: Partial<GetAllRoomsParams> = {}): Promise<PaginatedResponse<Room>> => {
-    const res = await publicApiClient.get<ApiResponse<PaginatedResponse<Room>>>("/Room/search", { params })
+  getAll: async (params: Partial<GetAllRoomsParams> = {}): Promise<PaginatedResponse<RoomType>> => {
+    const res = await publicApiClient.get<ApiResponse<PaginatedResponse<RoomType>>>("/room/search", { params })
     return res.data.data
   },
 
-  getById: async (params: GetRoomParams): Promise<Room> => {
-    const { id, ...rest } = params
-    const res = await publicApiClient.get<ApiResponse<Room>>(`/Room/${id}`, {
-      params: rest,
+  getById: async (params: GetRoomParams): Promise<RoomType> => {
+    const { id, checkInDate, checkOutDate } = params
+    const queryParams = new URLSearchParams()
+    if (checkInDate) queryParams.append("checkInDate", checkInDate)
+    if (checkOutDate) queryParams.append("checkOutDate", checkOutDate)
+
+    const url = queryParams.toString() ? `/Room/search/${id}?${queryParams.toString()}` : `/Room/search/${id}`
+
+    const res = await publicApiClient.get<ApiResponse<RoomType>>(url)
+    return res.data.data
+  },
+
+  getAvailable: async (checkInDate: string, checkOutDate: string): Promise<RoomType[]> => {
+    const res = await publicApiClient.get<ApiResponse<RoomType[]>>("/room/available", {
+      params: { checkInDate, checkOutDate },
     })
-    return res.data.data
-  },
-
-  create: async (data: CreateRoomDto): Promise<Room> => {
-    const res = await apiClient.post<ApiResponse<Room>>("/Room", data)
-    return res.data.data
-  },
-
-  update: async (data: UpdateRoomDto): Promise<Room> => {
-    const { roomId, ...updateData } = data
-    const res = await apiClient.put<ApiResponse<Room>>(`/Room/${roomId}`, updateData)
-    return res.data.data
-  },
-
-  delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/Room/${id}`)
-  },
-
-  toggleAvailability: async (id: number): Promise<Room> => {
-    const res = await apiClient.patch<ApiResponse<Room>>(`/Room/${id}/toggle-availability`)
     return res.data.data
   },
 }

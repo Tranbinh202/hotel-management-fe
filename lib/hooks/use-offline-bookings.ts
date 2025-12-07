@@ -2,18 +2,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { offlineBookingsApi } from "@/lib/api/offline-bookings"
 import { toast } from "@/hooks/use-toast"
 import type {
-  CreateOfflineBookingDto,
   UpdateOfflineBookingDto,
   ConfirmDepositDto,
   ConfirmPaymentDto,
   OfflineBookingsFilter,
 } from "@/lib/types/api"
 
-export function useSearchCustomer(searchTerm: string) {
+export function useSearchCustomer(searchKey: string) {
   return useQuery({
-    queryKey: ["customer-search", searchTerm],
-    queryFn: () => offlineBookingsApi.searchCustomer(searchTerm),
-    enabled: searchTerm.length >= 3,
+    queryKey: ["customer-search", searchKey],
+    queryFn: () => offlineBookingsApi.searchCustomer(searchKey),
+    enabled: searchKey.length >= 3,
   })
 }
 
@@ -30,10 +29,7 @@ export function useCreateOfflineBooking() {
     mutationFn: offlineBookingsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["offline-bookings"] })
-      toast({
-        title: "Thành công",
-        description: "Đã tạo booking offline thành công",
-      })
+      queryClient.invalidateQueries({ queryKey: ["booking-management"] })
     },
     onError: (error: any) => {
       toast({
@@ -64,8 +60,7 @@ export function useUpdateOfflineBooking() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateOfflineBookingDto }) =>
-      offlineBookingsApi.update(id, data),
+    mutationFn: ({ id, data }: { id: number; data: UpdateOfflineBookingDto }) => offlineBookingsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["offline-bookings"] })
       toast({
@@ -87,8 +82,7 @@ export function useConfirmDeposit() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ConfirmDepositDto }) =>
-      offlineBookingsApi.confirmDeposit(id, data),
+    mutationFn: ({ id, data }: { id: number; data: ConfirmDepositDto }) => offlineBookingsApi.confirmDeposit(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["offline-bookings"] })
       toast({
@@ -110,8 +104,7 @@ export function useConfirmPayment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: ConfirmPaymentDto }) =>
-      offlineBookingsApi.confirmPayment(id, data),
+    mutationFn: ({ id, data }: { id: number; data: ConfirmPaymentDto }) => offlineBookingsApi.confirmPayment(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["offline-bookings"] })
       toast({
@@ -133,8 +126,7 @@ export function useCancelOfflineBooking() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
-      offlineBookingsApi.cancel(id, reason),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => offlineBookingsApi.cancel(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["offline-bookings"] })
       toast({

@@ -244,13 +244,13 @@ export default function RoomsPage() {
                                 <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold glass-effect text-foreground shadow-lg backdrop-blur-md border border-white/20">
                                   {roomType.typeCode}
                                 </span>
-                                <span
+                                {/* <span
                                   className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg ${
                                     isAvailable ? "bg-green-500 text-white" : "bg-gray-500 text-white"
                                   }`}
                                 >
                                   {isAvailable ? `${roomType.totalRoomCount} phòng` : "Hết phòng"}
-                                </span>
+                                </span> */}
                               </div>
                             </div>
 

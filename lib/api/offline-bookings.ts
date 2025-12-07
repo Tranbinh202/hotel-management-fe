@@ -1,30 +1,33 @@
 import { apiClient } from "./client"
 import type {
   CustomerSearchResult,
-  AvailableRoomsRequest,
-  AvailableRoomsResponse,
+  RoomSearchAvailableRequest as AvailableRoomsRequest,
+  RoomSearchAvailableResponse as AvailableRoomsResponse,
   CreateOfflineBookingDto,
   UpdateOfflineBookingDto,
-  ConfirmDepositDto,
-  ConfirmPaymentDto,
+  OfflineBookingResponse,
   OfflineBookingDetails,
   OfflineBookingsFilter,
   PaginatedResponse,
+  ConfirmDepositDto,
+  ConfirmPaymentDto,
 } from "@/lib/types/api"
 
 export const offlineBookingsApi = {
   // Search for existing customer
-  searchCustomer: async (searchTerm: string): Promise<{ isSuccess: boolean; data: CustomerSearchResult | null; message: string }> => {
-    if (!searchTerm || searchTerm.trim().length === 0) {
-      throw new Error("Vui lòng nhập email hoặc số điện thoại để tìm kiếm")
+  searchCustomer: async (
+    searchKey: string,
+  ): Promise<{ isSuccess: boolean; data: CustomerSearchResult[]; message: string }> => {
+    if (!searchKey || searchKey.trim().length === 0) {
+      throw new Error("Vui lòng nhập số điện thoại, email hoặc tên để tìm kiếm")
     }
-    
-    if (searchTerm.trim().length < 3) {
+
+    if (searchKey.trim().length < 3) {
       throw new Error("Vui lòng nhập ít nhất 3 ký tự để tìm kiếm")
     }
 
-    return apiClient.get<{ isSuccess: boolean; data: CustomerSearchResult | null; message: string }>(
-      `/BookingManagement/search-customer?searchTerm=${encodeURIComponent(searchTerm.trim())}`
+    return apiClient.get<{ isSuccess: boolean; data: CustomerSearchResult[]; message: string }>(
+      `/BookingManagement/customers/quick-search?searchKey=${encodeURIComponent(searchKey.trim())}`,
     )
   },
 
@@ -64,7 +67,9 @@ export const offlineBookingsApi = {
   },
 
   // Create offline booking
-  create: async (data: CreateOfflineBookingDto): Promise<{ isSuccess: boolean; data: { bookingId: number }; message: string; statusCode: number }> => {
+  create: async (
+    data: CreateOfflineBookingDto,
+  ): Promise<{ isSuccess: boolean; data: OfflineBookingResponse; message: string; statusCode: number }> => {
     if (!data.fullName || data.fullName.trim().length === 0) {
       throw new Error("Vui lòng nhập họ tên khách hàng")
     }
@@ -77,21 +82,17 @@ export const offlineBookingsApi = {
       throw new Error("Số điện thoại không hợp lệ")
     }
 
-    if (!data.roomTypes || data.roomTypes.length === 0) {
-      throw new Error("Vui lòng chọn ít nhất một loại phòng")
+    if (!data.roomIds || data.roomIds.length === 0) {
+      throw new Error("Vui lòng chọn ít nhất một phòng")
     }
 
     if (!data.checkInDate || !data.checkOutDate) {
       throw new Error("Vui lòng chọn ngày nhận phòng và trả phòng")
     }
 
-    if (data.depositAmount && data.depositAmount < 0) {
-      throw new Error("Số tiền đặt cọc không hợp lệ")
-    }
-
-    return apiClient.post<{ isSuccess: boolean; data: { bookingId: number }; message: string; statusCode: number }>(
-      "/BookingManagement/offline-booking",
-      data
+    return apiClient.post<{ isSuccess: boolean; data: OfflineBookingResponse; message: string; statusCode: number }>(
+      "/BookingManagement/offline",
+      data,
     )
   },
 
@@ -102,14 +103,16 @@ export const offlineBookingsApi = {
     }
 
     return apiClient.get<{ isSuccess: boolean; data: OfflineBookingDetails; message: string }>(
-      `/BookingManagement/offline-booking/${id}`
+      `/BookingManagement/offline/${id}`,
     )
   },
 
   // Get all offline bookings with filters
-  getAll: async (filters: OfflineBookingsFilter): Promise<{ isSuccess: boolean; data: PaginatedResponse<OfflineBookingDetails> }> => {
+  getAll: async (
+    filters: OfflineBookingsFilter,
+  ): Promise<{ isSuccess: boolean; data: PaginatedResponse<OfflineBookingDetails> }> => {
     const params = new URLSearchParams()
-    
+
     const pageNumber = filters.pageNumber && filters.pageNumber > 0 ? filters.pageNumber : 1
     const pageSize = filters.pageSize && filters.pageSize > 0 && filters.pageSize <= 100 ? filters.pageSize : 20
 
@@ -123,7 +126,7 @@ export const offlineBookingsApi = {
     params.append("pageSize", String(pageSize))
 
     return apiClient.get<{ isSuccess: boolean; data: PaginatedResponse<OfflineBookingDetails> }>(
-      `/BookingManagement/offline-bookings?${params.toString()}`
+      `/BookingManagement/offline-bookings?${params.toString()}`,
     )
   },
 
@@ -141,10 +144,7 @@ export const offlineBookingsApi = {
       }
     }
 
-    return apiClient.put<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/offline-booking/${id}`,
-      data
-    )
+    return apiClient.put<{ isSuccess: boolean; message: string }>(`/BookingManagement/offline/${id}`, data)
   },
 
   // Confirm deposit payment
@@ -162,8 +162,8 @@ export const offlineBookingsApi = {
     }
 
     return apiClient.post<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/offline-booking/${id}/confirm-deposit`,
-      data
+      `/BookingManagement/offline/${id}/confirm-deposit`,
+      data,
     )
   },
 
@@ -182,8 +182,8 @@ export const offlineBookingsApi = {
     }
 
     return apiClient.post<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/offline-booking/${id}/confirm-payment`,
-      data
+      `/BookingManagement/offline/${id}/confirm-payment`,
+      data,
     )
   },
 
@@ -193,10 +193,7 @@ export const offlineBookingsApi = {
       throw new Error("Mã booking không hợp lệ")
     }
 
-    return apiClient.post<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/offline-booking/${id}/resend-email`,
-      {}
-    )
+    return apiClient.post<{ isSuccess: boolean; message: string }>(`/BookingManagement/offline/${id}/resend-email`, {})
   },
 
   // Cancel booking
@@ -213,9 +210,65 @@ export const offlineBookingsApi = {
       throw new Error("Lý do hủy phải có ít nhất 10 ký tự")
     }
 
-    return apiClient.delete<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/offline-booking/${id}`,
-      { reason: reason.trim() }
-    )
+    return apiClient.delete<{ isSuccess: boolean; message: string }>(`/BookingManagement/offline/${id}`, {
+      reason: reason.trim(),
+    })
+  },
+
+  // Search available rooms (new endpoint)
+  searchAvailableRooms: async (data: {
+    checkInDate: string
+    checkOutDate: string
+    roomTypeId?: number
+    minPrice?: number
+    maxPrice?: number
+    maxOccupancy?: number
+    searchTerm?: string
+    pageNumber?: number
+    pageSize?: number
+  }): Promise<{
+    isSuccess: boolean
+    data: {
+      rooms: Array<{
+        roomId: number
+        roomName: string
+        roomTypeId: number
+        roomTypeName: string
+        roomTypeCode: string
+        pricePerNight: number
+        maxOccupancy: number
+        roomSize: number
+        numberOfBeds: number
+        bedType: string
+        description: string
+        status: string
+        amenities: string[]
+        images: string[]
+      }>
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+      totalPages: number
+    }
+    message: string
+  }> => {
+    if (!data.checkInDate || !data.checkOutDate) {
+      throw new Error("Vui lòng chọn ngày nhận phòng và trả phòng")
+    }
+
+    const params = new URLSearchParams()
+    params.append("checkInDate", data.checkInDate)
+    params.append("checkOutDate", data.checkOutDate)
+    if (data.roomTypeId) params.append("roomTypeId", String(data.roomTypeId))
+    if (data.minPrice) params.append("minPrice", String(data.minPrice))
+    if (data.maxPrice) params.append("maxPrice", String(data.maxPrice))
+    if (data.maxOccupancy) params.append("maxOccupancy", String(data.maxOccupancy))
+    if (data.searchTerm) params.append("searchTerm", data.searchTerm)
+    params.append("pageNumber", String(data.pageNumber || 1))
+    params.append("pageSize", String(data.pageSize || 20))
+
+    return apiClient.get(`/BookingManagement/rooms/search?${params.toString()}`)
   },
 }
+
+export const offlineBookingApi = offlineBookingsApi

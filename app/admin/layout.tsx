@@ -49,13 +49,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return
       }
 
-      const isAdminOrManagerOrReceptionist = user?.roles?.some(
-        (role) => role === "Admin" || role === "Manager" || role === "Receptionist",
-      )
-      console.log("Is Admin or Manager or Receptionist:", isAdminOrManagerOrReceptionist)
+      const isReceptionist = user?.roles?.some((role) => role === "Receptionist")
+      const isAdminOrManager = user?.roles?.some((role) => role === "Admin" || role === "Manager")
 
-      if (!isAdminOrManagerOrReceptionist) {
-        console.log("Not admin/manager/receptionist, redirecting to home")
+      console.log("Is Receptionist:", isReceptionist)
+      console.log("Is Admin or Manager:", isAdminOrManager)
+
+      if (isReceptionist && !isAdminOrManager) {
+        // Receptionist only - redirect to receptionist dashboard
+        console.log("Receptionist detected, redirecting to receptionist dashboard")
+        router.push("/receptionist/bookings")
+        setIsAuthorized(false)
+        return
+      }
+
+      if (!isAdminOrManager) {
+        console.log("Not admin/manager, redirecting to home")
         router.push("/")
         setIsAuthorized(false)
       } else {
@@ -73,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#ff5e7e] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-[oklch(0.72_0.12_75)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-slate-600">Đang tải...</p>
         </div>
       </div>
@@ -124,6 +133,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ),
     },
     {
+      name: "Công việc",
+      href: "/admin/tasks",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+          />
+        </svg>
+      ),
+    },
+    {
       name: "Đặt phòng",
       href: "/admin/bookings",
       icon: (
@@ -160,7 +183,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 00-6 0 3 3 0 006 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v1a3 3 0 11-6 0v-1m6 0H9"
           />
         </svg>
       ),
@@ -174,7 +197,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
       ),
@@ -188,8 +211,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543-.94-3.31.826-2.37 2.37a1.724 1.724 0 00-1.065 2.572c.426 1.756 2.924 1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37.996.608 2.296.07 2.572-1.065z"
           />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
     },
@@ -202,9 +226,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
           />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
     },
@@ -222,7 +245,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {/* Logo */}
           <div className="p-6 border-b border-slate-200">
             <Link href="/admin/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#ff5e7e] to-[#a78bfa] flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00008b] to-[#ffd700] flex items-center justify-center shadow-lg">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -249,7 +272,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                     isActive
-                      ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
+                      ? "bg-gradient-to-r from-[#00008b] to-[#ffd700] text-white shadow-lg"
                       : "text-slate-600 hover:bg-slate-100"
                   }`}
                 >
@@ -265,7 +288,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#06b6d4] flex items-center justify-center text-white font-semibold">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00008b] to-[#ffd700] flex items-center justify-center text-white font-semibold">
                     {user?.profileDetails?.fullName?.charAt(0) || user?.username?.charAt(0) || "A"}
                   </div>
                   <div className="flex-1 min-w-0 text-left">

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query"
 import { bookingsApi, bookingManagementApi } from "@/lib/api/bookings"
 import { toast } from "@/hooks/use-toast"
 import type {
@@ -129,9 +129,15 @@ export function useBookingWithKey(id: number, key: string) {
 }
 
 export function useBookingManagement(filters: BookingManagementFilter) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ["booking-management", filters],
-    queryFn: () => bookingManagementApi.getBookings(filters),
+    queryFn: ({ pageParam = 1 }) => bookingManagementApi.getBookings({ ...filters, pageNumber: pageParam }),
+    getNextPageParam: lastPage => lastPage.hasNextPage,
+    initialPageParam: 1,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
   })
 }
 

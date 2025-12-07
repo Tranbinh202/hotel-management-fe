@@ -163,10 +163,9 @@ export interface RoomType {
   bedType: string
   isActive: boolean
   images: RoomTypeImage[]
-  totalRooms: number
-  createdAt: string
-  updatedAt: string | null
-  amenities: string[]
+  amenities: any[] // Array of amenities
+  availableRoomCount: number | null // Number of available rooms for this type
+  totalRoomCount: number // Total rooms of this type
 }
 
 export type Room = RoomType
@@ -184,6 +183,136 @@ export interface CreateRoomDto {
 
 export interface UpdateRoomDto extends Partial<CreateRoomDto> {
   roomId: number
+}
+
+// Room status and management types
+export type RoomStatusCode =
+  | "Available"
+  | "Booked"
+  | "Occupied"
+  | "Cleaning"
+  | "Maintenance"
+  | "PendingInspection"
+  | "OutOfService"
+
+export interface RoomSearchParams {
+  roomName?: string
+  roomTypeId?: number
+  status?: RoomStatusCode
+  floor?: number
+  pageNumber?: number
+  pageSize?: number
+}
+
+export interface RoomSearchItem {
+  roomId: number
+  roomName: string
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  basePriceNight: number
+  statusId: number
+  status: string
+  statusCode: RoomStatusCode
+  maxOccupancy: number
+  images: string[]
+}
+
+export interface RoomSearchResponse {
+  rooms: RoomSearchItem[]
+  totalRecords: number
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface FloorMapRoom {
+  roomId: number
+  roomName: string
+  roomTypeName: string
+  status: string
+  statusCode: RoomStatusCode
+  statusColor: string
+}
+
+export interface FloorStatusSummary {
+  [key: string]: number
+}
+
+export interface FloorMap {
+  floor: number
+  rooms: FloorMapRoom[]
+  statusSummary: FloorStatusSummary
+  totalRooms: number
+}
+
+export interface RoomDetails {
+  roomId: number
+  roomName: string
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  basePriceNight: number
+  statusId: number
+  status: string
+  statusCode: RoomStatusCode
+  description: string
+  maxOccupancy: number
+  roomSize: number
+  numberOfBeds: number
+  bedType: string
+  images: string[]
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface RoomStatusSummary {
+  status: string // Vietnamese label like "Trống", "Đã đặt"
+  statusCode: RoomStatusCode
+  count: number
+  percentage: number
+}
+
+export interface RoomStats {
+  totalRooms: number
+  statusSummary: RoomStatusSummary[]
+}
+
+export interface StatusTransition {
+  statusCode: RoomStatusCode
+  statusName: string
+  description?: string
+}
+
+export interface AvailableStatusResponse {
+  currentStatus: {
+    statusCode: RoomStatusCode
+    statusName: string
+  }
+  availableTransitions: StatusTransition[]
+}
+
+export interface ChangeRoomStatusDto {
+  roomId: number
+  newStatus: RoomStatusCode
+}
+
+export interface BulkChangeRoomStatusDto {
+  roomIds: number[]
+  newStatus: RoomStatusCode
+}
+
+export interface BulkChangeRoomStatusResponse {
+  successCount: number
+  failedRooms: Array<{
+    roomId: number
+    roomName: string
+    reason: string
+  }>
+}
+
+export interface StartMaintenanceDto {
+  description: string
 }
 
 // Booking types
@@ -495,87 +624,100 @@ export interface CustomerSearchResult {
   address: string
   totalBookings: number
   lastBookingDate: string
+  matchedBy: "Phone" | "Email" | "Name" // Added field from API
 }
 
-export interface AvailableRoomsRequest {
-  roomTypes: BookingRoomType[]
+export interface RoomSearchAvailableRequest {
   checkInDate: string
   checkOutDate: string
+  roomTypeId?: number
+  minPrice?: number
+  maxPrice?: number
+  maxOccupancy?: number
+  searchTerm?: string
+  pageNumber?: number
+  pageSize?: number
 }
 
-export interface AvailableRoomsResponse {
-  isSuccess: boolean
-  data: {
-    isAllAvailable: boolean
-    message: string
-    roomTypes: RoomTypeAvailability[]
-    checkInDate: string
-    checkOutDate: string
-    totalNights: number
-  }
+export interface RoomSearchAvailableItem {
+  roomId: number
+  roomName: string
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  pricePerNight: number
+  maxOccupancy: number
+  roomSize: number
+  numberOfBeds: number
+  bedType: string
+  description: string
+  status: string
+  amenities: string[]
+  images: string[]
+}
+
+export interface RoomSearchAvailableResponse {
+  rooms: RoomSearchAvailableItem[]
+  totalCount: number
+  pageNumber: number
+  pageSize: number
+  totalPages: number
 }
 
 export interface CreateOfflineBookingDto {
+  customerId?: number | null // null for new customers, value for existing
   fullName: string
   email: string
   phoneNumber: string
   identityCard?: string
   address?: string
-  roomTypes: BookingRoomType[]
+  roomIds: number[] // Changed from roomTypes to roomIds array
   checkInDate: string
   checkOutDate: string
   specialRequests?: string
-  depositAmount: number
-  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
+  paymentMethod: "Cash" | "Card" | "Transfer"
   paymentNote?: string
 }
 
-export interface UpdateOfflineBookingDto {
-  fullName?: string
-  phoneNumber?: string
-  specialRequests?: string
-}
-
-export interface OfflineBookingDetails extends BookingDetails {
-  depositPaidAmount: number
-  remainingAmount: number
-  transactions: TransactionHistory[]
-}
-
-export interface TransactionHistory {
-  transactionId: number
+export interface QRPaymentInfo {
+  qrCodeUrl: string
+  bankName: string
+  bankCode: string
+  accountNumber: string
+  accountName: string
   amount: number
-  paymentMethod: string
-  paymentNote: string
-  transactionReference: string
-  transactionType: "Deposit" | "FullPayment"
-  processedBy: string
-  processedAt: string
+  description: string
+  transactionRef: string
+  qrDataText: string
 }
 
-export interface OfflineBookingsFilter {
-  fromDate?: string
-  toDate?: string
-  paymentStatus?: string
-  depositStatus?: string
-  customerName?: string
-  phoneNumber?: string
-  pageNumber?: number
-  pageSize?: number
+export interface RoomTypeBookingDetail {
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  quantity: number
+  pricePerNight: number
+  subTotal: number
 }
 
-export interface ConfirmDepositDto {
-  depositAmount: number
-  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
-  paymentNote?: string
-  transactionReference?: string
-}
-
-export interface ConfirmPaymentDto {
-  paidAmount: number
-  paymentMethod: "Cash" | "Card" | "Bank" | "EWallet"
-  paymentNote?: string
-  transactionReference?: string
+export interface OfflineBookingResponse {
+  booking: {
+    bookingId: number
+    customerId: number
+    customerName: string
+    roomIds: number[]
+    roomNames: string[]
+    roomTypeDetails: RoomTypeBookingDetail[]
+    checkInDate: string
+    checkOutDate: string
+    totalAmount: number
+    depositAmount: number
+    paymentStatus: string
+    bookingType: string
+    specialRequests?: string
+    createdAt: string
+  }
+  qrPayment: QRPaymentInfo | null
 }
 
 // Booking management types
@@ -704,4 +846,3 @@ export interface PayOSPaymentLinkResponse {
   amount: number
   expiresAt: string
 }
-// </CHANGE>

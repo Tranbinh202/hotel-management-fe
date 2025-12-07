@@ -1,17 +1,26 @@
 "use client"
 
-import { Suspense, useState } from "react"
+import { Suspense, useState, useEffect } from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Mail, CheckCircle2, Clock, RefreshCw } from "lucide-react"
 import { useResendActivationEmail } from "@/lib/hooks/use-auth"
 
 function RegistrationSuccessContent() {
-  const searchParams = useSearchParams()
-  const email = searchParams.get("email") || ""
+  const router = useRouter()
+  const [email, setEmail] = useState("")
   const { mutate: resendEmail, isPending } = useResendActivationEmail()
   const [resendCount, setResendCount] = useState(0)
+
+  useEffect(() => {
+    const savedEmail = sessionStorage.getItem("registrationEmail")
+    if (savedEmail) {
+      setEmail(savedEmail)
+    } else {
+      router.push("/register")
+    }
+  }, [router])
 
   const handleResendEmail = () => {
     if (email) {

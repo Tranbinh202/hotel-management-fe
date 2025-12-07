@@ -1,5 +1,6 @@
 import { apiClient } from "./client"
 import type { LoginDto, RegisterDto, AuthResponse, ApiResponse } from "@/lib/types/api"
+import { getAccountIdFromToken } from "@/lib/utils/token"
 
 export const authApi = {
   login: async (data: LoginDto): Promise<ApiResponse<AuthResponse>> => {
@@ -10,6 +11,12 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data.token) {
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response
@@ -31,28 +38,31 @@ export const authApi = {
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
+        localStorage.removeItem("account_id")
         localStorage.removeItem("user")
       }
     }
   },
 
   refreshToken: async (accountId: number, refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
-    console.log(" authApi.refreshToken called with accountId:", accountId)
+    console.log("[v0] authApi.refreshToken called with accountId:", accountId)
 
     const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
       accountId,
       refreshToken,
     })
 
-    console.log(" authApi.refreshToken response:", response)
+    console.log("[v0] authApi.refreshToken response:", response)
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       // Update refresh token if a new one is provided
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken)
-        console.log(" New refresh token saved")
+        console.log("[v0] New refresh token saved")
       }
+      // Cache accountId for future refresh attempts
+      localStorage.setItem("account_id", accountId.toString())
     }
 
     return response
@@ -61,7 +71,7 @@ export const authApi = {
   refreshTokenFromCache: async (): Promise<ApiResponse<AuthResponse>> => {
     const response = await apiClient.get<ApiResponse<AuthResponse>>("/Authentication/refresh-token")
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken)
@@ -78,6 +88,12 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response
@@ -140,8 +156,25 @@ export const authApi = {
   },
 
   loginGoogle: async (): Promise<ApiResponse<{ url: string }>> => {
-    const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/login-google")
+    const response = await apiClient.get<ApiResponse<{ url: string }>>("/Authentication/google-login-url")
     console.log("Google login API response:", response)
+    return response
+  },
+
+  exchangeGoogleCode: async (code: string): Promise<ApiResponse<AuthResponse>> => {
+    const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/exchange-google", { code })
+
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
+      localStorage.setItem("access_token", response.data.token)
+      localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
+    }
+
     return response
   },
 
@@ -150,10 +183,16 @@ export const authApi = {
     const response = await apiClient.get<ApiResponse<AuthResponse>>(`/Authentication/callback-google?code=${code}`)
     console.log("Google callback response:", response)
 
-    if (typeof window !== "undefined" && response.data?.token) {
+    if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       console.log("Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
+
+      // Cache accountId for token refresh
+      const accountId = getAccountIdFromToken(response.data.token)
+      if (accountId) {
+        localStorage.setItem("account_id", accountId.toString())
+      }
     }
 
     return response

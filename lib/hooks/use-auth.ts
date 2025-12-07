@@ -40,8 +40,11 @@ export function useRegister() {
         title: "Đăng ký thành công",
         description: "Vui lòng kiểm tra email để kích hoạt tài khoản",
       })
-      // Redirect to registration success page with email
-      router.push(`/registration-success?email=${encodeURIComponent(response.data.email)}`)
+      const email = response.data?.email || response.email
+      if (email) {
+        sessionStorage.setItem("registrationEmail", email)
+      }
+      router.push("/registration-success")
     },
     onError: (error: any) => {
       toast({
@@ -232,13 +235,21 @@ export function useGoogleCallback() {
         const userData = await accountApi.getSummary(0)
         if (userData.isSuccess) {
           console.log("User data fetched:", userData.data)
+
+          if (userData.data.isLocked) {
+            console.log("Account is locked, redirecting to locked page")
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            router.push("/account-locked")
+            return
+          }
+
           localStorage.setItem("user", JSON.stringify(userData.data))
         }
       } catch (error) {
         console.error("Failed to fetch user data after Google login:", error)
       }
 
-      // Redirect to home page
       console.log("Redirecting to home page...")
       setTimeout(() => {
         router.push("/")
@@ -319,6 +330,56 @@ export function useChangePasswordWithOtp() {
         description: error.message || "Mã OTP không hợp lệ hoặc đã hết hạn",
         variant: "destructive",
       })
+    },
+  })
+}
+
+export function useGoogleExchange() {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: authApi.exchangeGoogleCode,
+    onSuccess: async (response) => {
+      queryClient.clear()
+      toast({
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn đến với StayHub!",
+      })
+
+      try {
+        const userData = await accountApi.getSummary(0)
+        if (userData.isSuccess) {
+          if (userData.data.isLocked) {
+            localStorage.removeItem("access_token")
+            localStorage.removeItem("refresh_token")
+            router.push("/account-locked")
+            return
+          }
+
+          localStorage.setItem("user", JSON.stringify(userData.data))
+          
+          // Trigger auth context update
+          window.dispatchEvent(new Event("auth-changed"))
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data after Google login:", error)
+      }
+
+      setTimeout(() => {
+        router.push("/")
+        router.refresh()
+      }, 1000)
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Đăng nhập thất bại",
+        description: error.message || "Mã xác thực không hợp lệ",
+        variant: "destructive",
+      })
+      setTimeout(() => {
+        router.push("/login")
+      }, 2000)
     },
   })
 }

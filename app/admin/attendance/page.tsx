@@ -51,8 +51,8 @@ export default function AttendancePage() {
   })
 
   const { data: employeesData } = useEmployees({
-    PageIndex: 0,
-    PageSize: 100,
+    PageIndex: 1,
+    PageSize: 50,
     Search: "",
     SortBy: "FullName",
     SortDesc: false,
@@ -123,7 +123,7 @@ export default function AttendancePage() {
           </Button>
           <Button
             onClick={() => setIsCreateDialogOpen(true)}
-            className="bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:opacity-90"
+            className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200]"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

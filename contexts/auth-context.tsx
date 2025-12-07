@@ -143,6 +143,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
   }, [])
 
+  // Listen for storage changes (e.g., from Google OAuth callback)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Check if tokens were added/changed
+      if (e.key === "access_token" || e.key === "user") {
+        const newToken = localStorage.getItem("access_token")
+        const newUser = localStorage.getItem("user")
+        
+        if (newToken && newUser) {
+          setToken(newToken)
+          setUser(JSON.parse(newUser))
+        } else if (!newToken && !newUser) {
+          setToken(null)
+          setUser(null)
+        }
+      }
+    }
+
+    // Also listen for custom auth event
+    const handleAuthChange = () => {
+      const newToken = localStorage.getItem("access_token")
+      const newUser = localStorage.getItem("user")
+      
+      if (newToken && newUser) {
+        setToken(newToken)
+        setUser(JSON.parse(newUser))
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("auth-changed", handleAuthChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("auth-changed", handleAuthChange)
+    }
+  }, [])
+
   // Fetch user account summary
   const fetchUserSummary = async (): Promise<AccountSummary> => {
     const result = await accountApi.getSummary(0)
@@ -188,15 +226,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Tài khoản đã bị khóa")
       }
 
-      // Role-based routing
       const userRoles = userData.roles || roles
-      const isAdminOrManagerOrReceptionist = userRoles.some(
-        (role) => role === "Admin" || role === "Manager" || role === "Receptionist",
-      )
+      const isReceptionist = userRoles.some((role) => role === "Receptionist")
+      const isAdminOrManager = userRoles.some((role) => role === "Admin" || role === "Manager")
 
-      if (isAdminOrManagerOrReceptionist) {
+      if (isReceptionist && !isAdminOrManager) {
+        // Receptionist only - go to receptionist dashboard
+        router.push("/receptionist/bookings")
+      } else if (isAdminOrManager) {
+        // Admin or Manager - go to admin dashboard
         router.push("/admin/dashboard")
       } else {
+        // Regular user - go to homepage
         router.push("/")
       }
     } catch (error) {

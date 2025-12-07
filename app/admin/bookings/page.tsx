@@ -73,7 +73,8 @@ export default function AdminBookingsPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
 
-  const { data: bookingsData, isLoading, refetch } = useBookingManagement(filters)
+  const { data: bookings, isLoading, refetch } = useBookingManagement(filters)
+  const bookingsData = bookings?.pages?.flatMap((page) => page.data.items)
   const updateStatus = useUpdateBookingStatus()
   const cancelBooking = useCancelBookingManagement()
   const resendEmail = useResendBookingConfirmation()
@@ -125,7 +126,7 @@ export default function AdminBookingsPage() {
       Cancelled: "bg-red-100 text-red-700 border-red-200",
       Pending: "bg-blue-100 text-blue-700 border-blue-200",
       Confirmed: "bg-cyan-100 text-cyan-700 border-cyan-200",
-      CheckedIn: "bg-purple-100 text-purple-700 border-purple-200",
+      CheckedIn: "bg-[#00008b]/10 text-[#00008b] border-[#00008b]/20",
       CheckedOut: "bg-slate-100 text-slate-700 border-slate-200",
     }
     const labels: Record<string, string> = {
@@ -171,14 +172,14 @@ export default function AdminBookingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30 p-4 space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#00008b]/5 p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Quản lý đặt phòng</h1>
           <p className="text-xs text-slate-500 mt-0.5">Quản lý và theo dõi các booking offline của bạn.</p>
         </div>
         <Link href="/admin/bookings/new">
-          <Button size="sm" className="bg-[#8C68E6] hover:bg-[#7a5ad1] text-white shadow-sm h-9">
+          <Button size="sm" className="bg-[#00008b] hover:bg-[#00008b]/90 text-white shadow-sm h-9">
             <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -207,7 +208,7 @@ export default function AdminBookingsPage() {
             placeholder="Tìm kiếm tên, email hoặc số điện thoại..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-9 border-slate-200 focus:border-[#8C68E6] focus:ring-[#8C68E6]/20 text-sm"
+            className="pl-9 h-9 border-slate-200 focus:border-[#00008b] focus:ring-[#00008b]/20 text-sm"
           />
         </div>
 
@@ -236,7 +237,7 @@ export default function AdminBookingsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 border-[#8C68E6] text-[#8C68E6] hover:bg-purple-50 bg-transparent"
+              className="h-9 border-[#00008b] text-[#00008b] hover:bg-[#00008b]/10 bg-transparent"
             >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -373,7 +374,7 @@ export default function AdminBookingsPage() {
               >
                 Đặt lại
               </Button>
-              <Button className="flex-1 h-11 bg-[#8C68E6] hover:bg-[#7a5ad1]" onClick={handleApplyFilters}>
+              <Button className="flex-1 h-11 bg-[#00008b] hover:bg-[#00008b]/90" onClick={handleApplyFilters}>
                 Áp dụng
               </Button>
             </div>
@@ -403,8 +404,8 @@ export default function AdminBookingsPage() {
         <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
           <h2 className="text-sm font-medium text-slate-700">
             Danh sách booking
-            {bookingsData?.data?.totalCount !== undefined && (
-              <span className="ml-2 text-slate-500">({bookingsData.data.totalCount} kết quả)</span>
+            {bookings?.pages?.[0]?.data?.totalRecords !== undefined && (
+              <span className="ml-2 text-slate-500">({bookings?.pages?.[0]?.data?.totalRecords} kết quả)</span>
             )}
           </h2>
         </div>
@@ -412,7 +413,7 @@ export default function AdminBookingsPage() {
         <div className="p-4">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <div className="w-12 h-12 border-4 border-[#8C68E6] border-t-transparent rounded-full animate-spin mb-3"></div>
+              <div className="w-12 h-12 border-4 border-[#00008b] border-t-transparent rounded-full animate-spin mb-3"></div>
               <p className="text-slate-500 text-sm">Đang tải dữ liệu...</p>
             </div>
           ) : bookingsData?.data?.items?.length === 0 ? (
@@ -434,7 +435,7 @@ export default function AdminBookingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-[#8C68E6] text-[#8C68E6] hover:bg-purple-50 bg-transparent"
+                  className="border-[#00008b] text-[#00008b] hover:bg-[#00008b]/10 bg-transparent"
                 >
                   <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -445,10 +446,10 @@ export default function AdminBookingsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {bookingsData?.data?.items?.map((booking: BookingManagementDetails) => (
+              {bookingsData?.map((booking: BookingManagementDetails) => (
                 <div
                   key={booking.bookingId}
-                  className="group flex items-center justify-between p-4 bg-white rounded-lg border border-slate-200 hover:border-[#8C68E6]/50 hover:shadow-md transition-all duration-200"
+                  className="group flex items-center justify-between p-4 bg-white rounded-lg border border-slate-200 hover:border-[#00008b]/50 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5 mb-2">
@@ -457,7 +458,7 @@ export default function AdminBookingsPage() {
                       {getStatusBadge(booking.paymentStatus)}
                       {getStatusBadge(booking.depositStatus)}
                       {booking.status && getStatusBadge(booking.status)}
-                      <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                      <Badge variant="outline" className="bg-[#00008b]/10 text-[#00008b] border-[#00008b]/20 text-xs">
                         {booking.bookingType}
                       </Badge>
                     </div>
@@ -541,7 +542,7 @@ export default function AdminBookingsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleViewDetail(booking.bookingId)}
-                      className="h-8 text-xs border-[#8C68E6]/30 text-[#8C68E6] hover:bg-purple-50"
+                      className="h-8 text-xs border-[#00008b]/30 text-[#00008b] hover:bg-[#00008b]/10"
                     >
                       <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -567,7 +568,7 @@ export default function AdminBookingsPage() {
                         setStatusData({ status: "Confirmed", note: "" })
                         setStatusDialog(true)
                       }}
-                      className="h-8 text-xs border-blue-200 text-blue-600 hover:bg-blue-50"
+                      className="h-8 text-xs border-[#ffd700]/60 text-[#ffd700] hover:bg-[#ffd700]/10"
                     >
                       Cập nhật trạng thái
                     </Button>
@@ -597,11 +598,11 @@ export default function AdminBookingsPage() {
           )}
 
           {/* Pagination */}
-          {bookingsData?.data && bookingsData.data.totalPages > 1 && (
+          {bookings?.pages?.[0]?.data?.totalPages > 1 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-200">
               <p className="text-sm text-slate-600">
-                Trang {bookingsData.data.pageIndex} / {bookingsData.data.totalPages} ({bookingsData.data.totalCount} kết
-                quả)
+                Trang {bookings?.pages?.[0]?.data?.pageIndex} / {bookings?.pages?.[0]?.data?.totalPages} (
+                {bookings?.pages?.[0]?.data?.totalRecords} kết quả)
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -616,8 +617,8 @@ export default function AdminBookingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPageNumber((prev) => Math.min(bookingsData.data.totalPages, prev + 1))}
-                  disabled={pageNumber === bookingsData.data.totalPages}
+                  onClick={() => setPageNumber((prev) => Math.min(bookings?.pages?.[0]?.data?.totalPages, prev + 1))}
+                  disabled={pageNumber === bookings?.pages?.[0]?.data?.totalPages}
                   className="h-8 text-xs"
                 >
                   Sau
@@ -674,7 +675,7 @@ export default function AdminBookingsPage() {
             <Button variant="outline" onClick={() => setStatusDialog(false)}>
               Hủy
             </Button>
-            <Button onClick={handleUpdateStatus} className="bg-[#8C68E6] hover:bg-[#7a5ad1]">
+            <Button onClick={handleUpdateStatus} className="bg-[#00008b] hover:bg-[#00008b]/90">
               Cập nhật
             </Button>
           </DialogFooter>

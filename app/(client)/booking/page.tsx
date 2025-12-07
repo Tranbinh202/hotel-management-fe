@@ -203,8 +203,12 @@ function BookingPageContent() {
           checkOutDate: checkOutDate.toISOString(),
           specialRequests: guestData.specialRequests || undefined,
         })
+
+        if (response.isSuccess && response.data.paymentUrl) {
+          router.push(response.data.paymentUrl)
+        }
       } else {
-        response = await bookingsApi.createByGuest({
+        const guestResponse = await bookingsApi.createByGuest({
           fullName: guestData.fullName,
           email: guestData.email,
           phoneNumber: guestData.phoneNumber,
@@ -220,15 +224,22 @@ function BookingPageContent() {
           checkOutDate: checkOutDate.toISOString(),
           specialRequests: guestData.specialRequests || undefined,
         })
-      }
 
-      if (response.isSuccess && response.data.paymentUrl) {
-        // router.push(
-        //   `/booking/success?bookingId=${response.data.bookingId}&paymentUrl=${encodeURIComponent(response.data.paymentUrl)}`,
-        // )
-        router.push(response.data.paymentUrl)
-      } else {
-        router.push("/booking/failure?reason=payment_failed")
+        if (guestResponse.isSuccess) {
+          const params = new URLSearchParams({
+            token: guestResponse.data.token,
+            bookingId: guestResponse.data.bookingId.toString(),
+          })
+
+          if (guestResponse.data.qrPaymentInfo) {
+            params.append("qrCode", guestResponse.data.qrPaymentInfo.qrCodeBase64)
+            params.append("amount", guestResponse.data.qrPaymentInfo.amount.toString())
+            params.append("accountNo", guestResponse.data.qrPaymentInfo.accountNo)
+            params.append("accountName", guestResponse.data.qrPaymentInfo.accountName)
+          }
+
+          router.push(`/booking/success?${params.toString()}`)
+        }
       }
     } catch (error: any) {
       console.error("Booking error:", error)

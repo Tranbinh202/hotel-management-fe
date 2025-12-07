@@ -342,6 +342,14 @@ export function useGoogleExchange() {
     mutationFn: authApi.exchangeGoogleCode,
     onSuccess: async (response) => {
       console.log("[v0] Google exchange success:", response)
+      
+      // Save tokens to localStorage
+      if (response.isSuccess && response.data) {
+        console.log("[v0] Saving tokens to localStorage...")
+        localStorage.setItem("access_token", response.data.token)
+        localStorage.setItem("refresh_token", response.data.refreshToken)
+      }
+      
       queryClient.clear()
       toast({
         title: "Đăng nhập thành công",

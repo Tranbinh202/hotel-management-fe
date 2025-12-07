@@ -7,55 +7,37 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { roomManagementApi } from "@/lib/api/rooms"
-import type { RoomSearchItem, RoomDetails, RoomStatusCode } from "@/lib/types/api"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Skeleton } from "@/components/ui/skeleton"
-import { toast } from "sonner"
+import {
+  useRoomManagement,
+  useRoomStats,
+  useRoomDetails,
+  useAvailableStatus,
+  useChangeRoomStatus,
+} from "@/lib/hooks/use-rooms"
+import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
 
 export default function ReceptionistRoomsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFloor, setSelectedFloor] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
-  const [selectedRoom, setSelectedRoom] = useState<RoomDetails | null>(null)
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
-  const [availableTransitions, setAvailableTransitions] = useState<any[]>([])
-  const queryClient = useQueryClient()
 
-  const { data: searchData, isLoading } = useQuery({
-    queryKey: ["receptionist-rooms", searchQuery, selectedFloor, selectedStatus],
-    queryFn: () => {
-      const params: any = {
-        pageNumber: 1,
-        pageSize: 100,
-      }
-      if (searchQuery) params.roomName = searchQuery
-      if (selectedFloor !== "all") params.floor = Number.parseInt(selectedFloor)
-      if (selectedStatus !== "all") params.status = selectedStatus
-
-      return roomManagementApi.search(params)
-    },
+  const { data: searchData, isLoading } = useRoomManagement({
+    roomName: searchQuery || undefined,
+    floor: selectedFloor !== "all" ? Number.parseInt(selectedFloor) : undefined,
+    status: selectedStatus !== "all" ? (selectedStatus as RoomStatusCode) : undefined,
+    pageNumber: 1,
+    pageSize: 100,
   })
 
-  const { data: statsData } = useQuery({
-    queryKey: ["room-stats"],
-    queryFn: () => roomManagementApi.getStats(),
-  })
+  const { data: statsData } = useRoomStats()
+  const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
+  const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
+  const changeStatusMutation = useChangeRoomStatus()
 
   const rooms = searchData?.rooms || []
-
-  const changeStatusMutation = useMutation({
-    mutationFn: (data: { roomId: number; newStatus: RoomStatusCode }) => roomManagementApi.changeStatus(data),
-    onSuccess: () => {
-      toast.success("Cập nhật trạng thái phòng thành công")
-      queryClient.invalidateQueries({ queryKey: ["receptionist-rooms"] })
-      queryClient.invalidateQueries({ queryKey: ["room-stats"] })
-      setDetailDialogOpen(false)
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Không thể cập nhật trạng thái phòng")
-    },
-  })
 
   const getRoomStatusColor = (statusCode: RoomStatusCode) => {
     const colors: Record<RoomStatusCode, string> = {
@@ -70,30 +52,18 @@ export default function ReceptionistRoomsPage() {
     return colors[statusCode] || "bg-slate-400"
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
-  }
-
-  const handleViewDetail = async (room: RoomSearchItem) => {
-    try {
-      const [details, statusTransitions] = await Promise.all([
-        roomManagementApi.getDetails(room.roomId),
-        roomManagementApi.getAvailableStatus(room.roomId),
-      ])
-      setSelectedRoom(details)
-      setAvailableTransitions(statusTransitions.availableTransitions)
-      setDetailDialogOpen(true)
-    } catch (error) {
-      toast.error("Không thể tải chi tiết phòng")
-    }
+  const handleViewDetail = (room: RoomSearchItem) => {
+    setSelectedRoomId(room.roomId)
+    setDetailDialogOpen(true)
   }
 
   const handleStatusChange = (newStatus: RoomStatusCode) => {
-    if (!selectedRoom) return
+    if (!selectedRoomId) return
     changeStatusMutation.mutate({
-      roomId: selectedRoom.roomId,
+      roomId: selectedRoomId,
       newStatus,
     })
+    setDetailDialogOpen(false)
   }
 
   const getStatusCount = (statusCode: RoomStatusCode) => {
@@ -105,6 +75,10 @@ export default function ReceptionistRoomsPage() {
     const occupied = getStatusCount("Occupied")
     const booked = getStatusCount("Booked")
     return statsData.totalRooms > 0 ? ((occupied + booked) / statsData.totalRooms) * 100 : 0
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
   }
 
   return (
@@ -352,6 +326,7 @@ export default function ReceptionistRoomsPage() {
         </div>
       </div>
 
+      {/* Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -416,11 +391,11 @@ export default function ReceptionistRoomsPage() {
                 <p className="text-3xl font-bold text-[#00008b]">{formatCurrency(selectedRoom.basePriceNight)}</p>
               </div>
 
-              {availableTransitions.length > 0 && (
+              {availableStatusData && availableStatusData.availableTransitions.length > 0 && (
                 <div className="border-t border-slate-200 pt-6">
                   <h4 className="font-semibold text-slate-900 mb-3">Cập nhật trạng thái phòng</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    {availableTransitions.map((transition) => (
+                    {availableStatusData.availableTransitions.map((transition) => (
                       <Button
                         key={transition.statusCode}
                         variant="outline"

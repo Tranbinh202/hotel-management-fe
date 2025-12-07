@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useMemo } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -24,8 +25,10 @@ import {
   Clock,
   Phone,
   Mail,
+  Loader2,
 } from "lucide-react"
 import { useRoom, useRooms } from "@/lib/hooks"
+import type { RoomSearchItem } from "@/lib/types/api"
 
 const amenityIcons: Record<string, any> = {
   Wifi: Wifi,
@@ -45,14 +48,59 @@ export default function RoomDetailPage({
   const resolvedParams = use(params)
   const roomTypeId = Number.parseInt(resolvedParams.id)
 
+  const router = useRouter()
   const {
     data: roomType,
     isLoading,
     error,
-  } = useRoom({
-    id: roomTypeId,
-  })
-  const { data: allRoomTypes } = useRooms({})
+  } = useRoom(roomTypeId)
+
+  // Fetch specific rooms for this type
+  const { data: specificRoomsData } = useRooms(
+    {
+      roomTypeId: roomTypeId,
+      pageNumber: 1,
+      pageSize: 50,
+    },
+    true,
+  )
+
+  const { data: allRoomsData } = useRooms({
+    pageSize: 50,
+  }, true)
+
+  const specificRooms = specificRoomsData?.rooms || []
+  const availableCount = specificRooms.filter((r) => r.statusCode === "Available").length
+  const totalCount = specificRoomsData?.totalRecords || specificRooms.length
+
+  // Group rooms by type for "Similar Rooms" section to show availability correctly
+  const similarRoomGroups = useMemo(() => {
+    if (!allRoomsData?.rooms) return []
+
+    const groups = new Map<number, any>()
+
+    allRoomsData.rooms.forEach((room) => {
+      if (!groups.has(room.roomTypeId)) {
+        groups.set(room.roomTypeId, {
+          roomTypeId: room.roomTypeId,
+          roomTypeName: room.roomTypeName,
+          basePriceNight: room.basePriceNight,
+          maxOccupancy: room.maxOccupancy,
+          images: room.images || [],
+          availableCount: 0,
+        })
+      }
+
+      const group = groups.get(room.roomTypeId)
+      if (room.statusCode === "Available") {
+        group.availableCount++
+      }
+    })
+
+    return Array.from(groups.values())
+      .filter((g) => g.roomTypeId !== roomTypeId)
+      .slice(0, 3)
+  }, [allRoomsData, roomTypeId])
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
@@ -63,8 +111,22 @@ export default function RoomDetailPage({
     }).format(price)
   }
 
-  const similarRooms =
-    allRoomTypes?.pages[0].items.filter((r) => r.roomTypeId !== roomType?.roomTypeId && r.isActive).slice(0, 3) || []
+  const handleBookNow = (room?: RoomSearchItem) => {
+    if (!roomType) return
+
+    sessionStorage.setItem(
+      "bookingData",
+      JSON.stringify({
+        roomId: room ? room.roomTypeId : roomType.roomTypeId,
+        roomType: roomType.typeName,
+        price: roomType.basePriceNight,
+        roomName: room?.roomName,
+      }),
+    )
+    router.push("/booking")
+  }
+
+
 
   const images =
     roomType && roomType?.images?.length > 0
@@ -113,17 +175,15 @@ export default function RoomDetailPage({
                   <Badge className="glass-effect backdrop-blur-md border-white/20 text-foreground px-4 py-2 text-sm font-medium">
                     {roomType?.typeCode}
                   </Badge>
-                  {roomType?.availableRoomCount !== null &&
-                  roomType?.availableRoomCount !== undefined &&
-                  roomType?.availableRoomCount > 0 ? (
+                  {availableCount > 0 ? (
                     <Badge className="bg-accent/90 backdrop-blur-md text-accent-foreground border-0 px-4 py-2 text-sm font-medium">
-                      Còn {roomType?.availableRoomCount} phòng
+                      Còn {availableCount} phòng
                     </Badge>
-                  ) : roomType?.availableRoomCount === 0 ? (
+                  ) : (
                     <Badge className="bg-destructive/90 backdrop-blur-md text-destructive-foreground border-0 px-4 py-2 text-sm font-medium">
                       Hết phòng
                     </Badge>
-                  ) : null}
+                  )}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </div>
@@ -134,11 +194,10 @@ export default function RoomDetailPage({
                     <button
                       key={idx}
                       onClick={() => setSelectedImageIndex(idx)}
-                      className={`relative h-24 rounded-xl overflow-hidden transition-all duration-300 ${
-                        selectedImageIndex === idx
-                          ? "ring-2 ring-accent ring-offset-2 ring-offset-background scale-105"
-                          : "opacity-60 hover:opacity-100 hover:scale-105"
-                      }`}
+                      className={`relative h-24 rounded-xl overflow-hidden transition-all duration-300 ${selectedImageIndex === idx
+                        ? "ring-2 ring-accent ring-offset-2 ring-offset-background scale-105"
+                        : "opacity-60 hover:opacity-100 hover:scale-105"
+                        }`}
                     >
                       <Image
                         src={img || "/placeholder.svg"}
@@ -165,7 +224,7 @@ export default function RoomDetailPage({
                   </div>
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-accent" />
-                    <span>{roomType?.totalRoomCount} phòng</span>
+                    <span>{totalCount} phòng</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Star className="w-4 h-4 fill-accent text-accent" />
@@ -219,6 +278,52 @@ export default function RoomDetailPage({
                     <p className="text-xl font-bold">{roomType?.bedType}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Specific Rooms List */}
+              <div className="space-y-6">
+                <h3 className="font-serif text-2xl font-semibold">Danh sách phòng</h3>
+                {specificRoomsData ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                    {specificRooms.sort((a, b) => a.roomName.localeCompare(b.roomName)).map((room) => {
+                      const isAvailable = room.statusCode === "Available";
+                      return (
+                        <div
+                          key={room.roomId}
+                          onClick={() => {
+                            if (isAvailable) {
+                              handleBookNow(room);
+                            }
+                          }}
+                          className={`
+                              cursor-pointer p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center gap-2
+                              ${isAvailable
+                              ? "bg-card hover:bg-accent/5 hover:border-accent hover:shadow-lg group"
+                              : "bg-muted/50 opacity-60 cursor-not-allowed"}
+                            `}
+                        >
+                          <span className="font-bold text-lg">{room.roomName}</span>
+                          <span className={`text-xs px-2 py-1 rounded-full ${isAvailable ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                            }`}>
+                            {isAvailable ? "Còn trống" : room.status}
+                          </span>
+                          {isAvailable && (
+                            <p className="text-xs text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                              Đặt ngay
+                            </p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  </div>
+                )}
+                {specificRoomsData && specificRooms.length === 0 && (
+                  <p className="text-muted-foreground">Chưa có thông tin phòng cụ thể.</p>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -278,23 +383,12 @@ export default function RoomDetailPage({
               {/* Price Card */}
               <div className="p-8 rounded-2xl luxury-gradient text-white shadow-2xl">
                 <p className="text-sm opacity-90 mb-2">Giá mỗi đêm từ</p>
-                <p className="text-4xl font-bold mb-6">{formatPrice(roomType?.basePriceNight)}</p>
+                <p className="text-4xl font-bold mb-6">{formatPrice(roomType?.basePriceNight || 0)}</p>
                 <Button
-                  asChild
-                  disabled={roomType?.availableRoomCount === 0}
-                  className="w-full bg-white text-primary hover:bg-white/90 h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
+                  className="w-full bg-white text-primary hover:bg-white/90 h-14 text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 rounded-xl"
+                  onClick={() => handleBookNow()}
                 >
-                  {roomType?.availableRoomCount === 0 ? (
-                    <span>Hết phòng</span>
-                  ) : (
-                    <Link
-                      href={`/booking?roomId=${roomType?.roomTypeId}&roomType=${encodeURIComponent(
-                        roomType?.typeName || "",
-                      )}&price=${roomType?.basePriceNight}`}
-                    >
-                      Đặt phòng ngay
-                    </Link>
-                  )}
+                  Đặt phòng ngay
                 </Button>
               </div>
 
@@ -361,66 +455,56 @@ export default function RoomDetailPage({
           </div>
         </div>
 
-        {similarRooms.length > 0 && (
+        {similarRoomGroups.length > 0 && (
           <div className="mt-20 animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
             <div className="mb-8">
               <h2 className="font-serif text-3xl lg:text-4xl font-bold mb-2">Phòng tương tự</h2>
               <p className="text-muted-foreground text-lg">Khám phá thêm các lựa chọn phù hợp với bạn</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {similarRooms.map((similarRoom, idx) => {
-                const roomImage =
-                  similarRoom.images?.[0]?.filePath || "/hotel-building-exterior-modern-architecture.jpg"
-                const hasAvailableRooms = (similarRoom.availableRoomCount ?? 0) > 0
+              {similarRoomGroups.map((group, idx) => {
+                const roomImage = group.images?.[0] || "/hotel-building-exterior-modern-architecture.jpg"
+                const hasAvailableRooms = group.availableCount > 0
 
                 return (
                   <Link
-                    key={similarRoom.roomTypeId}
-                    href={`/rooms/${similarRoom.roomTypeId}`}
+                    key={group.roomTypeId}
+                    href={`/rooms/${group.roomTypeId}`}
                     className="group animate-scale-in"
                     style={{ animationDelay: `${0.6 + idx * 0.1}s` }}
                   >
                     <div className="rounded-2xl overflow-hidden glass-effect border border-border/50 hover:border-accent/50 transition-all duration-500 hover:shadow-2xl">
                       <div className="relative h-56 overflow-hidden">
                         <Image
-                          src={roomImage || "/placeholder.svg"}
-                          alt={similarRoom.typeName}
+                          src={roomImage}
+                          alt={group.roomTypeName}
                           fill
                           className="object-cover group-hover:scale-110 transition-transform duration-700"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                        {similarRoom.availableRoomCount !== null && similarRoom.availableRoomCount !== undefined && (
-                          <div className="absolute top-4 right-4">
-                            <Badge
-                              className={`${hasAvailableRooms ? "bg-accent/90" : "bg-destructive/90"} backdrop-blur-md border-0 px-3 py-1.5 text-sm font-medium`}
-                            >
-                              {hasAvailableRooms ? `Còn ${similarRoom.availableRoomCount} phòng` : "Hết phòng"}
-                            </Badge>
-                          </div>
-                        )}
+                        <div className="absolute top-4 right-4">
+                          <Badge
+                            className={`${hasAvailableRooms ? "bg-accent/90" : "bg-destructive/90"} backdrop-blur-md border-0 px-3 py-1.5 text-sm font-medium`}
+                          >
+                            {hasAvailableRooms ? `Còn ${group.availableCount} phòng` : "Hết phòng"}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="p-6 space-y-4">
                         <h3 className="font-serif text-xl font-bold group-hover:text-accent transition-colors">
-                          {similarRoom.typeName}
+                          {group.roomTypeName}
                         </h3>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1.5">
                             <Users className="w-4 h-4" />
-                            <span>{similarRoom.maxOccupancy}</span>
+                            <span>{group.maxOccupancy} người</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <Maximize className="w-4 h-4" />
-                            <span>{similarRoom.roomSize}m²</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Bed className="w-4 h-4" />
-                            <span>{similarRoom.numberOfBeds}</span>
-                          </div>
+                          {/* Removed Maximize/Bed/Size info as not available in search result */}
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t border-border/50">
                           <span className="text-sm text-muted-foreground">Từ</span>
                           <p className="text-xl font-bold luxury-text-gradient">
-                            {formatPrice(similarRoom.basePriceNight)}
+                            {formatPrice(group.basePriceNight)}
                           </p>
                         </div>
                       </div>
@@ -435,3 +519,4 @@ export default function RoomDetailPage({
     </div>
   )
 }
+

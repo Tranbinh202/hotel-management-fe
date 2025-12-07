@@ -12,7 +12,7 @@ export default function ClientError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("[v0] Client error:", error)
+    console.error("Client error:", error)
   }, [error])
 
   return (

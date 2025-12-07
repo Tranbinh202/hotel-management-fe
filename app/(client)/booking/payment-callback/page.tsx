@@ -25,10 +25,10 @@ export default function PaymentCallbackPage() {
       const key = searchParams.get("key")
       const paymentStatus = searchParams.get("status")
 
-      console.log("[v0] Payment callback received:", { id, key, paymentStatus })
+      console.log("Payment callback received:", { id, key, paymentStatus })
 
       if (!id || !key) {
-        console.error("[v0] Missing required parameters")
+        console.error("Missing required parameters")
         setStatus("failed")
         return
       }
@@ -52,7 +52,7 @@ export default function PaymentCallbackPage() {
           setStatus("failed")
         }
       } catch (error) {
-        console.error("[v0] Error fetching booking:", error)
+        console.error("Error fetching booking:", error)
         setStatus("failed")
       }
       // </CHANGE>

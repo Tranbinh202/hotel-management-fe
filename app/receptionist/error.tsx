@@ -12,7 +12,7 @@ export default function ReceptionistError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("[v0] Receptionist error:", error)
+    console.error("Receptionist error:", error)
   }, [error])
 
   return (

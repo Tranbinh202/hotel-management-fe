@@ -45,21 +45,21 @@ export const authApi = {
   },
 
   refreshToken: async (accountId: number, refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
-    console.log("[v0] authApi.refreshToken called with accountId:", accountId)
+    console.log("authApi.refreshToken called with accountId:", accountId)
 
     const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/refresh-token", {
       accountId,
       refreshToken,
     })
 
-    console.log("[v0] authApi.refreshToken response:", response)
+    console.log("authApi.refreshToken response:", response)
 
     if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
       localStorage.setItem("access_token", response.data.token)
       // Update refresh token if a new one is provided
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken)
-        console.log("[v0] New refresh token saved")
+        console.log("New refresh token saved")
       }
       // Cache accountId for future refresh attempts
       localStorage.setItem("account_id", accountId.toString())

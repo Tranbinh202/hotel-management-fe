@@ -155,7 +155,7 @@ class ApiClient {
           : null;
 
       if (!refreshToken) {
-        console.error("[v0] No refresh token available");
+        console.error("No refresh token available");
         this.clearAuthAndRedirect();
         throw new Error("No refresh token available");
       }
@@ -165,12 +165,12 @@ class ApiClient {
         typeof refreshToken !== "string" ||
         refreshToken.trim().length === 0
       ) {
-        console.error("[v0] Invalid refresh token format");
+        console.error("Invalid refresh token format");
         this.clearAuthAndRedirect();
         throw new Error("Invalid refresh token format");
       }
 
-      console.log("[v0] Refresh token found, length:", refreshToken.length);
+      console.log("Refresh token found, length:", refreshToken.length);
 
       // Try to get accountId from access token first
       let accountId: number | null = null;
@@ -184,7 +184,7 @@ class ApiClient {
         const parts = accessToken.split(".");
         if (parts.length === 3) {
           accountId = getAccountIdFromToken(accessToken);
-          console.log("[v0] Extracted accountId from access token:", accountId);
+          console.log("Extracted accountId from access token:", accountId);
         }
       }
 
@@ -194,7 +194,7 @@ class ApiClient {
         if (parts.length === 3) {
           accountId = getAccountIdFromToken(refreshToken);
           console.log(
-            "[v0] Extracted accountId from refresh token:",
+            "Extracted accountId from refresh token:",
             accountId
           );
         }
@@ -206,14 +206,14 @@ class ApiClient {
         if (cachedAccountId) {
           accountId = parseInt(cachedAccountId, 10);
           console.log(
-            "[v0] Using cached accountId from localStorage:",
+            "Using cached accountId from localStorage:",
             accountId
           );
         }
       }
 
       if (!accountId) {
-        console.error("[v0] No accountId available - cannot refresh token");
+        console.error("No accountId available - cannot refresh token");
         this.clearAuthAndRedirect();
         throw new Error(
           "Cannot refresh token: accountId not found in access token, refresh token, or localStorage"
@@ -221,7 +221,7 @@ class ApiClient {
       }
 
       if (isNaN(accountId)) {
-        console.error("[v0] accountId is NaN");
+        console.error("accountId is NaN");
         this.clearAuthAndRedirect();
         throw new Error("Invalid accountId: NaN");
       }
@@ -232,7 +232,7 @@ class ApiClient {
       // Use POST endpoint with accountId and refreshToken
       const payload = { accountId, refreshToken };
       console.log(
-        "[v0] Refreshing token with POST endpoint. Payload:",
+        "Refreshing token with POST endpoint. Payload:",
         JSON.stringify({ accountId, refreshToken: "***" })
       );
       const response = await refreshClient.post<ApiResponse<AuthResponse>>(
@@ -240,7 +240,7 @@ class ApiClient {
         payload
       );
 
-      console.log("[v0] Refresh response:", response.data);
+      console.log("Refresh response:", response.data);
 
       const apiResponse = response.data as ApiResponse<AuthResponse>;
       const newAccessToken = apiResponse.isSuccess
@@ -250,11 +250,11 @@ class ApiClient {
         ? apiResponse.data?.refreshToken
         : null;
 
-      console.log("[v0] New access token received:", !!newAccessToken);
-      console.log("[v0] New refresh token received:", !!newRefreshToken);
+      console.log("New access token received:", !!newAccessToken);
+      console.log("New refresh token received:", !!newRefreshToken);
 
       if (!newAccessToken) {
-        console.error("[v0] No access token in refresh response");
+        console.error("No access token in refresh response");
         this.clearAuthAndRedirect();
         throw new Error("No access token in refresh response");
       }
@@ -269,12 +269,12 @@ class ApiClient {
         localStorage.setItem("account_id", accountId.toString());
       }
 
-      console.log("[v0] Token refreshed successfully");
+      console.log("Token refreshed successfully");
       return newAccessToken;
     } catch (error: any) {
-      console.error("[v0] Token refresh error:", error);
+      console.error("Token refresh error:", error);
       console.error(
-        "[v0] Error response:",
+        "Error response:",
         JSON.stringify(error.response?.data || {}, null, 2)
       );
 
@@ -292,7 +292,7 @@ class ApiClient {
 
       // Only redirect if not already on login page
       if (!window.location.pathname.includes("/login")) {
-        console.log("[v0] Redirecting to login due to auth failure");
+        console.log("Redirecting to login due to auth failure");
         window.location.href = "/login";
       }
     }

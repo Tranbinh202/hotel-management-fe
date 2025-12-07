@@ -12,6 +12,29 @@ import { useAuth } from "@/contexts/auth-context"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
+// Helper function to detect and linkify URLs in text
+function linkifyText(text: string) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const parts = text.split(urlRegex)
+  
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-primary transition-colors"
+        >
+          {part}
+        </a>
+      )
+    }
+    return part
+  })
+}
+
 export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false)
   const [inputValue, setInputValue] = useState("")
@@ -323,7 +346,7 @@ export function ChatbotWidget() {
                           )}
                         >
                           <p className="text-sm leading-relaxed break-words whitespace-pre-wrap [word-break:break-word] [overflow-wrap:anywhere]">
-                            {message.content}
+                            {linkifyText(message.content)}
                           </p>
                           <p
                             className={cn(

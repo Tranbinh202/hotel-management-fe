@@ -1,9 +1,9 @@
-import { jwtDecode } from "jwt-decode"
+import { jwtDecode } from "jwt-decode";
 
 interface JwtPayload {
-  exp: number
-  iat: number
-  [key: string]: any
+  exp: number;
+  iat: number;
+  [key: string]: any;
 }
 
 /**
@@ -11,14 +11,29 @@ interface JwtPayload {
  */
 export function isTokenExpired(token: string): boolean {
   try {
-    const decoded = jwtDecode<JwtPayload>(token)
-    const currentTime = Date.now() / 1000
+    // Check if token is valid format (3 parts separated by dots)
+    if (!token || typeof token !== "string") {
+      console.warn("[Token] Invalid token: not a string");
+      return true;
+    }
+
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      console.warn(
+        "[Token] Invalid token format: expected 3 parts, got",
+        parts.length
+      );
+      return true;
+    }
+
+    const decoded = jwtDecode<JwtPayload>(token);
+    const currentTime = Date.now() / 1000;
 
     // Check if token expires in the next 60 seconds (buffer time)
-    return decoded.exp < currentTime + 60
+    return decoded.exp < currentTime + 60;
   } catch (error) {
-    console.error("Error decoding token:", error)
-    return true
+    console.error("Error decoding token:", error);
+    return true;
   }
 }
 
@@ -27,36 +42,47 @@ export function isTokenExpired(token: string): boolean {
  */
 export function getAccountIdFromToken(token: string): number | null {
   try {
-    const decoded = jwtDecode<any>(token)
+    const decoded = jwtDecode<any>(token);
 
     // Log the decoded token for debugging (only in development)
     if (process.env.NODE_ENV === "development") {
-      console.log("[Token Debug] Decoded JWT:", decoded)
-      console.log("[Token Debug] Available claims:", Object.keys(decoded))
+      console.log("[Token Debug] Decoded JWT:", decoded);
+      console.log("[Token Debug] Available claims:", Object.keys(decoded));
     }
 
     // Try various possible claim names
     // Standard claims
-    if (decoded.accountId) return Number(decoded.accountId)
-    if (decoded.sub) return Number(decoded.sub)
-    if (decoded.id) return Number(decoded.id)
-    if (decoded.userId) return Number(decoded.userId)
-    if (decoded.user_id) return Number(decoded.user_id)
+    if (decoded.accountId) return Number(decoded.accountId);
+    if (decoded.sub) return Number(decoded.sub);
+    if (decoded.id) return Number(decoded.id);
+    if (decoded.userId) return Number(decoded.userId);
+    if (decoded.user_id) return Number(decoded.user_id);
 
     // Namespaced claims (common in ASP.NET)
-    if (decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"]) {
-      return Number(decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"])
+    if (
+      decoded[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+      ]
+    ) {
+      return Number(
+        decoded[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+        ]
+      );
     }
 
     // Custom claims
-    if (decoded["AccountId"]) return Number(decoded["AccountId"])
-    if (decoded["account_id"]) return Number(decoded["account_id"])
+    if (decoded["AccountId"]) return Number(decoded["AccountId"]);
+    if (decoded["account_id"]) return Number(decoded["account_id"]);
 
-    console.warn("[Token] Could not find accountId in token. Available claims:", Object.keys(decoded))
-    return null
+    console.warn(
+      "[Token] Could not find accountId in token. Available claims:",
+      Object.keys(decoded)
+    );
+    return null;
   } catch (error) {
-    console.error("Error extracting account ID from token:", error)
-    return null
+    console.error("Error extracting account ID from token:", error);
+    return null;
   }
 }
 
@@ -65,10 +91,10 @@ export function getAccountIdFromToken(token: string): number | null {
  */
 export function getTokenExpirationTime(token: string): number | null {
   try {
-    const decoded = jwtDecode<JwtPayload>(token)
-    return decoded.exp
+    const decoded = jwtDecode<JwtPayload>(token);
+    return decoded.exp;
   } catch (error) {
-    console.error("Error getting token expiration:", error)
-    return null
+    console.error("Error getting token expiration:", error);
+    return null;
   }
 }

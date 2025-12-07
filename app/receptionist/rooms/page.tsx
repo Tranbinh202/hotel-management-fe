@@ -3,9 +3,109 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { roomManagementApi } from "@/lib/api/rooms"
+import type { RoomSearchItem, RoomDetails, RoomStatusCode } from "@/lib/types/api"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 export default function ReceptionistRoomsPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedFloor, setSelectedFloor] = useState<string>("all")
+  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [selectedRoom, setSelectedRoom] = useState<RoomDetails | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [availableTransitions, setAvailableTransitions] = useState<any[]>([])
+  const queryClient = useQueryClient()
+
+  const { data: searchData, isLoading } = useQuery({
+    queryKey: ["receptionist-rooms", searchQuery, selectedFloor, selectedStatus],
+    queryFn: () => {
+      const params: any = {
+        pageNumber: 1,
+        pageSize: 100,
+      }
+      if (searchQuery) params.roomName = searchQuery
+      if (selectedFloor !== "all") params.floor = Number.parseInt(selectedFloor)
+      if (selectedStatus !== "all") params.status = selectedStatus
+
+      return roomManagementApi.search(params)
+    },
+  })
+
+  const { data: statsData } = useQuery({
+    queryKey: ["room-stats"],
+    queryFn: () => roomManagementApi.getStats(),
+  })
+
+  const rooms = searchData?.rooms || []
+
+  const changeStatusMutation = useMutation({
+    mutationFn: (data: { roomId: number; newStatus: RoomStatusCode }) => roomManagementApi.changeStatus(data),
+    onSuccess: () => {
+      toast.success("Cập nhật trạng thái phòng thành công")
+      queryClient.invalidateQueries({ queryKey: ["receptionist-rooms"] })
+      queryClient.invalidateQueries({ queryKey: ["room-stats"] })
+      setDetailDialogOpen(false)
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Không thể cập nhật trạng thái phòng")
+    },
+  })
+
+  const getRoomStatusColor = (statusCode: RoomStatusCode) => {
+    const colors: Record<RoomStatusCode, string> = {
+      Available: "bg-emerald-500",
+      Booked: "bg-purple-500",
+      Occupied: "bg-blue-500",
+      Cleaning: "bg-amber-500",
+      Maintenance: "bg-red-500",
+      PendingInspection: "bg-orange-500",
+      OutOfService: "bg-slate-500",
+    }
+    return colors[statusCode] || "bg-slate-400"
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount)
+  }
+
+  const handleViewDetail = async (room: RoomSearchItem) => {
+    try {
+      const [details, statusTransitions] = await Promise.all([
+        roomManagementApi.getDetails(room.roomId),
+        roomManagementApi.getAvailableStatus(room.roomId),
+      ])
+      setSelectedRoom(details)
+      setAvailableTransitions(statusTransitions.availableTransitions)
+      setDetailDialogOpen(true)
+    } catch (error) {
+      toast.error("Không thể tải chi tiết phòng")
+    }
+  }
+
+  const handleStatusChange = (newStatus: RoomStatusCode) => {
+    if (!selectedRoom) return
+    changeStatusMutation.mutate({
+      roomId: selectedRoom.roomId,
+      newStatus,
+    })
+  }
+
+  const getStatusCount = (statusCode: RoomStatusCode) => {
+    return statsData?.statusSummary?.find((s) => s.statusCode === statusCode)?.count || 0
+  }
+
+  const calculateOccupancyRate = () => {
+    if (!statsData) return 0
+    const occupied = getStatusCount("Occupied")
+    const booked = getStatusCount("Booked")
+    return statsData.totalRooms > 0 ? ((occupied + booked) / statsData.totalRooms) * 100 : 0
+  }
 
   return (
     <div className="space-y-6">
@@ -13,14 +113,14 @@ export default function ReceptionistRoomsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Quản lý phòng</h1>
-          <p className="text-slate-600 mt-1">Xem trạng thái và thông tin phòng</p>
+          <p className="text-slate-600 mt-1">Xem trạng thái và quản lý phòng khách sạn</p>
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* Search & Filter Bar */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center gap-4">
-          <div className="flex-1 relative">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="flex-1 w-full relative">
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
               fill="none"
@@ -41,27 +141,308 @@ export default function ReceptionistRoomsPage() {
               className="pl-10 h-12 text-base border-slate-300"
             />
           </div>
+          <Select value={selectedFloor} onValueChange={setSelectedFloor}>
+            <SelectTrigger className="w-full md:w-40 h-12">
+              <SelectValue placeholder="Chọn tầng" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả tầng</SelectItem>
+              <SelectItem value="1">Tầng 1</SelectItem>
+              <SelectItem value="2">Tầng 2</SelectItem>
+              <SelectItem value="3">Tầng 3</SelectItem>
+              <SelectItem value="4">Tầng 4</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+            <SelectTrigger className="w-full md:w-48 h-12">
+              <SelectValue placeholder="Trạng thái" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả trạng thái</SelectItem>
+              <SelectItem value="Available">Trống</SelectItem>
+              <SelectItem value="Booked">Đã đặt</SelectItem>
+              <SelectItem value="Occupied">Đang sử dụng</SelectItem>
+              <SelectItem value="Cleaning">Đang dọn dẹp</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearchQuery("")
+              setSelectedFloor("all")
+              setSelectedStatus("all")
+            }}
+            className="w-full md:w-auto h-12 px-6 border-slate-300 hover:bg-slate-50"
+          >
+            Xóa bộ lọc
+          </Button>
         </div>
       </div>
 
-      {/* Coming Soon Message */}
-      <Card className="border-slate-200 shadow-sm">
-        <CardContent className="p-12 text-center">
-          <div className="w-24 h-24 mx-auto mb-6 text-slate-300">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              />
-            </svg>
-          </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Tính năng đang phát triển</h3>
-          <p className="text-slate-600 max-w-md mx-auto">
-            Chức năng quản lý phòng đang được xây dựng và sẽ sớm có mặt trong hệ thống.
-          </p>
-        </CardContent>
-      </Card>
+      {statsData && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="border-slate-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Tổng phòng</p>
+                  <p className="text-xl font-bold text-slate-900">{statsData.totalRooms}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Phòng trống</p>
+                  <p className="text-xl font-bold text-emerald-600">{getStatusCount("Available")}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Đang sử dụng</p>
+                  <p className="text-xl font-bold text-blue-600">{getStatusCount("Occupied")}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-200 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-amber-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">Tỷ lệ lấp đầy</p>
+                  <p className="text-xl font-bold text-amber-600">{calculateOccupancyRate().toFixed(1)}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Rooms Grid */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-[#00008b]/5 to-[#ffd700]/5">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Danh sách phòng
+            {rooms.length > 0 && <span className="ml-2 text-slate-600">({rooms.length})</span>}
+          </h2>
+        </div>
+
+        <div className="p-6">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="border-slate-200">
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-6 w-20" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : rooms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-24 h-24 mb-4 text-slate-300">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-slate-700 mb-1">Không tìm thấy phòng</h3>
+              <p className="text-slate-500 text-center text-sm">Hãy thử tìm kiếm với từ khóa khác</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rooms.map((room) => (
+                <Card
+                  key={room.roomId}
+                  className="border-slate-200 hover:shadow-lg transition-all cursor-pointer hover:border-[#00008b]"
+                  onClick={() => handleViewDetail(room)}
+                >
+                  <CardContent className="p-5">
+                    {room.images?.[0] && (
+                      <div className="mb-4 rounded-lg overflow-hidden h-32 bg-slate-100">
+                        <img
+                          src={room.images[0] || "/placeholder.svg"}
+                          alt={room.roomName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xl font-bold text-slate-900">Phòng {room.roomName}</h3>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${getRoomStatusColor(room.statusCode)}`} />
+                        <span className="text-xs font-medium text-slate-600">{room.status}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                          {room.roomTypeName}
+                        </Badge>
+                        <span className="text-xs text-slate-500">{room.roomTypeCode}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
+                      <div className="flex items-center gap-2 text-slate-600">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                        <span>{room.maxOccupancy} người</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100">
+                      <p className="text-xs text-slate-500 mb-1">Giá mỗi đêm</p>
+                      <p className="text-lg font-bold text-[#00008b]">{formatCurrency(room.basePriceNight)}</p>
+                    </div>
+
+                    <Button
+                      className="w-full mt-3 bg-gradient-to-r from-[#00008b] to-[#0000cd] hover:from-[#00006b] hover:to-[#0000ad] text-white"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleViewDetail(room)
+                      }}
+                    >
+                      Xem chi tiết
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Chi tiết phòng {selectedRoom?.roomName}</DialogTitle>
+          </DialogHeader>
+
+          {selectedRoom && (
+            <div className="space-y-6 py-4">
+              {selectedRoom.images && selectedRoom.images.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
+                  {selectedRoom.images.slice(0, 4).map((image, index) => (
+                    <div key={index} className="rounded-lg overflow-hidden h-48 bg-slate-100">
+                      <img
+                        src={image || "/placeholder.svg"}
+                        alt={`${selectedRoom.roomName} - ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${getRoomStatusColor(selectedRoom.statusCode)}`} />
+                  <span className="font-medium">{selectedRoom.status}</span>
+                </div>
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                  {selectedRoom.roomTypeName}
+                </Badge>
+                <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                  {selectedRoom.roomTypeCode}
+                </Badge>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-slate-900 mb-2">Mô tả</h4>
+                <p className="text-slate-600">{selectedRoom.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-xs text-slate-500 mb-1">Sức chứa</p>
+                  <p className="text-lg font-bold text-slate-900">{selectedRoom.maxOccupancy} người</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-xs text-slate-500 mb-1">Diện tích</p>
+                  <p className="text-lg font-bold text-slate-900">{selectedRoom.roomSize}m²</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-xs text-slate-500 mb-1">Số giường</p>
+                  <p className="text-lg font-bold text-slate-900">{selectedRoom.numberOfBeds}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-xs text-slate-500 mb-1">Loại giường</p>
+                  <p className="text-sm font-medium text-slate-900">{selectedRoom.bedType}</p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-[#00008b]/5 to-[#ffd700]/10 rounded-lg p-6">
+                <p className="text-sm text-slate-600 mb-2">Giá mỗi đêm</p>
+                <p className="text-3xl font-bold text-[#00008b]">{formatCurrency(selectedRoom.basePriceNight)}</p>
+              </div>
+
+              {availableTransitions.length > 0 && (
+                <div className="border-t border-slate-200 pt-6">
+                  <h4 className="font-semibold text-slate-900 mb-3">Cập nhật trạng thái phòng</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {availableTransitions.map((transition) => (
+                      <Button
+                        key={transition.statusCode}
+                        variant="outline"
+                        className="justify-start h-auto py-3 px-4 hover:bg-[#00008b]/5 hover:border-[#00008b] bg-transparent"
+                        onClick={() => handleStatusChange(transition.statusCode)}
+                        disabled={changeStatusMutation.isPending}
+                      >
+                        <div className="text-left">
+                          <div className="font-medium text-slate-900">{transition.statusName}</div>
+                          {transition.description && (
+                            <div className="text-xs text-slate-500 mt-1">{transition.description}</div>
+                          )}
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

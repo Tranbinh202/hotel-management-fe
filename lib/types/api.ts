@@ -186,6 +186,136 @@ export interface UpdateRoomDto extends Partial<CreateRoomDto> {
   roomId: number
 }
 
+// Room status and management types
+export type RoomStatusCode =
+  | "Available"
+  | "Booked"
+  | "Occupied"
+  | "Cleaning"
+  | "Maintenance"
+  | "PendingInspection"
+  | "OutOfService"
+
+export interface RoomSearchParams {
+  roomName?: string
+  roomTypeId?: number
+  status?: RoomStatusCode
+  floor?: number
+  pageNumber?: number
+  pageSize?: number
+}
+
+export interface RoomSearchItem {
+  roomId: number
+  roomName: string
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  basePriceNight: number
+  statusId: number
+  status: string
+  statusCode: RoomStatusCode
+  maxOccupancy: number
+  images: string[]
+}
+
+export interface RoomSearchResponse {
+  rooms: RoomSearchItem[]
+  totalRecords: number
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+}
+
+export interface FloorMapRoom {
+  roomId: number
+  roomName: string
+  roomTypeName: string
+  status: string
+  statusCode: RoomStatusCode
+  statusColor: string
+}
+
+export interface FloorStatusSummary {
+  [key: string]: number
+}
+
+export interface FloorMap {
+  floor: number
+  rooms: FloorMapRoom[]
+  statusSummary: FloorStatusSummary
+  totalRooms: number
+}
+
+export interface RoomDetails {
+  roomId: number
+  roomName: string
+  roomTypeId: number
+  roomTypeName: string
+  roomTypeCode: string
+  basePriceNight: number
+  statusId: number
+  status: string
+  statusCode: RoomStatusCode
+  description: string
+  maxOccupancy: number
+  roomSize: number
+  numberOfBeds: number
+  bedType: string
+  images: string[]
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface RoomStatusSummary {
+  status: string // Vietnamese label like "Trống", "Đã đặt"
+  statusCode: RoomStatusCode
+  count: number
+  percentage: number
+}
+
+export interface RoomStats {
+  totalRooms: number
+  statusSummary: RoomStatusSummary[]
+}
+
+export interface StatusTransition {
+  statusCode: RoomStatusCode
+  statusName: string
+  description?: string
+}
+
+export interface AvailableStatusResponse {
+  currentStatus: {
+    statusCode: RoomStatusCode
+    statusName: string
+  }
+  availableTransitions: StatusTransition[]
+}
+
+export interface ChangeRoomStatusDto {
+  roomId: number
+  newStatus: RoomStatusCode
+}
+
+export interface BulkChangeRoomStatusDto {
+  roomIds: number[]
+  newStatus: RoomStatusCode
+}
+
+export interface BulkChangeRoomStatusResponse {
+  successCount: number
+  failedRooms: Array<{
+    roomId: number
+    roomName: string
+    reason: string
+  }>
+}
+
+export interface StartMaintenanceDto {
+  description: string
+}
+
 // Booking types
 export interface BookingRoomType {
   roomTypeId: number
@@ -704,4 +834,3 @@ export interface PayOSPaymentLinkResponse {
   amount: number
   expiresAt: string
 }
-// </CHANGE>

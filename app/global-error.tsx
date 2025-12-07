@@ -11,7 +11,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error("[v0] Global critical error:", error)
+    console.error("Global critical error:", error)
   }, [error])
 
   return (

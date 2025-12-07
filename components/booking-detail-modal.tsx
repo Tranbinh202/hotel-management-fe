@@ -57,6 +57,9 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-7xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Đang tải thông tin booking...</DialogTitle>
+          </DialogHeader>
           <div className="flex items-center justify-center py-12">
             <div className="w-12 h-12 border-4 border-[#8C68E6] border-t-transparent rounded-full animate-spin"></div>
           </div>

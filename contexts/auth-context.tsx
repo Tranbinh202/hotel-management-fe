@@ -143,6 +143,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
   }, [])
 
+  // Listen for storage changes (e.g., from Google OAuth callback)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Check if tokens were added/changed
+      if (e.key === "access_token" || e.key === "user") {
+        const newToken = localStorage.getItem("access_token")
+        const newUser = localStorage.getItem("user")
+        
+        if (newToken && newUser) {
+          setToken(newToken)
+          setUser(JSON.parse(newUser))
+        } else if (!newToken && !newUser) {
+          setToken(null)
+          setUser(null)
+        }
+      }
+    }
+
+    // Also listen for custom auth event
+    const handleAuthChange = () => {
+      const newToken = localStorage.getItem("access_token")
+      const newUser = localStorage.getItem("user")
+      
+      if (newToken && newUser) {
+        setToken(newToken)
+        setUser(JSON.parse(newUser))
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("auth-changed", handleAuthChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("auth-changed", handleAuthChange)
+    }
+  }, [])
+
   // Fetch user account summary
   const fetchUserSummary = async (): Promise<AccountSummary> => {
     const result = await accountApi.getSummary(0)

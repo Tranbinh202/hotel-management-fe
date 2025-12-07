@@ -341,15 +341,6 @@ export function useGoogleExchange() {
   return useMutation({
     mutationFn: authApi.exchangeGoogleCode,
     onSuccess: async (response) => {
-      console.log("[v0] Google exchange success:", response)
-      
-      // Save tokens to localStorage
-      if (response.isSuccess && response.data) {
-        console.log("[v0] Saving tokens to localStorage...")
-        localStorage.setItem("access_token", response.data.token)
-        localStorage.setItem("refresh_token", response.data.refreshToken)
-      }
-      
       queryClient.clear()
       toast({
         title: "Đăng nhập thành công",
@@ -357,13 +348,9 @@ export function useGoogleExchange() {
       })
 
       try {
-        console.log("[v0] Fetching user data...")
         const userData = await accountApi.getSummary(0)
         if (userData.isSuccess) {
-          console.log("[v0] User data fetched:", userData.data)
-
           if (userData.data.isLocked) {
-            console.log("[v0] Account is locked, redirecting to locked page")
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
             router.push("/account-locked")
@@ -371,19 +358,20 @@ export function useGoogleExchange() {
           }
 
           localStorage.setItem("user", JSON.stringify(userData.data))
+          
+          // Trigger auth context update
+          window.dispatchEvent(new Event("auth-changed"))
         }
       } catch (error) {
-        console.error("[v0] Failed to fetch user data after Google login:", error)
+        console.error("Failed to fetch user data after Google login:", error)
       }
 
-      console.log("[v0] Redirecting to home page...")
       setTimeout(() => {
         router.push("/")
         router.refresh()
       }, 1000)
     },
     onError: (error: any) => {
-      console.error("[v0] Google exchange error:", error)
       toast({
         title: "Đăng nhập thất bại",
         description: error.message || "Mã xác thực không hợp lệ",

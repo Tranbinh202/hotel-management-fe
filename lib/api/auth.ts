@@ -162,12 +162,9 @@ export const authApi = {
   },
 
   exchangeGoogleCode: async (code: string): Promise<ApiResponse<AuthResponse>> => {
-    console.log("[v0] Exchanging Google authorization code:", code)
     const response = await apiClient.post<ApiResponse<AuthResponse>>("/Authentication/exchange-google", { code })
-    console.log("[v0] Exchange response:", response)
 
     if (typeof window !== "undefined" && response.isSuccess && response.data?.token) {
-      console.log("[v0] Saving tokens to localStorage")
       localStorage.setItem("access_token", response.data.token)
       localStorage.setItem("refresh_token", response.data.refreshToken)
 

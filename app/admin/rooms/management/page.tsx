@@ -35,7 +35,7 @@ export default function AdminRoomManagementPage() {
     floor: floorFilter !== "all" ? floorFilter : undefined,
     status: statusFilter !== "all" ? (statusFilter as RoomStatusCode) : undefined,
     pageNumber: 1,
-    pageSize: 100,
+    pageSize: 50,
   })
 
   const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)

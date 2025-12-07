@@ -36,9 +36,9 @@ export default function IndividualRoomsManagement() {
   }, [searchTerm])
 
   const { data: roomTypesData } = useRoomTypes({ PageSize: 50 })
-  const roomTypes = roomTypesData?.pages.flatMap((page) => page.items) ?? []
+  const roomTypes = roomTypesData?.pages?.flatMap((page) => page?.items || []) ?? []
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useRooms({
+  const { data, isLoading } = useRooms({
     Search: debouncedSearchTerm,
     PageSize: 20,
   })
@@ -47,7 +47,7 @@ export default function IndividualRoomsManagement() {
   const updateMutation = useUpdateRoom()
   const deleteMutation = useDeleteRoom()
 
-  const allRooms = data?.pages.flatMap((page) => page.items) ?? []
+  const allRooms = data?.rooms || []
 
   const filteredRooms =
     selectedRoomType === "all" ? allRooms : allRooms.filter((room) => room.roomTypeId === Number(selectedRoomType))
@@ -159,7 +159,7 @@ export default function IndividualRoomsManagement() {
         <div>
           <h2 className="text-lg font-bold text-slate-900">Danh sách phòng</h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Tổng số: <span className="font-semibold text-slate-900">{data?.pages[0]?.totalCount || 0}</span> phòng
+            Tổng số: <span className="font-semibold text-slate-900">{data?.totalRecords || 0}</span> phòng
           </p>
         </div>
         <Button
@@ -235,18 +235,22 @@ export default function IndividualRoomsManagement() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-bold text-lg text-slate-900">{room.roomNumber}</h3>
-                    <p className="text-sm text-slate-600">{room.roomType.typeName}</p>
+                    <h3 className="font-bold text-lg text-slate-900">{room.roomName}</h3>
+                    <p className="text-sm text-slate-600">{room.roomTypeName}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <Building2 className="w-4 h-4 text-slate-500" />
-                    <span className="text-sm text-slate-700">Tầng {room.floorNumber}</span>
+                    <span className="text-sm text-slate-700">
+                      Tầng {(room as any).floorNumber || (room as any).floor || "?"}
+                    </span>
                   </div>
                 </div>
 
-                <div className="mb-4">{getStatusBadge(room.roomStatus)}</div>
+                <div className="mb-4">{getStatusBadge(room.statusCode)}</div>
 
-                {room.notes && <p className="text-xs text-slate-500 mb-4 line-clamp-2">{room.notes}</p>}
+                {(room as any).notes && (
+                  <p className="text-xs text-slate-500 mb-4 line-clamp-2">{(room as any).notes}</p>
+                )}
 
                 <div className="flex items-center gap-2">
                   <Button
@@ -274,25 +278,7 @@ export default function IndividualRoomsManagement() {
         )}
       </div>
 
-      {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-            variant="outline"
-            className="min-w-[200px]"
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang tải...
-              </>
-            ) : (
-              "Tải thêm"
-            )}
-          </Button>
-        </div>
-      )}
+
 
       {/* Add/Edit Modal */}
       {isModalOpen && (

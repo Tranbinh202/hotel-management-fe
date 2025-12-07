@@ -213,11 +213,11 @@ export default function NewBookingPage() {
     if (!dateTimeString) return true
     const selectedDate = new Date(dateTimeString)
     const now = new Date()
-    
+
     // Compare only dates, ignoring time
     selectedDate.setHours(0, 0, 0, 0)
     now.setHours(0, 0, 0, 0)
-    
+
     return selectedDate >= now
   }
 
@@ -455,7 +455,7 @@ export default function NewBookingPage() {
 
                     <Badge
                       variant="outline"
-                      className="border-[#8C68E6] text-[#8C68E6] bg-purple-50 px-4 py-2 h-11 flex items-center gap-2"
+                      className="border-[#00008b] text-[#00008b] bg-[#00008b]/10 px-4 py-2 h-11 flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -684,9 +684,7 @@ export default function NewBookingPage() {
                         }}
                         placeholder="Chọn ngày trả phòng"
                         minDate={
-                          formData.checkInDate
-                            ? new Date(new Date(formData.checkInDate).getTime())
-                            : getStartOfToday()
+                          formData.checkInDate ? new Date(new Date(formData.checkInDate).getTime()) : getStartOfToday()
                         }
                         className="h-12"
                       />
@@ -919,7 +917,7 @@ export default function NewBookingPage() {
             <div className="lg:col-span-1">
               <div className="sticky top-6">
                 <Card className="bg-white shadow-xl border-0 rounded-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#8C68E6] to-[#B794F6] text-white p-6">
+                  <div className="bg-gradient-to-r from-[#00008b] to-[#ffd700] text-white p-6">
                     <h3 className="text-xl font-bold">Phòng đã chọn</h3>
                   </div>
                   <CardContent className="p-6 space-y-5">
@@ -1159,7 +1157,7 @@ export default function NewBookingPage() {
                       onClick={() => setFormData({ ...formData, paymentMethod: method.value as any })}
                       className={`p-4 border-2 rounded-xl text-center transition-all ${
                         formData.paymentMethod === method.value
-                          ? "border-[#8C68E6] bg-purple-50 shadow-md"
+                          ? "border-[#00008b] bg-[#00008b]/10 shadow-md"
                           : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                       }`}
                     >

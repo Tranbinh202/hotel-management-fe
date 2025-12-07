@@ -129,7 +129,7 @@ export function AdminSidebar() {
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-all font-medium",
                 isActive
-                  ? "bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] text-white shadow-lg"
+                  ? "bg-gradient-to-r from-[#00008b] to-[#ffd700] text-white shadow-lg"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
               )}
             >

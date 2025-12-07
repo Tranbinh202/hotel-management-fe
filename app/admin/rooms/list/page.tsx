@@ -143,7 +143,7 @@ export default function RoomsListPage() {
       OutOfService: { bg: "bg-red-100", text: "text-red-800", label: "Ngừng hoạt động" },
     }
 
-    const statusStyle = statusMap[status] || statusMap.Available
+    const statusStyle = statusMap[status] || statusMap?.Available
 
     return (
       <span
@@ -165,7 +165,7 @@ export default function RoomsListPage() {
         </div>
         <Button
           onClick={() => handleOpenModal()}
-          className="bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db] text-white"
+          className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -272,7 +272,7 @@ export default function RoomsListPage() {
                             onClick={() => handleOpenModal(room)}
                             variant="ghost"
                             size="sm"
-                            className="text-[#14b8a6] hover:text-[#14b8a6] hover:bg-[#14b8a6]/10"
+                            className="text-[#00008b] hover:text-[#00008b] hover:bg-[#00008b]/10"
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
@@ -413,7 +413,7 @@ export default function RoomsListPage() {
                   name="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#ff5e7e]"
+                  className="w-full min-h-[100px] px-3 py-2 rounded-md border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#00008b]"
                   placeholder="Ghi chú về phòng (nếu có)"
                 />
               </div>
@@ -425,7 +425,7 @@ export default function RoomsListPage() {
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1 bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db]"
+                  className="flex-1 bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200]"
                 >
                   {(createMutation.isPending || updateMutation.isPending) && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

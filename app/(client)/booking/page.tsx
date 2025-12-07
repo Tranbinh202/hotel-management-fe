@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { bookingsApi } from "@/lib/api/bookings"
 import { roomsApi, type Room } from "@/lib/api/rooms"
+import { useRooms } from "@/lib/hooks"
 import { useAuth } from "@/contexts/auth-context"
 import {
   CalendarIcon,
@@ -34,6 +35,7 @@ import {
   Star,
   TrendingUp,
   Eye,
+  Key,
 } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
@@ -69,7 +71,10 @@ function BookingPageContent() {
     roomId: number
     roomType: string
     pricePerNight: number
+    roomName?: string
   } | null>(null)
+
+  const [selectedSpecificRoomName, setSelectedSpecificRoomName] = useState<string | null>(null)
 
   useEffect(() => {
     const data = sessionStorage.getItem("bookingData")
@@ -79,7 +84,11 @@ function BookingPageContent() {
         roomId: parsed.roomId,
         roomType: parsed.roomType,
         pricePerNight: parsed.price,
+        roomName: parsed.roomName,
       })
+      if (parsed.roomName) {
+        setSelectedSpecificRoomName(parsed.roomName)
+      }
     } else {
       router.push("/rooms")
     }
@@ -125,6 +134,25 @@ function BookingPageContent() {
   const checkOutDate = watchDates("checkOutDate")
   const quantity = watchDates("quantity")
 
+  // Fetch available specific rooms
+  const { data: availableRoomsData } = useRooms(
+    {
+      roomTypeId: roomId,
+      checkInDate: checkInDate?.toISOString(),
+      checkOutDate: checkOutDate?.toISOString(),
+      // Status "Available" is implied if we want only available?
+      // roomsApi.search supports 'status'.
+      // If I want to list ONLY available rooms for the dates, I should pass status="Available"?
+      // Or filter client side?
+      // Usually matching "Available" status code is safer.
+      // But let's just get them all and render status.
+      pageNumber: 1,
+      pageSize: 100,
+    },
+    true
+  )
+  const availableSpecificRooms = availableRoomsData?.rooms || []
+
   useEffect(() => {
     if (isAuthenticated && user?.profileDetails) {
       const profile = user.profileDetails
@@ -141,10 +169,10 @@ function BookingPageContent() {
   }, [isAuthenticated, user, setGuestValue])
 
   useEffect(() => {
-    if (!roomId || !roomType || !pricePerNight) {
+    if (bookingData && (!roomId || !roomType || !pricePerNight)) {
       router.push("/rooms")
     }
-  }, [roomId, roomType, pricePerNight, router])
+  }, [bookingData, roomId, roomType, pricePerNight, router])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -201,7 +229,12 @@ function BookingPageContent() {
           ],
           checkInDate: checkInDate.toISOString(),
           checkOutDate: checkOutDate.toISOString(),
-          specialRequests: guestData.specialRequests || undefined,
+          specialRequests: [
+            guestData.specialRequests,
+            selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
+          ]
+            .filter(Boolean)
+            .join(". ") || undefined,
         })
 
         if (response.isSuccess && response.data.paymentUrl) {
@@ -222,20 +255,25 @@ function BookingPageContent() {
           ],
           checkInDate: checkInDate.toISOString(),
           checkOutDate: checkOutDate.toISOString(),
-          specialRequests: guestData.specialRequests || undefined,
+          specialRequests: [
+            guestData.specialRequests,
+            selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
+          ]
+            .filter(Boolean)
+            .join(". ") || undefined,
         })
 
         if (guestResponse.isSuccess) {
           const params = new URLSearchParams({
-            token: guestResponse.data.token,
-            bookingId: guestResponse.data.bookingId.toString(),
+            token: guestResponse.data.bookingToken,
+            bookingId: guestResponse.data.booking.bookingId.toString(),
           })
 
-          if (guestResponse.data.qrPaymentInfo) {
-            params.append("qrCode", guestResponse.data.qrPaymentInfo.qrCodeBase64)
-            params.append("amount", guestResponse.data.qrPaymentInfo.amount.toString())
-            params.append("accountNo", guestResponse.data.qrPaymentInfo.accountNo)
-            params.append("accountName", guestResponse.data.qrPaymentInfo.accountName)
+          if (guestResponse.data.qrPayment) {
+            params.append("qrCode", guestResponse.data.qrPayment.qrCodeUrl)
+            params.append("amount", guestResponse.data.qrPayment.amount.toString())
+            params.append("accountNo", guestResponse.data.qrPayment.accountNumber)
+            params.append("accountName", guestResponse.data.qrPayment.accountName)
           }
 
           router.push(`/booking/success?${params.toString()}`)
@@ -256,7 +294,7 @@ function BookingPageContent() {
 
       try {
         setIsLoadingRoom(true)
-        const roomData = await roomsApi.getById({ id: roomId })
+        const roomData = await roomsApi.getById(roomId)
         setRoom(roomData)
       } catch (error) {
         console.error("Error fetching room details:", error)
@@ -527,6 +565,58 @@ function BookingPageContent() {
                       )}
                     </div>
 
+                    <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+                      <Label className="text-base font-medium">Chọn phòng cụ thể (Tùy chọn)</Label>
+                      {selectedSpecificRoomName ? (
+                        <div className="flex items-center justify-between p-3 border rounded-lg bg-accent/5 border-accent/20">
+                          <div className="flex items-center gap-2">
+                            <Key className="w-4 h-4 text-accent" />
+                            <span className="font-medium text-accent">Phòng {selectedSpecificRoomName}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-destructive h-auto p-1"
+                            onClick={() => setSelectedSpecificRoomName(null)}
+                          >
+                            Bỏ chọn
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="border rounded-lg p-3 space-y-3">
+                          {!checkInDate || !checkOutDate ? (
+                            <p className="text-sm text-muted-foreground italic text-center py-2">
+                              Vui lòng chọn ngày để xem danh sách phòng trống
+                            </p>
+                          ) : availableSpecificRooms.length > 0 ? (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto">
+                              {availableSpecificRooms
+                                .filter((r) => r.statusCode === "Available")
+                                .map((r) => (
+                                  <div
+                                    key={r.roomId}
+                                    onClick={() => setSelectedSpecificRoomName(r.roomName)}
+                                    className="cursor-pointer border rounded-md p-2 text-center text-sm hover:bg-accent hover:text-white transition-colors"
+                                  >
+                                    {r.roomName}
+                                  </div>
+                                ))}
+                              {availableSpecificRooms.filter((r) => r.statusCode === "Available").length === 0 && (
+                                <p className="col-span-full text-sm text-muted-foreground text-center">
+                                  Không có phòng trống cho ngày đã chọn
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex justify-center py-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-end pt-4">
                       <Button type="submit" className="luxury-gradient text-white" size="lg">
                         Tiếp tục
@@ -717,6 +807,12 @@ function BookingPageContent() {
                           <span className="opacity-90">Số phòng:</span>
                           <span className="font-medium">{quantity}</span>
                         </div>
+                        {selectedSpecificRoomName && (
+                          <div className="flex justify-between">
+                            <span className="opacity-90">Phòng cụ thể:</span>
+                            <span className="text-white font-bold border-b border-white/50">{selectedSpecificRoomName}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-4 border-t border-white/20">

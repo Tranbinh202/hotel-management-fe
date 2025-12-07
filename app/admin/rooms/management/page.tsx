@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Search, Building2, MapPin, Filter, ChevronRight } from "lucide-react"
-import { roomManagementApi } from "@/lib/api/rooms"
-import type { RoomSearchResponse, RoomDetailsResponse, RoomStatusTransition } from "@/lib/types/api"
+import { useRoomManagement, useRoomDetails, useAvailableStatus, useChangeRoomStatus } from "@/lib/hooks/use-rooms"
+import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
 
 const STATUS_COLORS = {
   Available: { bg: "bg-green-100", text: "text-green-800", label: "Có sẵn" },
@@ -18,72 +18,44 @@ const STATUS_COLORS = {
   Cleaning: { bg: "bg-yellow-100", text: "text-yellow-800", label: "Đang dọn" },
   Maintenance: { bg: "bg-orange-100", text: "text-orange-800", label: "Bảo trì" },
   OutOfService: { bg: "bg-red-100", text: "text-red-800", label: "Ngừng hoạt động" },
+  PendingInspection: { bg: "bg-amber-100", text: "text-amber-800", label: "Chờ kiểm tra" },
 }
 
 export default function AdminRoomManagementPage() {
-  const [rooms, setRooms] = useState<RoomSearchResponse[]>([])
-  const [selectedRoom, setSelectedRoom] = useState<RoomDetailsResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [isDetailLoading, setIsDetailLoading] = useState(false)
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [availableTransitions, setAvailableTransitions] = useState<RoomStatusTransition[]>([])
 
   // Filters
   const [search, setSearch] = useState("")
   const [floorFilter, setFloorFilter] = useState<number | "all">("all")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<RoomStatusCode | "all">("all")
 
-  // Fetch rooms
-  useEffect(() => {
-    fetchRooms()
-  }, [search, floorFilter, statusFilter])
+  const { data: roomsData, isLoading } = useRoomManagement({
+    roomName: search || undefined,
+    floor: floorFilter !== "all" ? floorFilter : undefined,
+    status: statusFilter !== "all" ? (statusFilter as RoomStatusCode) : undefined,
+    pageNumber: 1,
+    pageSize: 100,
+  })
 
-  const fetchRooms = async () => {
-    setIsLoading(true)
-    try {
-      const response = await roomManagementApi.searchRooms({
-        roomNumber: search || undefined,
-        floorNumber: floorFilter !== "all" ? floorFilter : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        pageNumber: 1,
-        pageSize: 100,
-      })
-      setRooms(response.items)
-    } catch (error) {
-      console.error("Failed to fetch rooms:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
+  const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
+  const changeStatusMutation = useChangeRoomStatus()
 
-  const handleViewDetails = async (roomId: number) => {
-    setIsDetailLoading(true)
+  const rooms = roomsData?.rooms || []
+
+  const handleViewDetails = (roomId: number) => {
+    setSelectedRoomId(roomId)
     setIsDetailOpen(true)
-    try {
-      const [details, transitions] = await Promise.all([
-        roomManagementApi.getRoomDetails(roomId),
-        roomManagementApi.getAvailableStatusTransitions(roomId),
-      ])
-      setSelectedRoom(details)
-      setAvailableTransitions(transitions)
-    } catch (error) {
-      console.error("Failed to fetch room details:", error)
-    } finally {
-      setIsDetailLoading(false)
-    }
   }
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (!selectedRoom) return
-
-    try {
-      await roomManagementApi.updateRoomStatus(selectedRoom.roomId, newStatus)
-      // Refresh data
-      await fetchRooms()
-      await handleViewDetails(selectedRoom.roomId)
-    } catch (error) {
-      console.error("Failed to update status:", error)
-    }
+  const handleStatusChange = async (newStatus: RoomStatusCode) => {
+    if (!selectedRoomId) return
+    await changeStatusMutation.mutateAsync({
+      roomId: selectedRoomId,
+      newStatus,
+    })
+    setIsDetailOpen(false)
   }
 
   // Get unique floors
@@ -96,7 +68,7 @@ export default function AdminRoomManagementPage() {
       acc[room.floorNumber].push(room)
       return acc
     },
-    {} as Record<number, RoomSearchResponse[]>,
+    {} as Record<number, RoomSearchItem[]>,
   )
 
   return (
@@ -134,7 +106,7 @@ export default function AdminRoomManagementPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as RoomStatusCode | "all")}>
               <SelectTrigger className="w-[180px]">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Trạng thái" />
@@ -207,11 +179,11 @@ export default function AdminRoomManagementPage() {
             <DialogTitle className="text-2xl">Chi tiết phòng</DialogTitle>
           </DialogHeader>
 
-          {isDetailLoading ? (
+          {!selectedRoom ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
             </div>
-          ) : selectedRoom ? (
+          ) : (
             <div className="space-y-6">
               {/* Room Images */}
               {selectedRoom.images && selectedRoom.images.length > 0 && (
@@ -244,9 +216,9 @@ export default function AdminRoomManagementPage() {
                 <div>
                   <h3 className="text-sm font-medium text-slate-500 mb-1">Trạng thái hiện tại</h3>
                   <Badge
-                    className={`${STATUS_COLORS[selectedRoom.roomStatus as keyof typeof STATUS_COLORS]?.bg} ${STATUS_COLORS[selectedRoom.roomStatus as keyof typeof STATUS_COLORS]?.text} text-sm px-3 py-1`}
+                    className={`${STATUS_COLORS[selectedRoom.status as keyof typeof STATUS_COLORS]?.bg} ${STATUS_COLORS[selectedRoom.status as keyof typeof STATUS_COLORS]?.text} text-sm px-3 py-1`}
                   >
-                    {STATUS_COLORS[selectedRoom.roomStatus as keyof typeof STATUS_COLORS]?.label}
+                    {STATUS_COLORS[selectedRoom.status as keyof typeof STATUS_COLORS]?.label}
                   </Badge>
                 </div>
               </div>
@@ -275,11 +247,11 @@ export default function AdminRoomManagementPage() {
               )}
 
               {/* Status Transitions */}
-              {availableTransitions.length > 0 && (
+              {availableStatusData?.length > 0 && (
                 <div>
                   <h3 className="font-semibold text-slate-900 mb-3">Chuyển đổi trạng thái</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {availableTransitions.map((transition) => (
+                    {availableStatusData.map((transition) => (
                       <Button
                         key={transition.toStatus}
                         onClick={() => handleStatusChange(transition.toStatus)}
@@ -302,7 +274,7 @@ export default function AdminRoomManagementPage() {
                 </div>
               )}
             </div>
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </div>

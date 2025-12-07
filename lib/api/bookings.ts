@@ -42,6 +42,16 @@ export const bookingsApi = {
     return apiClient.post<GuestBookingResponse>("/Booking/guest", data);
   },
 
+  guestConfirmPayment: async (data: {
+    bookingId: number;
+    isCancel: boolean;
+  }): Promise<{ isSuccess: boolean; message: string }> => {
+    return apiClient.post<{ isSuccess: boolean; message: string }>(
+      "/Booking/confirm-payment",
+      data
+    );
+  },
+
   confirmGuestBooking: async (
     token: string
   ): Promise<{

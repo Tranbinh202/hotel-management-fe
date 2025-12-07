@@ -10,6 +10,8 @@ import type {
   BookingManagementFilter,
   PaginatedResponse,
   BookingManagementDetails,
+  BookingListItem,
+  BookingListResponse,
   UpdateBookingStatusDto,
   CancelBookingDto,
   BookingStatisticsFilter,
@@ -149,7 +151,13 @@ export const bookingManagementApi = {
     filters: BookingManagementFilter
   ): Promise<{
     isSuccess: boolean;
-    data: PaginatedResponse<BookingManagementDetails>;
+    data: {
+      items: BookingListItem[];
+      totalCount: number;
+      pageIndex: number;
+      pageSize: number;
+      totalPages: number;
+    };
     hasNextPage: boolean;
   }> => {
     const params = new URLSearchParams();
@@ -180,11 +188,23 @@ export const bookingManagementApi = {
     if (filters.isDescending !== undefined)
       params.append("isDescending", String(filters.isDescending));
 
-    return apiClient.get<{
+    const response = await apiClient.get<{
       isSuccess: boolean;
-      data: PaginatedResponse<BookingManagementDetails>;
-      hasNextPage: boolean;
+      data: BookingListResponse;
     }>(`/BookingManagement/bookings`, { params });
+
+    // Transform response to match expected format
+    return {
+      isSuccess: response.isSuccess,
+      data: {
+        items: response.data.bookings,
+        totalCount: response.data.totalCount,
+        pageIndex: response.data.pageNumber,
+        pageSize: response.data.pageSize,
+        totalPages: response.data.totalPages,
+      },
+      hasNextPage: response.data.pageNumber < response.data.totalPages,
+    };
   },
 
   // Get booking detail
@@ -203,7 +223,7 @@ export const bookingManagementApi = {
       isSuccess: boolean;
       data: BookingManagementDetails;
       message: string;
-    }>(`/BookingManagement/booking/${id}/detail`);
+    }>(`/BookingManagement/${id}`);
   },
 
   // Update booking status
@@ -220,7 +240,7 @@ export const bookingManagementApi = {
     }
 
     return apiClient.put<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/booking/${id}/status`,
+      `/BookingManagement/${id}/status`,
       data
     );
   },
@@ -239,7 +259,7 @@ export const bookingManagementApi = {
     }
 
     return apiClient.post<{ isSuccess: boolean; message: string }>(
-      `/BookingManagement/booking/${id}/cancel`,
+      `/BookingManagement/${id}/cancel`,
       data
     );
   },
@@ -273,6 +293,20 @@ export const bookingManagementApi = {
 
     return apiClient.post<{ isSuccess: boolean; message: string }>(
       `/BookingManagement/booking/${id}/resend-confirmation`,
+      {}
+    );
+  },
+
+  // Confirm payment (for Manager/Admin)
+  confirmPayment: async (
+    id: number
+  ): Promise<{ isSuccess: boolean; message: string }> => {
+    if (!id || id <= 0) {
+      throw new Error("Mã booking không hợp lệ");
+    }
+
+    return apiClient.post<{ isSuccess: boolean; message: string }>(
+      `/BookingManagement/${id}/confirm-payment`,
       {}
     );
   },

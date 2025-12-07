@@ -148,44 +148,61 @@ class ApiClient {
   }
 
   private async handleTokenRefresh(): Promise<string | null> {
-    const refreshToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("refresh_token")
-        : null;
-    const accessToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-
-    console.log("[v0] handleTokenRefresh called");
-    console.log("[v0] Has refresh token:", !!refreshToken);
-    console.log("[v0] Has access token:", !!accessToken);
-
-    if (!refreshToken) {
-      console.error("[v0] No refresh token available");
-      return null;
-    }
-
     try {
-      // Try to get accountId from current access token first
+      const refreshToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("refresh_token")
+          : null;
+
+      if (!refreshToken) {
+        console.error("[v0] No refresh token available");
+        this.clearAuthAndRedirect();
+        throw new Error("No refresh token available");
+      }
+
+      // Validate refresh token format (should be a non-empty string)
+      if (
+        typeof refreshToken !== "string" ||
+        refreshToken.trim().length === 0
+      ) {
+        console.error("[v0] Invalid refresh token format");
+        this.clearAuthAndRedirect();
+        throw new Error("Invalid refresh token format");
+      }
+
+      console.log("[v0] Refresh token found, length:", refreshToken.length);
+
+      // Try to get accountId from access token first
       let accountId: number | null = null;
+      const accessToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
+
       if (accessToken) {
-        accountId = getAccountIdFromToken(accessToken);
-        console.log("[v0] Extracted accountId from access token:", accountId);
+        // Only try to decode if it's a valid JWT format
+        const parts = accessToken.split(".");
+        if (parts.length === 3) {
+          accountId = getAccountIdFromToken(accessToken);
+          console.log("[v0] Extracted accountId from access token:", accountId);
+        }
       }
 
-      // If access token doesn't have accountId, try refresh token
-      if (!accountId) {
-        accountId = getAccountIdFromToken(refreshToken);
-        console.log("[v0] Extracted accountId from refresh token:", accountId);
+      // If not found in access token, try refresh token (if it's a JWT)
+      if (!accountId && refreshToken) {
+        const parts = refreshToken.split(".");
+        if (parts.length === 3) {
+          accountId = getAccountIdFromToken(refreshToken);
+          console.log(
+            "[v0] Extracted accountId from refresh token:",
+            accountId
+          );
+        }
       }
 
-      // If still no accountId, check localStorage for cached value
-      if (!accountId) {
-        const cachedAccountId =
-          typeof window !== "undefined"
-            ? localStorage.getItem("account_id")
-            : null;
+      // Fallback to cached accountId
+      if (!accountId && typeof window !== "undefined") {
+        const cachedAccountId = localStorage.getItem("account_id");
         if (cachedAccountId) {
           accountId = parseInt(cachedAccountId, 10);
           console.log(
@@ -197,6 +214,7 @@ class ApiClient {
 
       if (!accountId) {
         console.error("[v0] No accountId available - cannot refresh token");
+        this.clearAuthAndRedirect();
         throw new Error(
           "Cannot refresh token: accountId not found in access token, refresh token, or localStorage"
         );
@@ -204,19 +222,18 @@ class ApiClient {
 
       if (isNaN(accountId)) {
         console.error("[v0] accountId is NaN");
+        this.clearAuthAndRedirect();
         throw new Error("Invalid accountId: NaN");
       }
 
-      if (isTokenExpired(refreshToken)) {
-        console.error("[v0] Refresh token is expired");
-        throw new Error("Refresh token is expired");
-      }
+      // Don't check refresh token expiration - it might not be a JWT
+      // The backend will validate if it's still valid
 
       // Use POST endpoint with accountId and refreshToken
       const payload = { accountId, refreshToken };
       console.log(
         "[v0] Refreshing token with POST endpoint. Payload:",
-        JSON.stringify(payload)
+        JSON.stringify({ accountId, refreshToken: "***" })
       );
       const response = await refreshClient.post<ApiResponse<AuthResponse>>(
         "/Authentication/refresh-token",
@@ -237,6 +254,8 @@ class ApiClient {
       console.log("[v0] New refresh token received:", !!newRefreshToken);
 
       if (!newAccessToken) {
+        console.error("[v0] No access token in refresh response");
+        this.clearAuthAndRedirect();
         throw new Error("No access token in refresh response");
       }
 
@@ -258,7 +277,24 @@ class ApiClient {
         "[v0] Error response:",
         JSON.stringify(error.response?.data || {}, null, 2)
       );
+
+      // Clear auth and redirect on refresh failure
+      this.clearAuthAndRedirect();
       throw error;
+    }
+  }
+
+  private clearAuthAndRedirect() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("account_id");
+
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes("/login")) {
+        console.log("[v0] Redirecting to login due to auth failure");
+        window.location.href = "/login";
+      }
     }
   }
 

@@ -762,6 +762,36 @@ export interface CancelBookingDto {
   reason: string;
 }
 
+export interface BookingListItem {
+  bookingId: number;
+  customerId: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  roomIds: number[];
+  roomNames: string[];
+  roomTypeDetails: RoomTypeBookingDetail[];
+  checkInDate: string;
+  checkOutDate: string;
+  totalAmount: number;
+  depositAmount: number;
+  paymentStatus: string;
+  depositStatus: string;
+  bookingType: string;
+  specialRequests?: string;
+  createdAt: string;
+  paymentUrl?: string | null;
+  orderCode?: string | null;
+}
+
+export interface BookingListResponse {
+  bookings: BookingListItem[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface BookingManagementDetails extends BookingDetails {
   bookingCode: string;
   email: string;

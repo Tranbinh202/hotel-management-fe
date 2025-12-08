@@ -8,12 +8,12 @@ import { Search, Sparkles, Wifi, UtensilsCrossed, Dumbbell, Waves, Shield, Clock
 import Link from "next/link"
 import Image from "next/image"
 import type { GetAmenitiesParams } from "@/lib/api"
-import { useAmenities } from "@/lib/hooks"
+import { useAmenities } from "@/lib/hooks/use-amenities"
 
 export default function AmenitiesPage() {
   const [searchParams, setSearchParams] = useState<GetAmenitiesParams>({
     AmenityType: undefined,
-    search: undefined,
+    Search: undefined,
   })
   const { data: amenitiesData, isLoading } = useAmenities(searchParams)
 
@@ -50,18 +50,18 @@ export default function AmenitiesPage() {
                     onChange={(e) =>
                       setSearchParams((prev) => ({
                         ...prev,
-                        search: e.target.value,
+                        Search: e.target.value,
                       }))
                     }
                     className="pl-10 h-12 bg-background/50 border-primary/20 focus:border-accent"
                   />
                 </div>
                 <Tabs
-                  value={searchParams.amenityType || "all"}
+                  value={searchParams.AmenityType || "all"}
                   onValueChange={(v) =>
                     setSearchParams((prev) => ({
                       ...prev,
-                      amenityType: v === "all" ? undefined : (v as "Common" | "Additional"),
+                      AmenityType: v === "all" ? undefined : (v as "Common" | "Additional"),
                     }))
                   }
                   className="w-full sm:w-auto"
@@ -167,11 +167,10 @@ export default function AmenitiesPage() {
                     )}
                     <div className="absolute top-3 right-3">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${
-                          amenity.amenityType === "Common"
-                            ? "bg-primary/90 text-primary-foreground"
-                            : "bg-accent/90 text-accent-foreground"
-                        }`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm ${amenity.amenityType === "Common"
+                          ? "bg-primary/90 text-primary-foreground"
+                          : "bg-accent/90 text-accent-foreground"
+                          }`}
                       >
                         {amenity.amenityType === "Common" ? "Cơ bản" : "Bổ sung"}
                       </span>

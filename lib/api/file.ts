@@ -14,9 +14,12 @@ const PATH = "/Cloudinary";
 export const fileApi = {
   upload: async (file: File): Promise<UploadedResponse> => {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("folder", PATH);
-    const res = await apiClient.post<ApiResponse<UploadedResponse>>(
+    formData.append("File", file);
+    formData.append("Folder", "amenities");
+
+    // apiClient.post already returns res.data (the ApiResponse)
+    // So we get ApiResponse<UploadedResponse> directly
+    const apiResponse = await apiClient.post<ApiResponse<UploadedResponse>>(
       PATH + "/upload",
       formData,
       {
@@ -26,14 +29,14 @@ export const fileApi = {
       }
     );
 
-    return res.data;
+    // Now access the data property of ApiResponse
+    return apiResponse.data;
   },
 
   delete: async (publicId: string): Promise<boolean> => {
-    const res = await apiClient.delete<ApiResponse<boolean>>(PATH + "/upload", {
-      data: { publicId },
-    });
-
-    return res.data;
+    const apiResponse = await apiClient.delete<ApiResponse<boolean>>(
+      PATH + "/delete/" + publicId
+    );
+    return apiResponse.data;
   },
 };

@@ -6,6 +6,7 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { ImageUpload } from "@/components/ui/image-upload"
 import type { Amenity, CreateAmenityDto } from "@/lib/types/api"
 
 interface AmenityFormProps {
@@ -19,9 +20,9 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
   const [formData, setFormData] = useState<CreateAmenityDto>({
     amenityName: amenity?.amenityName || "",
     description: amenity?.description || "",
-    price: amenity?.price || 0,
+    amenityType: "Common",
     isActive: amenity?.isActive ?? true,
-    images: amenity?.images || [],
+    imageLinks: amenity?.images || [],
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -35,10 +36,6 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
 
     if (!formData.description.trim()) {
       newErrors.description = "Vui lòng nhập mô tả"
-    }
-
-    if (formData.price < 0) {
-      newErrors.price = "Giá không được âm"
     }
 
     setErrors(newErrors)
@@ -92,9 +89,8 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
           value={formData.description}
           onChange={handleChange}
           rows={4}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#ff5e7e] focus:border-transparent outline-none transition-all ${
-            errors.description ? "border-red-500" : "border-slate-300"
-          }`}
+          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#ff5e7e] focus:border-transparent outline-none transition-all ${errors.description ? "border-red-500" : "border-slate-300"
+            }`}
           placeholder="Mô tả chi tiết về tiện nghi..."
           disabled={isLoading}
         />
@@ -103,20 +99,20 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="price">Giá (VNĐ)</Label>
-          <Input
-            id="price"
-            name="price"
-            type="number"
-            value={formData.price}
-            onChange={handleChange}
-            className={errors.price ? "border-red-500" : ""}
-            placeholder="0"
-            min="0"
+          <Label htmlFor="amenityType">
+            Loại tiện nghi <span className="text-red-500">*</span>
+          </Label>
+          <select
+            id="amenityType"
+            name="amenityType"
+            value={formData.amenityType}
+            onChange={(e) => setFormData((prev) => ({ ...prev, amenityType: e.target.value as "Common" | "Additional" }))}
+            className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             disabled={isLoading}
-          />
-          {errors.price && <p className="text-xs text-red-500">{errors.price}</p>}
-          <p className="text-xs text-slate-500">Nhập 0 nếu miễn phí</p>
+          >
+            <option value="Common">Tiện nghi chung</option>
+            <option value="Additional">Tiện nghi bổ sung</option>
+          </select>
         </div>
 
         <div className="space-y-2">
@@ -128,10 +124,10 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
                 name="isActive"
                 checked={formData.isActive}
                 onChange={() => setFormData((prev) => ({ ...prev, isActive: true }))}
-                className="w-4 h-4 text-[#14b8a6] focus:ring-[#14b8a6]"
+                className="w-4 h-4 text-primary focus:ring-primary"
                 disabled={isLoading}
               />
-              <span className="text-sm text-slate-700">Hoạt động</span>
+              <span className="text-sm">Hoạt động</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -139,10 +135,10 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
                 name="isActive"
                 checked={!formData.isActive}
                 onChange={() => setFormData((prev) => ({ ...prev, isActive: false }))}
-                className="w-4 h-4 text-slate-400 focus:ring-slate-400"
+                className="w-4 h-4 text-muted-foreground focus:ring-muted-foreground"
                 disabled={isLoading}
               />
-              <span className="text-sm text-slate-700">Tạm dừng</span>
+              <span className="text-sm">Tạm dừng</span>
             </label>
           </div>
         </div>
@@ -150,18 +146,13 @@ export function AmenityForm({ amenity, onSubmit, onCancel, isLoading }: AmenityF
 
       <div className="space-y-2">
         <Label>Hình ảnh</Label>
-        <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-[#ff5e7e] transition-colors cursor-pointer">
-          <svg className="w-12 h-12 mx-auto text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-            />
-          </svg>
-          <p className="text-sm text-slate-600">Nhấp để tải lên hoặc kéo thả hình ảnh</p>
-          <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF tối đa 10MB</p>
-        </div>
+        <ImageUpload
+          value={formData.imageLinks}
+          onChange={(urls) => setFormData((prev) => ({ ...prev, imageLinks: urls }))}
+          maxImages={5}
+          folder="amenities"
+          disabled={isLoading}
+        />
       </div>
 
       <div className="flex items-center gap-3 pt-4 border-t border-slate-200">

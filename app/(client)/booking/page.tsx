@@ -485,7 +485,11 @@ function BookingPageContent() {
                                   mode="single"
                                   selected={field.value}
                                   onSelect={field.onChange}
-                                  disabled={(date) => date <= new Date()}
+                                  disabled={(date) => {
+                                    const today = new Date()
+                                    today.setHours(0, 0, 0, 0)
+                                    return date < today
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -525,7 +529,14 @@ function BookingPageContent() {
                                   mode="single"
                                   selected={field.value}
                                   onSelect={field.onChange}
-                                  disabled={(date) => date <= new Date() || (checkInDate ? date <= checkInDate : false)}
+                                  disabled={(date) => {
+                                    const today = new Date()
+                                    today.setHours(0, 0, 0, 0)
+                                    if (checkInDate) {
+                                      return date <= checkInDate
+                                    }
+                                    return date < today
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -685,7 +696,7 @@ function BookingPageContent() {
                               placeholder="0123456789"
                               {...field}
                               className={cn("h-12", guestErrors.phoneNumber && "border-red-500")}
-                              disabled={isAuthenticated}
+
                             />
                           )}
                         />
@@ -708,7 +719,7 @@ function BookingPageContent() {
                             placeholder="001234567890"
                             {...field}
                             className={cn("h-12", guestErrors.identityCard && "border-red-500")}
-                            disabled={isAuthenticated}
+
                           />
                         )}
                       />
@@ -730,7 +741,7 @@ function BookingPageContent() {
                             placeholder="123 Đường ABC, Quận XYZ, TP. HCM"
                             {...field}
                             className={cn("h-12", guestErrors.address && "border-red-500")}
-                            disabled={isAuthenticated}
+
                           />
                         )}
                       />

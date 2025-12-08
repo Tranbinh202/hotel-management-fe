@@ -75,7 +75,7 @@ export const bookingsApi = {
       isSuccess: boolean;
       data: BookingDetails;
       message: string;
-    }>(`/Booking/guest/check?token=${encodeURIComponent(token)}`);
+    }>(`/Booking/mybooking/${token}`);
   },
 
   getByIdWithKey: async (

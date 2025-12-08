@@ -1,46 +1,22 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { bookingsApi } from "@/lib/api/bookings"
+import { useBookingByToken } from "@/lib/hooks/use-bookings"
 import { Loader2, CheckCircle2, XCircle, Clock, Mail, Phone, Calendar, CreditCard } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import type { BookingDetails } from "@/lib/types/api"
 
 function TrackBookingContent() {
     const searchParams = useSearchParams()
-    const token = searchParams.get("token")
+    const token = searchParams.get("token") || ""
 
-    const [booking, setBooking] = useState<BookingDetails | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    // Use React Query hook instead of manual fetch
+    const { data: response, isLoading, error } = useBookingByToken(token)
 
-    useEffect(() => {
-        const fetchBooking = async () => {
-            if (!token) {
-                setError("Token không hợp lệ")
-                setIsLoading(false)
-                return
-            }
-
-            try {
-                const response = await bookingsApi.checkBookingByToken(token)
-                if (response.isSuccess) {
-                    setBooking(response.data)
-                } else {
-                    setError(response.message || "Không tìm thấy booking")
-                }
-            } catch (err: any) {
-                setError(err.message || "Có lỗi xảy ra khi tra cứu booking")
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        fetchBooking()
-    }, [token])
+    const booking = response?.isSuccess ? response.data : null
+    const errorMessage = error ? "Có lỗi xảy ra khi tra cứu booking" : response?.message || null
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat("vi-VN", {
@@ -95,13 +71,13 @@ function TrackBookingContent() {
         )
     }
 
-    if (error || !booking) {
+    if (errorMessage || !booking) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
                 <div className="glass-effect rounded-2xl p-8 max-w-md w-full text-center">
                     <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h1 className="text-2xl font-serif font-bold mb-2">Không tìm thấy</h1>
-                    <p className="text-muted-foreground">{error || "Không tìm thấy thông tin booking"}</p>
+                    <p className="text-muted-foreground">{errorMessage || "Không tìm thấy thông tin booking"}</p>
                 </div>
             </div>
         )
@@ -123,12 +99,12 @@ function TrackBookingContent() {
                     <div className="glass-effect rounded-2xl p-6 mb-6">
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <p className="text-sm text-muted-foreground mb-1">Trạng thái booking</p>
-                                {getStatusBadge(booking.status)}
-                            </div>
-                            <div>
                                 <p className="text-sm text-muted-foreground mb-1">Trạng thái thanh toán</p>
                                 {getPaymentStatusBadge(booking.paymentStatus)}
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground mb-1">Loại booking</p>
+                                <Badge variant="outline">{booking.bookingType}</Badge>
                             </div>
                         </div>
                     </div>
@@ -158,7 +134,7 @@ function TrackBookingContent() {
                                 <Mail className="w-5 h-5 text-primary mt-0.5" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">Email</p>
-                                    <p className="font-medium">{booking.email}</p>
+                                    <p className="font-medium">{booking.customerEmail || "Chưa cập nhật"}</p>
                                 </div>
                             </div>
 
@@ -166,7 +142,7 @@ function TrackBookingContent() {
                                 <Phone className="w-5 h-5 text-primary mt-0.5" />
                                 <div>
                                     <p className="text-sm text-muted-foreground">Số điện thoại</p>
-                                    <p className="font-medium">{booking.phoneNumber}</p>
+                                    <p className="font-medium">{booking.customerPhone || "Chưa cập nhật"}</p>
                                 </div>
                             </div>
                         </div>

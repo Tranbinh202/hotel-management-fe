@@ -1,6 +1,6 @@
 "use client"
 
-import { useBookingWithKey } from "@/lib/hooks/use-bookings"
+import { useBookingByToken } from "@/lib/hooks/use-bookings"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -25,10 +25,9 @@ import { useParams } from "next/navigation"
 
 export default function BookingDetailsPage() {
   const params = useParams()
-  const bookingId = Number.parseInt(params.id as string)
-  const verificationKey = params.key as string
+  const token = params.key as string
 
-  const { data, isLoading, error } = useBookingWithKey(bookingId, verificationKey)
+  const { data, isLoading, error } = useBookingByToken(token)
 
   if (isLoading) {
     return (
@@ -127,7 +126,7 @@ export default function BookingDetailsPage() {
           text: `Chi tiết đặt phòng tại khách sạn`,
           url: window.location.href,
         })
-        .catch(() => {})
+        .catch(() => { })
     } else {
       navigator.clipboard.writeText(window.location.href)
       alert("Đã sao chép đường link vào clipboard!")

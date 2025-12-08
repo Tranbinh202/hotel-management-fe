@@ -60,7 +60,7 @@ export default function Home() {
 
   // Extract rooms from the paginated response
   const rooms = roomTypesData?.pages?.[0]?.items || []
-  
+
   // Extract amenities from the paginated response
   const amenities = amenitiesData?.pages?.[0]?.items || []
 
@@ -241,9 +241,7 @@ export default function Home() {
                         </span>
                         <span className="text-white/90 text-xs">/đêm</span>
                       </div>
-                      <div className="absolute top-4 left-4 bg-[oklch(0.72_0.12_75)] text-[oklch(0.18_0.02_265)] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Còn {room.availableRoomCount || room.totalRoomCount || 0} phòng
-                      </div>
+
                     </div>
 
                     <div className="p-6">
@@ -343,62 +341,115 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: Waves,
-                title: "Hồ bơi vô cực",
-                desc: "Hồ bơi ngoài trời với view tuyệt đẹp, mở cửa từ 6h-22h",
-              },
-              {
-                icon: UtensilsCrossed,
-                title: "Nhà hàng 5 sao",
-                desc: "Ẩm thực đa quốc gia cao cấp từ đầu bếp Michelin",
-              },
-              {
-                icon: Sparkles,
-                title: "Spa & Massage",
-                desc: "Dịch vụ chăm sóc sức khỏe chuyên nghiệp với liệu pháp cao cấp",
-              },
-              {
-                icon: Dumbbell,
-                title: "Phòng gym",
-                desc: "Trang thiết bị hiện đại 24/7 với huấn luyện viên cá nhân",
-              },
-              {
-                icon: ParkingCircle,
-                title: "Bãi đỗ xe",
-                desc: "Miễn phí cho khách lưu trú, có dịch vụ valet parking",
-              },
-              {
-                icon: Wifi,
-                title: "WiFi tốc độ cao",
-                desc: "Kết nối internet miễn phí tốc độ 1Gbps toàn khách sạn",
-              },
-              {
-                icon: Headphones,
-                title: "Lễ tân 24/7",
-                desc: "Hỗ trợ khách hàng mọi lúc với đội ngũ đa ngôn ngữ",
-              },
-              {
-                icon: Car,
-                title: "Đưa đón sân bay",
-                desc: "Dịch vụ xe riêng sang trọng theo yêu cầu",
-              },
-            ].map((amenity, index) => {
-              const IconComponent = amenity.icon
-              return (
+            {isLoadingAmenities ? (
+              // Loading skeleton
+              Array.from({ length: 8 }).map((_, index) => (
                 <div
                   key={index}
-                  className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2"
+                  className="bg-card rounded-2xl p-8 text-center border border-border animate-pulse"
                 >
-                  <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
-                    <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                  <div className="mb-5 flex justify-center">
+                    <div className="w-16 h-16 bg-muted rounded-full"></div>
                   </div>
-                  <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-loose">{amenity.desc}</p>
+                  <div className="h-6 bg-muted rounded mb-3 mx-auto w-3/4"></div>
+                  <div className="h-4 bg-muted rounded mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-5/6 mx-auto"></div>
                 </div>
-              )
-            })}
+              ))
+            ) : amenities.length > 0 ? (
+              // Display amenities from API
+              amenities.map((amenity, index) => {
+                // Map amenity name to icon
+                const getAmenityIcon = (name: string) => {
+                  const lowerName = name.toLowerCase()
+                  if (lowerName.includes('hồ bơi') || lowerName.includes('pool')) return Waves
+                  if (lowerName.includes('nhà hàng') || lowerName.includes('restaurant')) return UtensilsCrossed
+                  if (lowerName.includes('spa') || lowerName.includes('massage')) return Sparkles
+                  if (lowerName.includes('gym') || lowerName.includes('fitness')) return Dumbbell
+                  if (lowerName.includes('đỗ xe') || lowerName.includes('parking')) return ParkingCircle
+                  if (lowerName.includes('wifi') || lowerName.includes('internet')) return Wifi
+                  if (lowerName.includes('lễ tân') || lowerName.includes('reception')) return Headphones
+                  if (lowerName.includes('đưa đón') || lowerName.includes('shuttle') || lowerName.includes('airport')) return Car
+                  return Sparkles // Default icon
+                }
+
+                const IconComponent = getAmenityIcon(amenity.amenityName)
+
+                return (
+                  <div
+                    key={amenity.amenityId}
+                    className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2 animate-scale-in"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
+                      <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                    </div>
+                    <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.amenityName}</h3>
+                    <p className="text-sm text-muted-foreground leading-loose">
+                      {amenity.description || "Tiện nghi cao cấp phục vụ nhu cầu của bạn"}
+                    </p>
+                  </div>
+                )
+              })
+            ) : (
+              // Fallback static amenities if API returns empty
+              [
+                {
+                  icon: Waves,
+                  title: "Hồ bơi vô cực",
+                  desc: "Hồ bơi ngoài trời với view tuyệt đẹp, mở cửa từ 6h-22h",
+                },
+                {
+                  icon: UtensilsCrossed,
+                  title: "Nhà hàng 5 sao",
+                  desc: "Ẩm thực đa quốc gia cao cấp từ đầu bếp Michelin",
+                },
+                {
+                  icon: Sparkles,
+                  title: "Spa & Massage",
+                  desc: "Dịch vụ chăm sóc sức khỏe chuyên nghiệp với liệu pháp cao cấp",
+                },
+                {
+                  icon: Dumbbell,
+                  title: "Phòng gym",
+                  desc: "Trang thiết bị hiện đại 24/7 với huấn luyện viên cá nhân",
+                },
+                {
+                  icon: ParkingCircle,
+                  title: "Bãi đỗ xe",
+                  desc: "Miễn phí cho khách lưu trú, có dịch vụ valet parking",
+                },
+                {
+                  icon: Wifi,
+                  title: "WiFi tốc độ cao",
+                  desc: "Kết nối internet miễn phí tốc độ 1Gbps toàn khách sạn",
+                },
+                {
+                  icon: Headphones,
+                  title: "Lễ tân 24/7",
+                  desc: "Hỗ trợ khách hàng mọi lúc với đội ngũ đa ngôn ngữ",
+                },
+                {
+                  icon: Car,
+                  title: "Đưa đón sân bay",
+                  desc: "Dịch vụ xe riêng sang trọng theo yêu cầu",
+                },
+              ].map((amenity, index) => {
+                const IconComponent = amenity.icon
+                return (
+                  <div
+                    key={index}
+                    className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2"
+                  >
+                    <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
+                      <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                    </div>
+                    <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-loose">{amenity.desc}</p>
+                  </div>
+                )
+              })
+            )}
           </div>
 
           <div className="text-center mt-16">

@@ -216,10 +216,9 @@ function BookingPageContent() {
     try {
       const guestData = getGuestValues()
 
-      let response
-
       if (isAuthenticated && user?.profileDetails && "customerId" in user.profileDetails) {
-        response = await bookingsApi.create({
+        // Authenticated user booking
+        const response = await bookingsApi.create({
           customerId: user.profileDetails.customerId,
           roomTypes: [
             {
@@ -237,10 +236,27 @@ function BookingPageContent() {
             .join(". ") || undefined,
         })
 
-        if (response.isSuccess && response.data.paymentUrl) {
-          router.push(response.data.paymentUrl)
+        if (response.isSuccess && response.data) {
+          // Redirect to QR payment page with all necessary info
+          const params = new URLSearchParams({
+            bookingId: response.data.booking.bookingId.toString(),
+            token: response.data.bookingToken,
+            amount: response.data.booking.depositAmount.toString(),
+            deadline: response.data.paymentDeadline,
+          })
+
+          if (response.data.qrPayment) {
+            params.append("qrCode", response.data.qrPayment.qrCodeUrl)
+            params.append("accountNo", response.data.qrPayment.accountNumber)
+            params.append("accountName", response.data.qrPayment.accountName)
+            params.append("bankName", response.data.qrPayment.bankName)
+            params.append("description", response.data.qrPayment.description)
+          }
+
+          router.push(`/booking/qr-payment?${params.toString()}`)
         }
       } else {
+        // Guest booking
         const guestResponse = await bookingsApi.createByGuest({
           fullName: guestData.fullName,
           email: guestData.email,
@@ -263,20 +279,24 @@ function BookingPageContent() {
             .join(". ") || undefined,
         })
 
-        if (guestResponse.isSuccess) {
+        if (guestResponse.isSuccess && guestResponse.data) {
+          // Redirect to QR payment page with all necessary info
           const params = new URLSearchParams({
-            token: guestResponse.data.bookingToken,
             bookingId: guestResponse.data.booking.bookingId.toString(),
+            token: guestResponse.data.bookingToken,
+            amount: guestResponse.data.booking.depositAmount.toString(),
+            deadline: guestResponse.data.paymentDeadline,
           })
 
           if (guestResponse.data.qrPayment) {
             params.append("qrCode", guestResponse.data.qrPayment.qrCodeUrl)
-            params.append("amount", guestResponse.data.qrPayment.amount.toString())
             params.append("accountNo", guestResponse.data.qrPayment.accountNumber)
             params.append("accountName", guestResponse.data.qrPayment.accountName)
+            params.append("bankName", guestResponse.data.qrPayment.bankName)
+            params.append("description", guestResponse.data.qrPayment.description)
           }
 
-          router.push(`/booking/success?${params.toString()}`)
+          router.push(`/booking/qr-payment?${params.toString()}`)
         }
       }
     } catch (error: any) {

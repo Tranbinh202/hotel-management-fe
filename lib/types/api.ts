@@ -370,38 +370,73 @@ export interface CreateGuestBookingRequest {
 
 export interface BookingResponse {
   isSuccess: boolean;
-  data: {
-    bookingId: number;
-    customerId: number;
-    customerName: string;
-    roomNames: string[];
-    checkInDate: string;
-    checkOutDate: string;
-    totalAmount: number;
-    depositAmount: number;
-    paymentUrl: string;
-    paymentStatus: string;
-    depositStatus: string;
-    bookingType: string;
-  };
+  statusCode: number;
   message: string;
+  data: {
+    booking: {
+      bookingId: number;
+      customerId: number;
+      customerName: string;
+      customerEmail: string;
+      customerPhone: string;
+      roomIds: number[];
+      roomNames: string[];
+      roomTypeDetails: RoomTypeBookingDetail[];
+      checkInDate: string;
+      checkOutDate: string;
+      totalAmount: number;
+      depositAmount: number;
+      paymentStatus: string;
+      depositStatus: string;
+      bookingType: string;
+      specialRequests?: string;
+      createdAt: string;
+      paymentUrl: string | null;
+      orderCode: string;
+    };
+    bookingToken: string;
+    qrPayment: {
+      qrCodeUrl: string;
+      bankName: string;
+      bankCode: string;
+      accountNumber: string;
+      accountName: string;
+      amount: number;
+      description: string;
+      transactionRef: string;
+      qrDataText?: string;
+    } | null;
+    paymentDeadline: string;
+  };
 }
 
 export interface BookingDetails {
   bookingId: number;
   customerId: number;
   customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  roomIds: number[];
   roomNames: string[];
+  roomTypeDetails?: Array<{
+    roomTypeId: number;
+    roomTypeName: string;
+    roomTypeCode: string;
+    quantity: number;
+    pricePerNight: number;
+    subTotal: number;
+  }>;
   checkInDate: string;
   checkOutDate: string;
   totalAmount: number;
   depositAmount: number;
-  paymentUrl: string;
+  paymentUrl: string | null;
   paymentStatus: string;
   depositStatus: string;
   bookingType: string;
   specialRequests?: string;
   createdAt: string;
+  orderCode?: string | null;
 }
 
 export interface Booking {
@@ -887,14 +922,21 @@ export interface GuestBookingResponse {
       bookingId: number;
       customerId: number;
       customerName: string;
+      customerEmail: string;
+      customerPhone: string;
       roomIds: number[];
       roomNames: string[];
+      roomTypeDetails: RoomTypeBookingDetail[];
       checkInDate: string;
       checkOutDate: string;
       totalAmount: number;
       depositAmount: number;
       paymentStatus: string;
+      depositStatus: string;
       bookingType: string;
+      specialRequests?: string;
+      createdAt: string;
+      paymentUrl: string | null;
       orderCode: string;
     };
     bookingToken: string;
@@ -907,7 +949,8 @@ export interface GuestBookingResponse {
       amount: number;
       description: string;
       transactionRef: string;
-    };
+      qrDataText?: string;
+    } | null;
     paymentDeadline: string;
   };
 }

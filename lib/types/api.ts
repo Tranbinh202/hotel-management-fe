@@ -811,9 +811,13 @@ export interface BookingListItem {
   checkOutDate: string;
   totalAmount: number;
   depositAmount: number;
-  paymentStatus: string;
+  paymentStatusId: number;
+  bookingTypeId: number;
+  paymentStatusName: string; // English code: PendingConfirmation, Confirmed, Paid, Cancelled
+  bookingStatusName: string; // English code: Online, Offline
+  paymentStatus: string; // Vietnamese label
   depositStatus: string;
-  bookingType: string;
+  bookingType: string; // Vietnamese label
   specialRequests?: string;
   createdAt: string;
   paymentUrl?: string | null;

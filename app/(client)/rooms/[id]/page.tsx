@@ -269,29 +269,6 @@ export default function RoomDetailPage({
                 </div>
               </div>
 
-              {/* Room Availability Summary */}
-              <div className="space-y-6">
-                <h3 className="font-serif text-2xl font-semibold">Tình trạng phòng</h3>
-                {roomType ? (
-                  <div className="p-6 rounded-xl glass-effect border border-border/50">
-                    <div className="text-center mb-4">
-                      <p className="text-sm text-muted-foreground mb-2">Tổng số phòng loại này</p>
-                      <p className="text-5xl font-bold text-primary">{totalCount}</p>
-                      <p className="text-sm text-muted-foreground mt-2">phòng</p>
-                    </div>
-                    <div className="pt-4 border-t border-border/50">
-                      <p className="text-sm text-muted-foreground italic text-center">
-                        💡 Lễ tân sẽ phân phòng cụ thể cho bạn khi xác nhận đặt phòng dựa trên tình trạng phòng trống tại thời điểm đó.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-center p-8">
-                    <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                  </div>
-                )}
-              </div>
-
               <div className="space-y-4">
                 <h3 className="font-serif text-2xl font-semibold">Mô tả</h3>
                 <p className="text-muted-foreground leading-loose text-lg">{roomType?.description}</p>

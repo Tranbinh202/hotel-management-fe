@@ -58,20 +58,21 @@ export default function ReceptionistBookingsPage() {
 
   const bookingsData = bookings?.pages?.flatMap((page) => page.data.items) || []
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (statusName: string) => {
     const colors: Record<string, string> = {
-      Paid: "bg-emerald-500",
-      Unpaid: "bg-amber-500",
-      Cancelled: "bg-red-500",
-      Pending: "bg-blue-500",
+      // English status codes from API
+      PendingConfirmation: "bg-amber-500",
       Confirmed: "bg-cyan-500",
+      Paid: "bg-emerald-500",
+      Cancelled: "bg-red-500",
       CheckedIn: "bg-purple-500",
       CheckedOut: "bg-slate-500",
+      // Legacy Vietnamese (fallback)
       "Đã thanh toán": "bg-emerald-500",
       "Chờ xác nhận": "bg-amber-500",
       "Đã hủy": "bg-red-500",
     }
-    return colors[status] || "bg-slate-400"
+    return colors[statusName] || "bg-slate-400"
   }
 
   const getStatusLabel = (status: string) => {
@@ -314,7 +315,7 @@ export default function ReceptionistBookingsPage() {
                     {/* Booking ID & Status */}
                     <div className="flex items-center gap-2 min-w-[100px]">
                       <span className="text-lg font-bold text-slate-900">#{booking.bookingId}</span>
-                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatus)}`} />
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatusName)}`} />
                     </div>
 
                     {/* Customer Info */}
@@ -341,13 +342,15 @@ export default function ReceptionistBookingsPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge
                         variant="outline"
-                        className={`${booking.paymentStatus === "Đã thanh toán"
+                        className={`${booking.paymentStatusName === "Paid"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                          : booking.paymentStatus === "Chờ xác nhận"
+                          : booking.paymentStatusName === "PendingConfirmation"
                             ? "bg-amber-50 text-amber-700 border-amber-300"
-                            : booking.paymentStatus === "Đã hủy"
+                            : booking.paymentStatusName === "Cancelled"
                               ? "bg-red-50 text-red-700 border-red-300"
-                              : "bg-slate-50 text-slate-700 border-slate-300"
+                              : booking.paymentStatusName === "Confirmed"
+                                ? "bg-cyan-50 text-cyan-700 border-cyan-300"
+                                : "bg-slate-50 text-slate-700 border-slate-300"
                           } text-xs px-2 py-0.5 font-medium`}
                       >
                         {booking.paymentStatus}
@@ -395,13 +398,13 @@ export default function ReceptionistBookingsPage() {
                           </DropdownMenuItem>
 
                           {/* Only show actions for non-cancelled and non-checked-out bookings */}
-                          {booking.paymentStatus !== "Đã hủy" &&
+                          {booking.paymentStatusName !== "Cancelled" &&
                             !booking.depositStatus?.includes("CheckedOut") && (
                               <>
                                 <DropdownMenuSeparator />
 
                                 {/* Confirm Payment - for unpaid bookings */}
-                                {booking.paymentStatus === "Chờ xác nhận" && (
+                                {booking.paymentStatusName === "PendingConfirmation" && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -415,7 +418,7 @@ export default function ReceptionistBookingsPage() {
                                 )}
 
                                 {/* Check-in - for paid bookings */}
-                                {booking.paymentStatus === "Đã xác nhận" &&
+                                {booking.paymentStatusName === "Confirmed" &&
                                   !booking.depositStatus?.includes("CheckedIn") && (
                                     <DropdownMenuItem
                                       onClick={(e) => {
@@ -444,7 +447,7 @@ export default function ReceptionistBookingsPage() {
                                 )}
 
                                 {/* Cancel - only for bookings that haven't checked in yet */}
-                                {!booking.depositStatus?.includes("CheckedIn") && booking.paymentStatus !== "Đã xác nhận" && (
+                                {!booking.depositStatus?.includes("CheckedIn") && booking.paymentStatusName !== "Confirmed" && booking.paymentStatusName !== "Paid" && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem

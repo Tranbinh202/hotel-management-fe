@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 export function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false)
+  const [showPrompt, setShowPrompt] = useState(true)
   const [inputValue, setInputValue] = useState("")
   const [view, setView] = useState<"nickname" | "chat" | "sessions">("nickname")
   const [nickname, setNickname] = useState("")
@@ -134,6 +135,37 @@ export function ChatbotWidget() {
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
           <div className="relative group">
+            {/* Prompt bubble with close button */}
+            {showPrompt && (
+              <div className="absolute bottom-full right-0 mb-4 animate-in slide-in-from-bottom-2 fade-in-0 duration-500">
+                <div className="relative bg-white rounded-2xl shadow-xl border-2 border-primary/20 px-4 py-3 pr-10 max-w-[240px]">
+                  <div className="flex items-start gap-2">
+                    <span className="text-2xl animate-wave inline-block" style={{ animationDelay: '0.1s' }}>
+                      👋
+                    </span>
+                    <p className="text-sm font-medium text-gray-800">
+                      Bạn cần tìm phòng?
+                    </p>
+                  </div>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowPrompt(false)
+                    }}
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-1 h-6 w-6 rounded-full hover:bg-gray-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                  {/* Arrow pointing to button */}
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-2">
+                    <div className="w-4 h-4 bg-white border-r-2 border-b-2 border-primary/20 transform rotate-45" />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-primary rounded-full animate-ping opacity-25" />
             <div className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-primary rounded-full animate-pulse opacity-20" />
 
@@ -146,11 +178,6 @@ export function ChatbotWidget() {
               <Sparkles className="h-5 w-5 absolute -top-1 -right-1 text-yellow-300 animate-bounce" />
               <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />
             </Button>
-
-            <div className="absolute bottom-full right-0 mb-2 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              Trò chuyện với AI
-              <div className="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-gray-900" />
-            </div>
           </div>
         </div>
       )}

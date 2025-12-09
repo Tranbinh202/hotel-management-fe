@@ -163,9 +163,10 @@ export interface RoomType {
   bedType: string;
   isActive: boolean;
   images: RoomTypeImage[];
-  amenities: any[]; // Array of amenities
-  availableRoomCount: number | null; // Number of available rooms for this type
-  totalRoomCount: number; // Total rooms of this type
+  amenities?: any[]; // Array of amenities (optional)
+  totalRooms: number; // Total rooms of this type (from API)
+  createdAt?: string;
+  updatedAt?: string | null;
 }
 
 export type Room = RoomType;

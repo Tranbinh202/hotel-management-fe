@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider"
 import { Users, Search, Sparkles, Star, Loader2, Home, Bed } from "lucide-react"
 import { useRooms } from "@/lib/hooks/use-rooms"
 import type { RoomSearchItem } from "@/lib/types/api"
+import { useRoomTypes } from "@/lib/hooks/use-room-type"
 
 interface RoomTypeGroup {
   roomTypeId: number
@@ -40,49 +41,44 @@ export default function RoomsPage() {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const { data: roomsData, isLoading } = useRooms(
-    {
-      roomName: debouncedSearchTerm || undefined,
-      // Removed status filter to show all rooms
-      pageNumber: 1,
-      pageSize: 50,
-    },
-    true,
-  )
+  const { data, isLoading } = useRoomTypes({
+    Search: debouncedSearchTerm || undefined,
+    PageSize: 50,
+  })
 
-  const roomTypeGroups = useMemo(() => {
-    if (!roomsData?.rooms) return []
+  // Extract all room types from infinite query pages
+  const allRoomTypes = useMemo(() => {
+    if (!data?.pages) return []
+    return data.pages.flatMap((page) => page.items || [])
+  }, [data])
 
-    const groups = new Map<number, RoomTypeGroup>()
+  // Filter and process room types
+  const filteredRoomTypes = useMemo(() => {
+    return allRoomTypes
+      .filter((roomType) => {
+        // Price filter
+        if (priceRange[0] > 0 && roomType.basePriceNight < priceRange[0]) return false
+        if (priceRange[1] < 5000000 && roomType.basePriceNight > priceRange[1]) return false
 
-    roomsData.rooms.forEach((room) => {
-      if (priceRange[0] > 0 && room.basePriceNight < priceRange[0]) return
-      if (priceRange[1] < 5000000 && room.basePriceNight > priceRange[1]) return
-      if (capacityFilter !== "all" && room.maxOccupancy < Number(capacityFilter)) return
+        // Capacity filter
+        if (capacityFilter !== "all" && roomType.maxOccupancy < Number(capacityFilter)) return false
 
-      if (!groups.has(room.roomTypeId)) {
-        groups.set(room.roomTypeId, {
-          roomTypeId: room.roomTypeId,
-          roomTypeName: room.roomTypeName,
-          roomTypeCode: room.roomTypeCode,
-          basePriceNight: room.basePriceNight,
-          maxOccupancy: room.maxOccupancy,
-          description: "Phòng cao cấp với đầy đủ tiện nghi hiện đại",
-          images: room.images || [],
-          rooms: [], // Updated: Use 'rooms' instead of 'availableRooms'
-          totalRooms: 0,
-        })
-      }
+        return true
+      })
+      .map((roomType) => ({
+        roomTypeId: roomType.roomTypeId,
+        roomTypeName: roomType.typeName,
+        roomTypeCode: roomType.typeCode,
+        basePriceNight: roomType.basePriceNight,
+        maxOccupancy: roomType.maxOccupancy,
+        description: roomType.description || "Phòng cao cấp với đầy đủ tiện nghi hiện đại",
+        images: roomType.images?.map(img => img.filePath) || [],
+        rooms: [], // Not needed for room types view
+        totalRooms: roomType.totalRoomCount || 0,
+      }))
+  }, [allRoomTypes, priceRange, capacityFilter])
 
-      const group = groups.get(room.roomTypeId)!
-      group.rooms.push(room) // Updated: Push all rooms to 'rooms' array
-      group.totalRooms++
-    })
-
-    return Array.from(groups.values())
-  }, [roomsData, priceRange, capacityFilter])
-
-  const sortedRoomTypes = [...roomTypeGroups].sort((a, b) => {
+  const sortedRoomTypes = [...filteredRoomTypes].sort((a, b) => {
     switch (sortBy) {
       case "price-asc":
         return a.basePriceNight - b.basePriceNight
@@ -103,14 +99,15 @@ export default function RoomsPage() {
       currency: "VND",
     }).format(price)
 
-  const handleBookNow = (room: RoomSearchItem) => {
+  const handleBookNow = (roomType: RoomTypeGroup) => {
     sessionStorage.setItem(
       "bookingData",
       JSON.stringify({
-        roomId: room.roomTypeId,
-        roomType: room.roomTypeName,
-        price: room.basePriceNight,
-        roomName: room.roomName
+        roomTypeId: roomType.roomTypeId,
+        roomType: roomType.roomTypeName,
+        roomTypeCode: roomType.roomTypeCode,
+        price: roomType.basePriceNight,
+        maxOccupancy: roomType.maxOccupancy,
       }),
     )
     router.push("/booking")
@@ -249,11 +246,11 @@ export default function RoomsPage() {
                 <div className="flex items-center justify-center h-64">
                   <Loader2 className="w-12 h-12 animate-spin text-accent" />
                 </div>
-              ) : roomTypeGroups.length > 0 ? (
+              ) : sortedRoomTypes.length > 0 ? (
                 <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {roomTypeGroups.map((group, index) => {
+                  {sortedRoomTypes.map((group, index) => {
                     const firstImage = group.images?.[0]
-                    const availableCount = group.rooms.filter((r) => r.statusCode === "Available").length
+                    const availableCount = group.totalRooms // Use totalRooms from API
                     const isAvailable = availableCount > 0
 
                     return (
@@ -300,34 +297,6 @@ export default function RoomsPage() {
                             {/* Bed info removed because it is not available in RoomSearchItem */}
                           </div>
 
-                          {/* Room List Section */}
-                          <div className="border-t border-primary/10 pt-4 flex-grow">
-                            <p className="text-xs font-medium text-muted-foreground mb-3">Danh sách phòng:</p>
-                            <div className="grid grid-cols-4 gap-2">
-                              {group.rooms.sort((a, b) => a.roomName.localeCompare(b.roomName)).map((room) => (
-                                <button
-                                  key={room.roomId}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    if (room.statusCode === "Available") {
-                                      handleBookNow(room);
-                                    }
-                                  }}
-                                  disabled={room.statusCode !== "Available"}
-                                  title={`Phòng ${room.roomName} - ${room.status}`}
-                                  className={`
-                                      text-xs py-1.5 rounded-md border font-medium transition-all
-                                      ${room.statusCode === "Available"
-                                      ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 cursor-pointer"
-                                      : "bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed opacity-70"}
-                                    `}
-                                >
-                                  {room.roomName}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
                           <div className="pt-4 border-t border-primary/10 flex items-center justify-between gap-3 mt-auto">
                             <div>
                               <p className="text-xs text-muted-foreground mb-1">Mỗi đêm từ</p>
@@ -335,6 +304,16 @@ export default function RoomsPage() {
                                 {formatPrice(group.basePriceNight)}
                               </p>
                             </div>
+                            <Button
+                              onClick={() => handleBookNow(group)}
+                              disabled={!isAvailable}
+                              className={`${isAvailable
+                                ? "luxury-gradient hover:opacity-90"
+                                : "bg-gray-300 cursor-not-allowed"
+                                } transition-all duration-300`}
+                            >
+                              {isAvailable ? "Đặt ngay" : "Hết phòng"}
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>

@@ -66,69 +66,66 @@ export default function MyBookingsPage() {
   const bookings = data?.data || []
   const filteredBookings = bookings.filter((booking) => {
     if (filter === "all") return true
-    if (filter === "pending") return booking.paymentStatus === "Pending"
-    if (filter === "confirmed") return booking.paymentStatus === "Paid"
-    if (filter === "cancelled") return booking.paymentStatus === "Cancelled"
+    if (filter === "pending") return booking.paymentStatus === "Chờ xác nhận"
+    if (filter === "confirmed") return booking.paymentStatus === "Đã thanh toán"
+    if (filter === "cancelled") return booking.paymentStatus === "Đã hủy"
     return true
   })
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "paid":
-        return (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Đã thanh toán
-          </Badge>
-        )
-      case "pending":
-        return (
-          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">
-            <Clock className="h-3 w-3 mr-1" />
-            Chờ thanh toán
-          </Badge>
-        )
-      case "cancelled":
-        return (
-          <Badge className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20">
-            <XCircle className="h-3 w-3 mr-1" />
-            Đã hủy
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            {status}
-          </Badge>
-        )
+    const statusLower = status.toLowerCase()
+    if (statusLower.includes("thanh toán") && statusLower.includes("đã")) {
+      return (
+        <Badge className="bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20">
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          {status}
+        </Badge>
+      )
     }
+    if (statusLower.includes("chờ")) {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">
+          <Clock className="h-3 w-3 mr-1" />
+          {status}
+        </Badge>
+      )
+    }
+    if (statusLower.includes("hủy")) {
+      return (
+        <Badge className="bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20">
+          <XCircle className="h-3 w-3 mr-1" />
+          {status}
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline">
+        <AlertCircle className="h-3 w-3 mr-1" />
+        {status}
+      </Badge>
+    )
   }
 
-  const getDepositBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "paid":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Đã đặt cọc
-          </Badge>
-        )
-      case "pending":
-        return (
-          <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20">
-            <Clock className="h-3 w-3 mr-1" />
-            Chưa đặt cọc
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline">
-            <AlertCircle className="h-3 w-3 mr-1" />
-            {status}
-          </Badge>
-        )
+  const getBookingTypeBadge = (type: string) => {
+    if (type.toLowerCase().includes("trực tuyến")) {
+      return (
+        <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 hover:bg-purple-500/20">
+          {type}
+        </Badge>
+      )
     }
+    if (type.toLowerCase().includes("quầy")) {
+      return (
+        <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20">
+          {type}
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline">
+        {type}
+      </Badge>
+    )
   }
 
   return (
@@ -161,21 +158,21 @@ export default function MyBookingsPage() {
             onClick={() => setFilter("pending")}
             className={filter === "pending" ? "luxury-gradient" : ""}
           >
-            Chờ thanh toán ({bookings.filter((b) => b.paymentStatus === "Pending").length})
+            Chờ thanh toán ({bookings.filter((b) => b.paymentStatus === "Chờ xác nhận").length})
           </Button>
           <Button
             variant={filter === "confirmed" ? "default" : "outline"}
             onClick={() => setFilter("confirmed")}
             className={filter === "confirmed" ? "luxury-gradient" : ""}
           >
-            Đã xác nhận ({bookings.filter((b) => b.paymentStatus === "Paid").length})
+            Đã xác nhận ({bookings.filter((b) => b.paymentStatus === "Đã thanh toán").length})
           </Button>
           <Button
             variant={filter === "cancelled" ? "default" : "outline"}
             onClick={() => setFilter("cancelled")}
             className={filter === "cancelled" ? "luxury-gradient" : ""}
           >
-            Đã hủy ({bookings.filter((b) => b.paymentStatus === "Cancelled").length})
+            Đã hủy ({bookings.filter((b) => b.paymentStatus === "Đã hủy").length})
           </Button>
         </div>
 
@@ -209,12 +206,12 @@ export default function MyBookingsPage() {
                   <div className="flex-1 space-y-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 className="text-xl font-serif font-bold text-foreground">
                             Mã đặt phòng #{booking.bookingId}
                           </h3>
                           {getStatusBadge(booking.paymentStatus)}
-                          {getDepositBadge(booking.depositStatus)}
+                          {getBookingTypeBadge(booking.bookingType)}
                         </div>
                         <p className="text-sm text-muted-foreground leading-loose">
                           Đặt ngày {format(new Date(booking.createdAt), "dd/MM/yyyy HH:mm", { locale: vi })}
@@ -222,25 +219,41 @@ export default function MyBookingsPage() {
                       </div>
                     </div>
 
-                    {/* Room Names */}
-                    <div className="flex items-start gap-3">
-                      <Hotel className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground mb-1">Phòng đã đặt</p>
-                        <div className="flex flex-wrap gap-2">
-                          {booking.roomNames.map((roomName, idx) => (
-                            <Badge key={idx} variant="secondary" className="font-normal">
-                              {roomName}
-                            </Badge>
-                          ))}
+                    {/* Room Type Details - Client only sees room types */}
+                    {booking.roomTypeDetails && booking.roomTypeDetails.length > 0 ? (
+                      <div className="flex items-start gap-3">
+                        <Hotel className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Loại phòng đã đặt</p>
+                          <div className="space-y-2">
+                            {booking.roomTypeDetails.map((roomType, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-primary/5 rounded-lg">
+                                <div>
+                                  <p className="font-medium text-foreground">{roomType.roomTypeName}</p>
+                                  <p className="text-xs text-muted-foreground">Mã: {roomType.roomTypeCode}</p>
+                                </div>
+                                <Badge variant="secondary" className="ml-2">
+                                  {roomType.quantity} phòng
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-start gap-3">
+                        <Hotel className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground mb-1">Phòng đã đặt</p>
+                          <p className="text-foreground">Đang chờ phân phòng</p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Dates */}
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div className="flex items-start gap-3">
-                        <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <Calendar className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Nhận phòng</p>
                           <p className="text-foreground font-medium leading-loose">
@@ -249,7 +262,7 @@ export default function MyBookingsPage() {
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
-                        <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <Calendar className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-muted-foreground">Trả phòng</p>
                           <p className="text-foreground font-medium leading-loose">
@@ -262,7 +275,7 @@ export default function MyBookingsPage() {
                     {/* Special Requests */}
                     {booking.specialRequests && (
                       <div className="flex items-start gap-3">
-                        <MapPin className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <MapPin className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-muted-foreground mb-1">Yêu cầu đặc biệt</p>
                           <p className="text-foreground leading-loose">{booking.specialRequests}</p>
@@ -298,7 +311,7 @@ export default function MyBookingsPage() {
 
                     {/* Action Buttons */}
                     <div className="space-y-2">
-                      {booking.paymentStatus === "Pending" && booking.paymentUrl && (
+                      {booking.paymentStatus === "Chờ xác nhận" && booking.paymentUrl && (
                         <Button asChild className="w-full luxury-gradient">
                           <a href={booking.paymentUrl} target="_blank" rel="noopener noreferrer">
                             <CreditCard className="mr-2 h-4 w-4" />

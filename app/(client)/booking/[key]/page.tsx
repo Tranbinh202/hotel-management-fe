@@ -168,7 +168,6 @@ export default function BookingDetailsPage() {
 
             <div className="flex flex-wrap gap-3">
               {getStatusBadge(booking.paymentStatus)}
-              {getDepositBadge(booking.depositStatus)}
             </div>
           </div>
 
@@ -209,20 +208,34 @@ export default function BookingDetailsPage() {
               </div>
 
               <div className="space-y-6">
-                {/* Room names */}
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-3">Phòng đã đặt</p>
-                  <div className="flex flex-wrap gap-3">
-                    {booking.roomNames.map((roomName, idx) => (
-                      <div
-                        key={idx}
-                        className="px-5 py-3 bg-primary/5 border border-primary/10 rounded-2xl text-foreground font-medium text-lg"
-                      >
-                        {roomName}
-                      </div>
-                    ))}
+                {/* Room Type Details - Client only sees room types, not specific room numbers */}
+                {booking.roomTypeDetails && booking.roomTypeDetails.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-3">Loại phòng đã đặt</p>
+                    <div className="space-y-4">
+                      {booking.roomTypeDetails.map((roomType, idx) => (
+                        <div key={idx} className="p-5 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-1">
+                                <h3 className="text-xl font-serif font-bold text-foreground">{roomType.roomTypeName}</h3>
+                                <Badge variant="secondary" className="font-semibold">
+                                  <Hotel className="h-3 w-3 mr-1" />
+                                  {roomType.quantity} phòng
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">Mã loại phòng: {roomType.roomTypeCode}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t border-primary/10">
+                            <span className="text-sm text-muted-foreground">Giá mỗi phòng/đêm:</span>
+                            <span className="text-lg font-bold text-primary">{roomType.pricePerNight.toLocaleString("vi-VN")} ₫</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Check-in and Check-out dates */}
                 <div className="grid sm:grid-cols-2 gap-6 pt-6 border-t border-border/50">
@@ -283,6 +296,30 @@ export default function BookingDetailsPage() {
                     <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerName}</p>
                   </div>
                 </div>
+
+                {booking.customerEmail && (
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Mail className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerEmail}</p>
+                    </div>
+                  </div>
+                )}
+
+                {booking.customerPhone && (
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Phone className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Số điện thoại</p>
+                      <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerPhone}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -303,7 +340,7 @@ export default function BookingDetailsPage() {
             )}
 
             {/* Important Notice */}
-            {booking.paymentStatus === "Pending" && (
+            {booking.paymentStatus === "Chờ xác nhận" && (
               <div
                 className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-3xl p-6 animate-fade-in-up"
                 style={{ animationDelay: "0.3s" }}
@@ -359,7 +396,7 @@ export default function BookingDetailsPage() {
                     </span>
                   </div>
 
-                  {booking.paymentStatus === "Pending" && booking.paymentUrl && (
+                  {booking.paymentStatus === "Chờ xác nhận" && booking.paymentUrl && (
                     <>
                       <div className="h-px bg-white/20" />
                       <Button

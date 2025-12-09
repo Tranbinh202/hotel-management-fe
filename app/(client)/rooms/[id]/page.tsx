@@ -27,8 +27,8 @@ import {
   Mail,
   Loader2,
 } from "lucide-react"
-import { useRoom, useRooms } from "@/lib/hooks"
-import type { RoomSearchItem } from "@/lib/types/api"
+import { useRoomType, useRoomTypes } from "@/lib/hooks/use-room-type"
+import type { RoomType } from "@/lib/types/api"
 
 const amenityIcons: Record<string, any> = {
   Wifi: Wifi,
@@ -50,57 +50,45 @@ export default function RoomDetailPage({
 
   const router = useRouter()
   const {
-    data: roomType,
+    data: roomTypeData,
     isLoading,
     error,
-  } = useRoom(roomTypeId)
+  } = useRoomType(roomTypeId)
 
-  // Fetch specific rooms for this type
-  const { data: specificRoomsData } = useRooms(
-    {
-      roomTypeId: roomTypeId,
-      pageNumber: 1,
-      pageSize: 50,
-    },
-    true,
-  )
+  // Extract room type from infinite query (API returns single item for getById)
+  const roomType = useMemo(() => {
+    if (!roomTypeData?.pages?.[0]) return null
+    return roomTypeData.pages[0] as unknown as RoomType
+  }, [roomTypeData])
 
-  const { data: allRoomsData } = useRooms({
-    pageSize: 50,
-  }, true)
+  // Fetch all room types for "Similar Rooms" section
+  const { data: allRoomTypesData } = useRoomTypes({
+    PageSize: 50,
+  })
 
-  const specificRooms = specificRoomsData?.rooms || []
-  const availableCount = specificRooms.filter((r) => r.statusCode === "Available").length
-  const totalCount = specificRoomsData?.totalRecords || specificRooms.length
+  // Extract all room types from infinite query
+  const allRoomTypes = useMemo(() => {
+    if (!allRoomTypesData?.pages) return []
+    return allRoomTypesData.pages.flatMap((page) => page.items || [])
+  }, [allRoomTypesData])
 
-  // Group rooms by type for "Similar Rooms" section to show availability correctly
-  const similarRoomGroups = useMemo(() => {
-    if (!allRoomsData?.rooms) return []
+  const availableCount = roomType?.totalRooms || 0 // API doesn't return availableRoomCount for single room type
+  const totalCount = roomType?.totalRooms || 0
 
-    const groups = new Map<number, any>()
-
-    allRoomsData.rooms.forEach((room) => {
-      if (!groups.has(room.roomTypeId)) {
-        groups.set(room.roomTypeId, {
-          roomTypeId: room.roomTypeId,
-          roomTypeName: room.roomTypeName,
-          basePriceNight: room.basePriceNight,
-          maxOccupancy: room.maxOccupancy,
-          images: room.images || [],
-          availableCount: 0,
-        })
-      }
-
-      const group = groups.get(room.roomTypeId)
-      if (room.statusCode === "Available") {
-        group.availableCount++
-      }
-    })
-
-    return Array.from(groups.values())
-      .filter((g) => g.roomTypeId !== roomTypeId)
+  // Get similar room types
+  const similarRoomTypes = useMemo(() => {
+    return allRoomTypes
+      .filter((rt) => rt.roomTypeId !== roomTypeId)
       .slice(0, 3)
-  }, [allRoomsData, roomTypeId])
+      .map((rt) => ({
+        roomTypeId: rt.roomTypeId,
+        roomTypeName: rt.typeName,
+        basePriceNight: rt.basePriceNight,
+        maxOccupancy: rt.maxOccupancy,
+        images: rt.images?.map(img => img.filePath) || [],
+        availableCount: rt.totalRooms || 0, // Use totalRooms from API
+      }))
+  }, [allRoomTypes, roomTypeId])
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
@@ -111,16 +99,17 @@ export default function RoomDetailPage({
     }).format(price)
   }
 
-  const handleBookNow = (room?: RoomSearchItem) => {
+  const handleBookNow = () => {
     if (!roomType) return
 
     sessionStorage.setItem(
       "bookingData",
       JSON.stringify({
-        roomId: room ? room.roomTypeId : roomType.roomTypeId,
+        roomTypeId: roomType.roomTypeId,
         roomType: roomType.typeName,
+        roomTypeCode: roomType.typeCode,
         price: roomType.basePriceNight,
-        roomName: room?.roomName,
+        maxOccupancy: roomType.maxOccupancy,
       }),
     )
     router.push("/booking")
@@ -280,49 +269,26 @@ export default function RoomDetailPage({
                 </div>
               </div>
 
-              {/* Specific Rooms List */}
+              {/* Room Availability Summary */}
               <div className="space-y-6">
-                <h3 className="font-serif text-2xl font-semibold">Danh sách phòng</h3>
-                {specificRoomsData ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                    {specificRooms.sort((a, b) => a.roomName.localeCompare(b.roomName)).map((room) => {
-                      const isAvailable = room.statusCode === "Available";
-                      return (
-                        <div
-                          key={room.roomId}
-                          onClick={() => {
-                            if (isAvailable) {
-                              handleBookNow(room);
-                            }
-                          }}
-                          className={`
-                              cursor-pointer p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center gap-2
-                              ${isAvailable
-                              ? "bg-card hover:bg-accent/5 hover:border-accent hover:shadow-lg group"
-                              : "bg-muted/50 opacity-60 cursor-not-allowed"}
-                            `}
-                        >
-                          <span className="font-bold text-lg">{room.roomName}</span>
-                          <span className={`text-xs px-2 py-1 rounded-full ${isAvailable ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-                            }`}>
-                            {isAvailable ? "Còn trống" : room.status}
-                          </span>
-                          {isAvailable && (
-                            <p className="text-xs text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                              Đặt ngay
-                            </p>
-                          )}
-                        </div>
-                      )
-                    })}
+                <h3 className="font-serif text-2xl font-semibold">Tình trạng phòng</h3>
+                {roomType ? (
+                  <div className="p-6 rounded-xl glass-effect border border-border/50">
+                    <div className="text-center mb-4">
+                      <p className="text-sm text-muted-foreground mb-2">Tổng số phòng loại này</p>
+                      <p className="text-5xl font-bold text-primary">{totalCount}</p>
+                      <p className="text-sm text-muted-foreground mt-2">phòng</p>
+                    </div>
+                    <div className="pt-4 border-t border-border/50">
+                      <p className="text-sm text-muted-foreground italic text-center">
+                        💡 Lễ tân sẽ phân phòng cụ thể cho bạn khi xác nhận đặt phòng dựa trên tình trạng phòng trống tại thời điểm đó.
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex justify-center p-8">
                     <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   </div>
-                )}
-                {specificRoomsData && specificRooms.length === 0 && (
-                  <p className="text-muted-foreground">Chưa có thông tin phòng cụ thể.</p>
                 )}
               </div>
 
@@ -455,16 +421,15 @@ export default function RoomDetailPage({
           </div>
         </div>
 
-        {similarRoomGroups.length > 0 && (
+        {similarRoomTypes.length > 0 && (
           <div className="mt-20 animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
             <div className="mb-8">
               <h2 className="font-serif text-3xl lg:text-4xl font-bold mb-2">Phòng tương tự</h2>
               <p className="text-muted-foreground text-lg">Khám phá thêm các lựa chọn phù hợp với bạn</p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {similarRoomGroups.map((group, idx) => {
+              {similarRoomTypes.map((group, idx) => {
                 const roomImage = group.images?.[0] || "/hotel-building-exterior-modern-architecture.jpg"
-                const hasAvailableRooms = group.availableCount > 0
 
                 return (
                   <Link
@@ -483,10 +448,8 @@ export default function RoomDetailPage({
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                         <div className="absolute top-4 right-4">
-                          <Badge
-                            className={`${hasAvailableRooms ? "bg-accent/90" : "bg-destructive/90"} backdrop-blur-md border-0 px-3 py-1.5 text-sm font-medium`}
-                          >
-                            {hasAvailableRooms ? `Còn ${group.availableCount} phòng` : "Hết phòng"}
+                          <Badge className="bg-primary/90 backdrop-blur-md border-0 px-3 py-1.5 text-sm font-medium text-white">
+                            {group.availableCount} phòng
                           </Badge>
                         </div>
                       </div>

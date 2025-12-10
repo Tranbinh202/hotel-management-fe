@@ -1,34 +1,34 @@
 "use client"
 
-import { useState, use, useMemo } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { CommentList } from "@/components/features/comments"
 import { Badge } from "@/components/ui/badge"
-import {
-  Users,
-  Maximize,
-  Wifi,
-  Tv,
-  Wind,
-  Coffee,
-  Bath,
-  Home,
-  Check,
-  ChevronLeft,
-  Star,
-  MapPin,
-  Building2,
-  Bed,
-  Calendar,
-  Clock,
-  Phone,
-  Mail,
-  Loader2,
-} from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { useRoomType, useRoomTypes } from "@/lib/hooks/use-room-type"
 import type { RoomType } from "@/lib/types/api"
+import {
+  Bath,
+  Bed,
+  Building2,
+  Calendar,
+  Check,
+  ChevronLeft,
+  Clock,
+  Coffee,
+  Home,
+  Mail,
+  MapPin,
+  Maximize,
+  Phone,
+  Star,
+  Tv,
+  Users,
+  Wifi,
+  Wind
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { use, useMemo, useState } from "react"
 
 const amenityIcons: Record<string, any> = {
   Wifi: Wifi,
@@ -274,49 +274,9 @@ export default function RoomDetailPage({
                 <p className="text-muted-foreground leading-loose text-lg">{roomType?.description}</p>
               </div>
 
+              {/* Comments Section */}
               <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-serif text-2xl font-semibold">Đánh giá từ khách hàng</h3>
-                  <div className="flex items-center gap-2">
-                    <Star className="w-5 h-5 fill-accent text-accent" />
-                    <span className="text-2xl font-bold">4.8</span>
-                    <span className="text-muted-foreground">/5</span>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  {[
-                    {
-                      name: "Nguyễn Văn A",
-                      rating: 5,
-                      comment: "Phòng rất đẹp và sạch sẽ. Nhân viên thân thiện. Sẽ quay lại!",
-                      date: "2 ngày trước",
-                    },
-                    {
-                      name: "Trần Thị B",
-                      rating: 4,
-                      comment: "Vị trí thuận tiện, view đẹp. Giá cả hợp lý.",
-                      date: "1 tuần trước",
-                    },
-                  ].map((review, idx) => (
-                    <div
-                      key={idx}
-                      className="p-6 rounded-xl glass-effect border border-border/50 hover:border-accent/30 transition-all duration-300"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="font-semibold text-lg mb-1">{review.name}</p>
-                          <p className="text-xs text-muted-foreground">{review.date}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: review.rating }).map((_, i) => (
-                            <Star key={i} className="w-4 h-4 fill-accent text-accent" />
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-muted-foreground leading-relaxed">{review.comment}</p>
-                    </div>
-                  ))}
-                </div>
+                <CommentList roomTypeId={roomTypeId} />
               </div>
             </div>
           </div>

@@ -39,7 +39,7 @@ export default function AttendancePage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null)
 
-  const { data: attendanceData, isLoading: isLoadingAttendance } = useAttendance({
+  const getAttendance = useAttendance({
     PageIndex: pageIndex,
     PageSize: 20,
     Search: searchTerm,
@@ -97,6 +97,8 @@ export default function AttendancePage() {
     }
   }
 
+  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -143,14 +145,14 @@ export default function AttendancePage() {
           <div>
             <Label>Nhân viên</Label>
             <Select
-              value={selectedEmployee?.toString() || "all"}
-              onValueChange={(value) => setSelectedEmployee(value === "all" ? undefined : Number(value))}
+              value={selectedEmployee?.toString() || undefined}
+              onValueChange={(value) => setSelectedEmployee(value ? Number(value) : undefined)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Tất cả nhân viên" />
+                <SelectValue placeholder="Chọn nhân viên" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                {/* <SelectItem value="all">Tất cả nhân viên</SelectItem> */}
                 {employeesData?.items.map((emp) => (
                   <SelectItem key={emp.employeeId} value={emp.employeeId.toString()}>
                     {emp.fullName}
@@ -194,7 +196,7 @@ export default function AttendancePage() {
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-        {isLoadingAttendance ? (
+        {getAttendance.isPending ? (
           <div className="flex items-center justify-center h-64">
             <LoadingSpinner size="lg" />
           </div>
@@ -217,7 +219,7 @@ export default function AttendancePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {attendanceData?.items.map((record) => (
+                {getAttendance.data?.items.map((record) => (
                   <TableRow key={record.attendanceId}>
                     <TableCell className="font-medium">{record.employeeName}</TableCell>
                     <TableCell className="font-mono text-sm">{record.deviceEmployeeId || "-"}</TableCell>
@@ -266,10 +268,10 @@ export default function AttendancePage() {
             </Table>
 
             {/* Pagination */}
-            {attendanceData && attendanceData.totalPages > 1 && (
+            {getAttendance.data && getAttendance.data.totalPages > 1 && (
               <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
                 <div className="text-sm text-slate-600">
-                  Hiển thị {attendanceData.items.length} / {attendanceData.totalCount} bản ghi
+                  Hiển thị {getAttendance.data.items.length} / {getAttendance.data.totalCount} bản ghi
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -284,7 +286,7 @@ export default function AttendancePage() {
                     size="sm"
                     variant="outline"
                     onClick={() => setPageIndex(pageIndex + 1)}
-                    disabled={pageIndex >= attendanceData.totalPages - 1}
+                    disabled={pageIndex >= getAttendance.data.totalPages - 1}
                   >
                     Sau
                   </Button>

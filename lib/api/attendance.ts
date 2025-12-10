@@ -13,13 +13,11 @@ export interface GetAttendanceParams extends IPaginationParams {
   EmployeeId?: number
   Month?: number
   Year?: number
-  StartDate?: string
-  EndDate?: string
 }
 
 export const attendanceApi = {
   getAll: async (params: GetAttendanceParams): Promise<PaginatedResponse<AttendanceRecord>> => {
-    const response = await apiClient.get<ApiResponse<PaginatedResponse<AttendanceRecord>>>(`/Attendance`, { params })
+    const response = await apiClient.post<ApiResponse<PaginatedResponse<AttendanceRecord>>>(`/Attendance/GetAttendance`, { ...params })
     return response.data
   },
 

@@ -1,3 +1,5 @@
+import { number } from "zod"
+
 // Common API response types
 export interface ApiResponse<T> {
   isSuccess: boolean
@@ -705,3 +707,33 @@ export interface PayOSPaymentLinkResponse {
   expiresAt: string
 }
 // </CHANGE>
+
+export interface CommmentRecord {
+  commentId: number
+  roomId: number
+  replyId?: number
+  accountId?: number
+  content: string
+  rating?: number
+
+  createdDate: Date
+
+  createdTime?: Date
+
+  updatedAt?: Date
+
+  status: string
+}
+
+// SalaryInfo & SalaryRecord types
+export interface SalaryInfo {
+  salaryInfoId?: number
+  employeeId: number
+  employeeName?: string
+  year: number
+  baseSalary: number
+  bonus?: number | null
+  allowance?: number | null
+  createdAt?: string | null
+  updatedAt?: string | null
+}

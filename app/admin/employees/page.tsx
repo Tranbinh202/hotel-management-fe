@@ -36,6 +36,7 @@ export default function EmployeesPage() {
     fullName: "",
     phoneNumber: "",
     hireDate: new Date().toISOString().split("T")[0],
+    employeeTypeId: 13,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -143,7 +144,7 @@ export default function EmployeesPage() {
 
     const hireDate = new Date(formData.hireDate)
     // Format hireDate to "2025-10-27" format string
-    const hireDateDto = hireDate.toISOString().split('T')[0]
+    const hireDateDto = hireDate.toISOString().split("T")[0]
 
     if (editingEmployee) {
       const updateDto: UpdateEmployeeDto = {
@@ -213,7 +214,7 @@ export default function EmployeesPage() {
   const getEmployeeTypeBadge = (typeId: number) => {
     const colors: Record<number, string> = {
       11: "bg-red-100 text-red-800",
-      12: "bg-purple-100 text-purple-800",
+      12: "bg-[#00008b]/10 text-[#00008b]",
       13: "bg-blue-100 text-blue-800",
       14: "bg-green-100 text-green-800",
       15: "bg-amber-100 text-amber-800",
@@ -231,7 +232,6 @@ export default function EmployeesPage() {
   }
 
   return (
-
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
@@ -242,7 +242,7 @@ export default function EmployeesPage() {
         </div>
         <Button
           onClick={() => handleOpenModal()}
-          className="bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db] text-white"
+          className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
         >
           <UserPlus className="w-4 h-4 mr-2" />
           Thêm nhân viên
@@ -545,7 +545,7 @@ export default function EmployeesPage() {
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:from-[#ff4569] hover:to-[#9370db] text-white"
+                  className="flex-1 bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending ? (

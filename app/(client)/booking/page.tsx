@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter } from "next/navigation"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { bookingsApi } from "@/lib/api/bookings"
 import { roomsApi, type Room } from "@/lib/api/rooms"
+import { useRooms } from "@/lib/hooks"
 import { useAuth } from "@/contexts/auth-context"
 import {
   CalendarIcon,
@@ -34,6 +35,7 @@ import {
   Star,
   TrendingUp,
   Eye,
+  Key,
 } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
@@ -57,36 +59,44 @@ const amenityIcons: Record<string, any> = {
   minibar: Coffee,
 }
 
-export default function BookingPage() {
+function BookingPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuth()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [room, setRoom] = useState<Room | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
 
-  const roomId = Number.parseInt(searchParams.get("roomId") || "0")
-  const roomType = searchParams.get("roomType") || ""
-  const pricePerNight = Number.parseInt(searchParams.get("price") || "0")
+  const [bookingData, setBookingData] = useState<{
+    roomId: number
+    roomType: string
+    pricePerNight: number
+    roomName?: string
+  } | null>(null)
+
+  const [selectedSpecificRoomName, setSelectedSpecificRoomName] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchRoomDetails = async () => {
-      if (!roomId) return
-
-      try {
-        setIsLoadingRoom(true)
-        const roomData = await roomsApi.getById({ id: roomId })
-        setRoom(roomData)
-      } catch (error) {
-        console.error("Error fetching room details:", error)
-      } finally {
-        setIsLoadingRoom(false)
+    const data = sessionStorage.getItem("bookingData")
+    if (data) {
+      const parsed = JSON.parse(data)
+      setBookingData({
+        roomId: parsed.roomId,
+        roomType: parsed.roomType,
+        pricePerNight: parsed.price,
+        roomName: parsed.roomName,
+      })
+      if (parsed.roomName) {
+        setSelectedSpecificRoomName(parsed.roomName)
       }
+    } else {
+      router.push("/rooms")
     }
+  }, [router])
 
-    fetchRoomDetails()
-  }, [roomId])
+  const roomId = bookingData?.roomId || 0
+  const roomType = bookingData?.roomType || ""
+  const pricePerNight = bookingData?.pricePerNight || 0
 
   const {
     control: datesControl,
@@ -124,6 +134,25 @@ export default function BookingPage() {
   const checkOutDate = watchDates("checkOutDate")
   const quantity = watchDates("quantity")
 
+  // Fetch available specific rooms
+  const { data: availableRoomsData } = useRooms(
+    {
+      roomTypeId: roomId,
+      checkInDate: checkInDate?.toISOString(),
+      checkOutDate: checkOutDate?.toISOString(),
+      // Status "Available" is implied if we want only available?
+      // roomsApi.search supports 'status'.
+      // If I want to list ONLY available rooms for the dates, I should pass status="Available"?
+      // Or filter client side?
+      // Usually matching "Available" status code is safer.
+      // But let's just get them all and render status.
+      pageNumber: 1,
+      pageSize: 100,
+    },
+    true
+  )
+  const availableSpecificRooms = availableRoomsData?.rooms || []
+
   useEffect(() => {
     if (isAuthenticated && user?.profileDetails) {
       const profile = user.profileDetails
@@ -140,10 +169,10 @@ export default function BookingPage() {
   }, [isAuthenticated, user, setGuestValue])
 
   useEffect(() => {
-    if (!roomId || !roomType || !pricePerNight) {
+    if (bookingData && (!roomId || !roomType || !pricePerNight)) {
       router.push("/rooms")
     }
-  }, [roomId, roomType, pricePerNight, router])
+  }, [bookingData, roomId, roomType, pricePerNight, router])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -187,10 +216,9 @@ export default function BookingPage() {
     try {
       const guestData = getGuestValues()
 
-      let response
-
       if (isAuthenticated && user?.profileDetails && "customerId" in user.profileDetails) {
-        response = await bookingsApi.create({
+        // Authenticated user booking
+        const response = await bookingsApi.create({
           customerId: user.profileDetails.customerId,
           roomTypes: [
             {
@@ -200,10 +228,36 @@ export default function BookingPage() {
           ],
           checkInDate: checkInDate.toISOString(),
           checkOutDate: checkOutDate.toISOString(),
-          specialRequests: guestData.specialRequests || undefined,
+          specialRequests: [
+            guestData.specialRequests,
+            selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
+          ]
+            .filter(Boolean)
+            .join(". ") || undefined,
         })
+
+        if (response.isSuccess && response.data) {
+          // Redirect to QR payment page with all necessary info
+          const params = new URLSearchParams({
+            bookingId: response.data.booking.bookingId.toString(),
+            token: response.data.bookingToken,
+            amount: response.data.booking.depositAmount.toString(),
+            deadline: response.data.paymentDeadline,
+          })
+
+          if (response.data.qrPayment) {
+            params.append("qrCode", response.data.qrPayment.qrCodeUrl)
+            params.append("accountNo", response.data.qrPayment.accountNumber)
+            params.append("accountName", response.data.qrPayment.accountName)
+            params.append("bankName", response.data.qrPayment.bankName)
+            params.append("description", response.data.qrPayment.description)
+          }
+
+          router.push(`/booking/qr-payment?${params.toString()}`)
+        }
       } else {
-        response = await bookingsApi.createByGuest({
+        // Guest booking
+        const guestResponse = await bookingsApi.createByGuest({
           fullName: guestData.fullName,
           email: guestData.email,
           phoneNumber: guestData.phoneNumber,
@@ -217,17 +271,33 @@ export default function BookingPage() {
           ],
           checkInDate: checkInDate.toISOString(),
           checkOutDate: checkOutDate.toISOString(),
-          specialRequests: guestData.specialRequests || undefined,
+          specialRequests: [
+            guestData.specialRequests,
+            selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
+          ]
+            .filter(Boolean)
+            .join(". ") || undefined,
         })
-      }
 
-      if (response.isSuccess && response.data.paymentUrl) {
-        // router.push(
-        //   `/booking/success?bookingId=${response.data.bookingId}&paymentUrl=${encodeURIComponent(response.data.paymentUrl)}`,
-        // )
-        router.push(response.data.paymentUrl)
-      } else {
-        router.push("/booking/failure?reason=payment_failed")
+        if (guestResponse.isSuccess && guestResponse.data) {
+          // Redirect to QR payment page with all necessary info
+          const params = new URLSearchParams({
+            bookingId: guestResponse.data.booking.bookingId.toString(),
+            token: guestResponse.data.bookingToken,
+            amount: guestResponse.data.booking.depositAmount.toString(),
+            deadline: guestResponse.data.paymentDeadline,
+          })
+
+          if (guestResponse.data.qrPayment) {
+            params.append("qrCode", guestResponse.data.qrPayment.qrCodeUrl)
+            params.append("accountNo", guestResponse.data.qrPayment.accountNumber)
+            params.append("accountName", guestResponse.data.qrPayment.accountName)
+            params.append("bankName", guestResponse.data.qrPayment.bankName)
+            params.append("description", guestResponse.data.qrPayment.description)
+          }
+
+          router.push(`/booking/qr-payment?${params.toString()}`)
+        }
       }
     } catch (error: any) {
       console.error("Booking error:", error)
@@ -237,6 +307,24 @@ export default function BookingPage() {
       setIsSubmitting(false)
     }
   }
+
+  useEffect(() => {
+    const fetchRoomDetails = async () => {
+      if (!roomId) return
+
+      try {
+        setIsLoadingRoom(true)
+        const roomData = await roomsApi.getById(roomId)
+        setRoom(roomData)
+      } catch (error) {
+        console.error("Error fetching room details:", error)
+      } finally {
+        setIsLoadingRoom(false)
+      }
+    }
+
+    fetchRoomDetails()
+  }, [roomId])
 
   if (isLoadingRoom) {
     return (
@@ -417,7 +505,11 @@ export default function BookingPage() {
                                   mode="single"
                                   selected={field.value}
                                   onSelect={field.onChange}
-                                  disabled={(date) => date < new Date()}
+                                  disabled={(date) => {
+                                    const today = new Date()
+                                    today.setHours(0, 0, 0, 0)
+                                    return date < today
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -457,7 +549,14 @@ export default function BookingPage() {
                                   mode="single"
                                   selected={field.value}
                                   onSelect={field.onChange}
-                                  disabled={(date) => date < new Date() || (checkInDate ? date <= checkInDate : false)}
+                                  disabled={(date) => {
+                                    const today = new Date()
+                                    today.setHours(0, 0, 0, 0)
+                                    if (checkInDate) {
+                                      return date <= checkInDate
+                                    }
+                                    return date < today
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -494,6 +593,58 @@ export default function BookingPage() {
                           <AlertCircle className="w-4 h-4" />
                           {datesErrors.quantity.message}
                         </p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+                      <Label className="text-base font-medium">Chọn phòng cụ thể (Tùy chọn)</Label>
+                      {selectedSpecificRoomName ? (
+                        <div className="flex items-center justify-between p-3 border rounded-lg bg-accent/5 border-accent/20">
+                          <div className="flex items-center gap-2">
+                            <Key className="w-4 h-4 text-accent" />
+                            <span className="font-medium text-accent">Phòng {selectedSpecificRoomName}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-muted-foreground hover:text-destructive h-auto p-1"
+                            onClick={() => setSelectedSpecificRoomName(null)}
+                          >
+                            Bỏ chọn
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="border rounded-lg p-3 space-y-3">
+                          {!checkInDate || !checkOutDate ? (
+                            <p className="text-sm text-muted-foreground italic text-center py-2">
+                              Vui lòng chọn ngày để xem danh sách phòng trống
+                            </p>
+                          ) : availableSpecificRooms.length > 0 ? (
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto">
+                              {availableSpecificRooms
+                                .filter((r) => r.statusCode === "Available")
+                                .map((r) => (
+                                  <div
+                                    key={r.roomId}
+                                    onClick={() => setSelectedSpecificRoomName(r.roomName)}
+                                    className="cursor-pointer border rounded-md p-2 text-center text-sm hover:bg-accent hover:text-white transition-colors"
+                                  >
+                                    {r.roomName}
+                                  </div>
+                                ))}
+                              {availableSpecificRooms.filter((r) => r.statusCode === "Available").length === 0 && (
+                                <p className="col-span-full text-sm text-muted-foreground text-center">
+                                  Không có phòng trống cho ngày đã chọn
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex justify-center py-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -565,7 +716,7 @@ export default function BookingPage() {
                               placeholder="0123456789"
                               {...field}
                               className={cn("h-12", guestErrors.phoneNumber && "border-red-500")}
-                              disabled={isAuthenticated}
+
                             />
                           )}
                         />
@@ -588,7 +739,7 @@ export default function BookingPage() {
                             placeholder="001234567890"
                             {...field}
                             className={cn("h-12", guestErrors.identityCard && "border-red-500")}
-                            disabled={isAuthenticated}
+
                           />
                         )}
                       />
@@ -610,7 +761,7 @@ export default function BookingPage() {
                             placeholder="123 Đường ABC, Quận XYZ, TP. HCM"
                             {...field}
                             className={cn("h-12", guestErrors.address && "border-red-500")}
-                            disabled={isAuthenticated}
+
                           />
                         )}
                       />
@@ -687,6 +838,12 @@ export default function BookingPage() {
                           <span className="opacity-90">Số phòng:</span>
                           <span className="font-medium">{quantity}</span>
                         </div>
+                        {selectedSpecificRoomName && (
+                          <div className="flex justify-between">
+                            <span className="opacity-90">Phòng cụ thể:</span>
+                            <span className="text-white font-bold border-b border-white/50">{selectedSpecificRoomName}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-4 border-t border-white/20">
@@ -846,5 +1003,22 @@ export default function BookingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-muted-foreground">Đang tải...</span>
+          </div>
+        </div>
+      }
+    >
+      <BookingPageContent />
+    </Suspense>
   )
 }

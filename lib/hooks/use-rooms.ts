@@ -1,40 +1,84 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-} from "@tanstack/react-query";
-import { GetAllRoomsParams, GetRoomParams, roomsApi } from "@/lib/api";
+  type RoomSearchParams,
+  roomsApi,
+  roomManagementApi,
+} from "@/lib/api/rooms";
 import { toast } from "@/hooks/use-toast";
 
-export function useRooms(params: Partial<GetAllRoomsParams>) {
-  return useInfiniteQuery({
-    queryKey: ["client-rooms", params],
-    queryFn: ({ pageParam }) =>
-      roomsApi.getAll({ ...params, PageIndex: pageParam }),
-    getNextPageParam: (lastPage) => {
-      if (lastPage.pageIndex * lastPage.pageSize < lastPage.totalCount) {
-        return lastPage.pageIndex + 1;
-      }
-      return undefined;
+export function useRooms(
+  params: Partial<RoomSearchParams> = {},
+  isPublic = true
+) {
+  return useQuery({
+    queryKey: ["rooms", params, isPublic],
+    queryFn: () => roomsApi.search(params, isPublic),
+  });
+}
+
+export function useRoom(
+  id: number,
+  checkInDate?: string,
+  checkOutDate?: string
+) {
+  return useQuery({
+    queryKey: ["room", id, checkInDate, checkOutDate],
+    queryFn: () => roomsApi.getById(id, checkInDate, checkOutDate),
+    enabled: !!id,
+  });
+}
+
+export function useRoomManagement(params: RoomSearchParams = {}) {
+  return useQuery({
+    queryKey: ["room-management", params],
+    queryFn: () => roomManagementApi.search(params),
+  });
+}
+
+export function useRoomStats() {
+  return useQuery({
+    queryKey: ["room-stats"],
+    queryFn: () => roomManagementApi.getStats(),
+  });
+}
+
+export function useRoomDetails(roomId: number) {
+  return useQuery({
+    queryKey: ["room-details", roomId],
+    queryFn: () => roomManagementApi.getDetails(roomId),
+    enabled: !!roomId,
+  });
+}
+
+export function useAvailableStatus(roomId: number) {
+  return useQuery({
+    queryKey: ["room-available-status", roomId],
+    queryFn: () => roomManagementApi.getAvailableStatus(roomId),
+    enabled: !!roomId,
+  });
+}
+
+export function useChangeRoomStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: roomManagementApi.changeStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["room-management"] });
+      queryClient.invalidateQueries({ queryKey: ["room-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["room-details"] });
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật trạng thái phòng",
+      });
     },
-    initialPageParam: 0,
-  });
-}
-
-export function useRoom(params: GetRoomParams) {
-  return useQuery({
-    queryKey: ["rooms", params],
-    queryFn: () => roomsApi.getById(params),
-    enabled: !!params.id,
-  });
-}
-
-export function useAvailableRooms(checkIn: string, checkOut: string) {
-  return useQuery({
-    queryKey: ["rooms", "available", checkIn, checkOut],
-    queryFn: () => roomsApi.getAvailable(checkIn, checkOut),
-    enabled: !!checkIn && !!checkOut,
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể cập nhật trạng thái phòng",
+        variant: "destructive",
+      });
+    },
   });
 }
 
@@ -67,7 +111,7 @@ export function useUpdateRoom() {
     mutationFn: roomsApi.update,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      queryClient.invalidateQueries({ queryKey: ["rooms", data.roomTypeId] });
+      queryClient.invalidateQueries({ queryKey: ["rooms", data.roomId] });
       toast({
         title: "Thành công",
         description: "Đã cập nhật phòng",

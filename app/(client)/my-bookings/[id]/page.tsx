@@ -69,62 +69,59 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
   const booking = data.data
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "paid":
-        return (
-          <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20 px-4 py-1.5">
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Đã thanh toán
-          </Badge>
-        )
-      case "pending":
-        return (
-          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20 px-4 py-1.5">
-            <Clock className="h-4 w-4 mr-2" />
-            Chờ thanh toán
-          </Badge>
-        )
-      case "cancelled":
-        return (
-          <Badge className="bg-rose-500/10 text-rose-700 border-rose-500/20 hover:bg-rose-500/20 px-4 py-1.5">
-            <XCircle className="h-4 w-4 mr-2" />
-            Đã hủy
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline" className="px-4 py-1.5">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            {status}
-          </Badge>
-        )
+    const statusLower = status.toLowerCase()
+    if (statusLower.includes("thanh toán") && statusLower.includes("đã")) {
+      return (
+        <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20 px-4 py-1.5">
+          <CheckCircle2 className="h-4 w-4 mr-2" />
+          {status}
+        </Badge>
+      )
     }
+    if (statusLower.includes("chờ")) {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20 px-4 py-1.5">
+          <Clock className="h-4 w-4 mr-2" />
+          {status}
+        </Badge>
+      )
+    }
+    if (statusLower.includes("hủy")) {
+      return (
+        <Badge className="bg-rose-500/10 text-rose-700 border-rose-500/20 hover:bg-rose-500/20 px-4 py-1.5">
+          <XCircle className="h-4 w-4 mr-2" />
+          {status}
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline" className="px-4 py-1.5">
+        <AlertCircle className="h-4 w-4 mr-2" />
+        {status}
+      </Badge>
+    )
   }
 
-  const getDepositBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "paid":
-        return (
-          <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 hover:bg-blue-500/20 px-4 py-1.5">
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Đã đặt cọc
-          </Badge>
-        )
-      case "pending":
-        return (
-          <Badge className="bg-orange-500/10 text-orange-700 border-orange-500/20 hover:bg-orange-500/20 px-4 py-1.5">
-            <Clock className="h-4 w-4 mr-2" />
-            Chưa đặt cọc
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline" className="px-4 py-1.5">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            {status}
-          </Badge>
-        )
+  const getBookingTypeBadge = (type: string) => {
+    if (type.toLowerCase().includes("trực tuyến")) {
+      return (
+        <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20 hover:bg-purple-500/20 px-4 py-1.5">
+          {type}
+        </Badge>
+      )
     }
+    if (type.toLowerCase().includes("quầy")) {
+      return (
+        <Badge className="bg-blue-500/10 text-blue-700 border-blue-500/20 hover:bg-blue-500/20 px-4 py-1.5">
+          {type}
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="outline" className="px-4 py-1.5">
+        {type}
+      </Badge>
+    )
   }
 
   return (
@@ -160,7 +157,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
 
             <div className="flex flex-wrap gap-3">
               {getStatusBadge(booking.paymentStatus)}
-              {getDepositBadge(booking.depositStatus)}
+              {getBookingTypeBadge(booking.bookingType)}
             </div>
           </div>
         </div>
@@ -179,20 +176,34 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
               </div>
 
               <div className="space-y-6">
-                {/* Room names */}
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-3">Phòng đã đặt</p>
-                  <div className="flex flex-wrap gap-3">
-                    {booking.roomNames.map((roomName, idx) => (
-                      <div
-                        key={idx}
-                        className="px-5 py-3 bg-primary/5 border border-primary/10 rounded-2xl text-foreground font-medium text-lg"
-                      >
-                        {roomName}
-                      </div>
-                    ))}
+                {/* Room Type Details - Client only sees room types, not specific room numbers */}
+                {booking.roomTypeDetails && booking.roomTypeDetails.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-3">Loại phòng đã đặt</p>
+                    <div className="space-y-4">
+                      {booking.roomTypeDetails.map((roomType, idx) => (
+                        <div key={idx} className="p-5 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl border border-primary/20">
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-1">
+                                <h3 className="text-xl font-serif font-bold text-foreground">{roomType.roomTypeName}</h3>
+                                <Badge variant="secondary" className="font-semibold">
+                                  <Hotel className="h-3 w-3 mr-1" />
+                                  {roomType.quantity} phòng
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">Mã loại phòng: {roomType.roomTypeCode}</p>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t border-primary/10">
+                            <span className="text-sm text-muted-foreground">Giá mỗi phòng/đêm:</span>
+                            <span className="text-lg font-bold text-primary">{roomType.pricePerNight.toLocaleString("vi-VN")} ₫</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="grid sm:grid-cols-2 gap-6 pt-6 border-t border-border/50">
                   <div className="space-y-2">
@@ -251,6 +262,30 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
                     <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerName}</p>
                   </div>
                 </div>
+
+                {booking.customerEmail && (
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Email</p>
+                      <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerEmail}</p>
+                    </div>
+                  </div>
+                )}
+
+                {booking.customerPhone && (
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Số điện thoại</p>
+                      <p className="text-lg font-semibold text-foreground leading-relaxed">{booking.customerPhone}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -301,7 +336,7 @@ export default function BookingDetailPage({ params }: { params: { id: string } }
                     </span>
                   </div>
 
-                  {booking.paymentStatus === "Pending" && booking.paymentUrl && (
+                  {booking.paymentStatus === "Chờ xác nhận" && booking.paymentUrl && (
                     <>
                       <div className="h-px bg-white/20" />
                       <Button

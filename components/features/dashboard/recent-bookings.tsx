@@ -51,10 +51,10 @@ export function RecentBookings({ bookings }: RecentBookingsProps) {
       <CardContent className="p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Đặt phòng gần đây</h3>
         <div className="space-y-4">
-          {bookings.length === 0 ? (
+          {bookings?.length === 0 ? (
             <p className="text-center text-slate-500 py-8">Chưa có đặt phòng nào</p>
           ) : (
-            bookings.map((booking) => (
+            bookings?.map((booking) => (
               <div key={booking.bookingId} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
                 <div className="flex-1">
                   <div className="font-medium text-slate-900">
@@ -65,7 +65,7 @@ export function RecentBookings({ bookings }: RecentBookingsProps) {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-slate-900">₫{booking.totalPrice.toLocaleString("vi-VN")}</div>
+                  <div className="font-semibold text-slate-900">₫{booking.totalAmount.toLocaleString("vi-VN")}</div>
                   <span
                     className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}
                   >

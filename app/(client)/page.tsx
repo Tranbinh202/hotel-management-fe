@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
 import Image from "next/image"
 import { useAuth } from "@/contexts/auth-context"
+import { useRoomTypes } from "@/lib/hooks/use-room-type"
+import { useAmenities } from "@/lib/hooks/use-amenities"
 import {
   Star,
   CheckCircle2,
   Clock,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Wifi,
   Tv,
   Coffee,
@@ -37,11 +41,28 @@ import {
 export default function Home() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
-  const [rooms, setRooms] = useState<any[]>([])
   const [mounted, setMounted] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [checkInDate, setCheckInDate] = useState<Date | undefined>()
   const [checkOutDate, setCheckOutDate] = useState<Date | undefined>()
+
+  // Use React Query to fetch room types
+  const { data: roomTypesData, isLoading: isLoadingRooms } = useRoomTypes({
+    PageSize: 8,
+  })
+
+  // Use React Query to fetch amenities
+  const { data: amenitiesData, isLoading: isLoadingAmenities } = useAmenities({
+    IsActive: true,
+    AmenityType: "Common",
+    PageSize: 8,
+  })
+
+  // Extract rooms from the paginated response
+  const rooms = roomTypesData?.pages?.[0]?.items || []
+
+  // Extract amenities from the paginated response
+  const amenities = amenitiesData?.pages?.[0]?.items || []
 
   useEffect(() => {
     setMounted(true)
@@ -59,22 +80,7 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, user, router])
 
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/rooms/types`)
-        if (response.ok) {
-          const data = await response.json()
-          setRooms(data.slice(0, 3))
-        }
-      } catch (error) {
-        console.error("Error fetching rooms:", error)
-      }
-    }
-    fetchRooms()
-  }, [])
-
-  if (!mounted || isLoading || isRedirecting) {
+  if (!mounted || isLoading || isRedirecting || isLoadingRooms) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -173,185 +179,135 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {rooms.length > 0
-              ? rooms.map((room, index) => (
+          {/* Carousel Container */}
+          <div className="relative group">
+            {/* Navigation Buttons */}
+            <button
+              onClick={() => {
+                const container = document.getElementById('rooms-carousel')
+                if (container) {
+                  container.scrollBy({ left: -400, behavior: 'smooth' })
+                }
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-xl rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -ml-6"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="w-6 h-6 text-[oklch(0.72_0.12_75)]" />
+            </button>
+
+            <button
+              onClick={() => {
+                const container = document.getElementById('rooms-carousel')
+                if (container) {
+                  container.scrollBy({ left: 400, behavior: 'smooth' })
+                }
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-xl rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 -mr-6"
+              aria-label="Next"
+            >
+              <ChevronRight className="w-6 h-6 text-[oklch(0.72_0.12_75)]" />
+            </button>
+
+            {/* Scrollable Container */}
+            <div
+              id="rooms-carousel"
+              className="flex gap-6 overflow-x-auto scroll-smooth pb-4 snap-x snap-mandatory scrollbar-hide"
+              style={{
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
+              {rooms.length > 0
+                ? rooms.map((room, index) => (
                   <div
-                    key={room.id}
-                    className="group bg-card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border hover:border-[oklch(0.72_0.12_75)]/30 animate-scale-in"
+                    key={room.roomTypeId}
+                    className="flex-none w-[350px] snap-start group/card bg-card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border hover:border-[oklch(0.72_0.12_75)]/30 animate-scale-in"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <div className="relative h-72 overflow-hidden">
+                    <div className="relative h-64 overflow-hidden">
                       <Image
                         src={
-                          room.images?.[0] || "/hotel-building-exterior-modern-architecture.jpg" || "/placeholder.svg"
+                          room.images?.[0]?.filePath || "/hotel-building-exterior-modern-architecture.jpg" || "/placeholder.svg"
                         }
-                        alt={room.name}
-                        width={600}
-                        height={400}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        alt={room.typeName}
+                        width={400}
+                        height={300}
+                        className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.25_0.04_265)]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      <div className="absolute top-6 right-6 glass-effect px-5 py-3 rounded-2xl backdrop-blur-xl">
-                        <span className="text-[oklch(0.72_0.12_75)] font-bold text-lg">
-                          {room.pricePerNight?.toLocaleString("vi-VN")}đ
+                      <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.25_0.04_265)]/60 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"></div>
+                      <div className="absolute top-4 right-4 glass-effect px-4 py-2 rounded-xl backdrop-blur-xl">
+                        <span className="text-[oklch(0.72_0.12_75)] font-bold text-base">
+                          {room.basePriceNight?.toLocaleString("vi-VN")}đ
                         </span>
-                        <span className="text-white/90 text-sm">/đêm</span>
+                        <span className="text-white/90 text-xs">/đêm</span>
                       </div>
-                      <div className="absolute top-6 left-6 bg-[oklch(0.72_0.12_75)] text-[oklch(0.18_0.02_265)] px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Còn {room.totalRooms || 0} phòng
-                      </div>
+
                     </div>
 
-                    <div className="p-8">
-                      <h3 className="font-serif text-3xl font-bold mb-3 text-foreground">{room.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-5 leading-loose">
+                    <div className="p-6">
+                      <h3 className="font-serif text-2xl font-bold mb-2 text-foreground line-clamp-1">{room.typeName}</h3>
+                      <p className="text-muted-foreground text-sm mb-4 leading-loose line-clamp-2">
                         {room.description || "Phòng sang trọng với đầy đủ tiện nghi hiện đại"}
                       </p>
 
-                      <div className="flex flex-wrap gap-3 mb-5">
-                        <span className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                          <CheckCircle2 className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                          {room.capacity || 2} người
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                          <CheckCircle2 className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
+                          {room.maxOccupancy || 2} người
                         </span>
-                        <span className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-full">
-                          <CheckCircle2 className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                          View đẹp
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+                          <CheckCircle2 className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
+                          {room.roomSize}m²
                         </span>
                       </div>
 
-                      <div className="border-t border-border pt-5 mb-6">
-                        <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
+                      <div className="border-t border-border pt-4 mb-4">
+                        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
                           Tiện nghi
                         </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Wifi className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            WiFi miễn phí
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <span className="text-xs text-foreground flex items-center gap-1">
+                            <Wifi className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
+                            WiFi
                           </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Tv className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            TV 55 inch
+                          <span className="text-xs text-foreground flex items-center gap-1">
+                            <Tv className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
+                            TV 55"
                           </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Coffee className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
+                          <span className="text-xs text-foreground flex items-center gap-1">
+                            <Coffee className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
                             Minibar
                           </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Shield className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            Két an toàn
+                          <span className="text-xs text-foreground flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-[oklch(0.72_0.12_75)]" />
+                            Két
                           </span>
                         </div>
                       </div>
 
-                      <Link href={`/rooms/${room.id}`}>
-                        <Button className="w-full luxury-gradient hover:opacity-90 text-white h-12 font-semibold text-base shadow-lg shadow-[oklch(0.72_0.12_75)]/20 hover:shadow-xl hover:shadow-[oklch(0.72_0.12_75)]/30 transition-all duration-300">
+                      <Link href={`/rooms/${room.roomTypeId}`}>
+                        <Button className="w-full luxury-gradient hover:opacity-90 text-white h-11 font-semibold text-sm shadow-lg shadow-[oklch(0.72_0.12_75)]/20 hover:shadow-xl hover:shadow-[oklch(0.72_0.12_75)]/30 transition-all duration-300">
                           Xem chi tiết & Đặt phòng
                         </Button>
                       </Link>
                     </div>
                   </div>
                 ))
-              : // Fallback static rooms if API fails
-                [
-                  {
-                    name: "Deluxe Room",
-                    price: "2.500.000",
-                    image: "modern hotel deluxe room with city view",
-                    features: ["35m²", "2 người", "View thành phố", "Giường King"],
-                    available: 12,
-                    total: 45,
-                  },
-                  {
-                    name: "Suite Room",
-                    price: "4.200.000",
-                    image: "luxury hotel suite with living area",
-                    features: ["55m²", "3 người", "Phòng khách riêng", "Ban công"],
-                    available: 8,
-                    total: 30,
-                  },
-                  {
-                    name: "Presidential Suite",
-                    price: "8.500.000",
-                    image: "presidential hotel suite with panoramic view",
-                    features: ["120m²", "4 người", "View toàn cảnh", "2 phòng ngủ"],
-                    available: 3,
-                    total: 10,
-                  },
-                ].map((room, index) => (
+                : // Fallback static rooms if API fails
+                Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={index}
-                    className="group bg-card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border hover:border-[oklch(0.72_0.12_75)]/30 animate-scale-in"
-                    style={{ animationDelay: `${index * 0.1}s` }}
+                    className="flex-none w-[350px] snap-start group/card bg-card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-border hover:border-[oklch(0.72_0.12_75)]/30"
                   >
-                    <div className="relative h-72 overflow-hidden">
-                      <Image
-                        src="/hotel-building-exterior-modern-architecture.jpg"
-                        alt={room.name}
-                        width={600}
-                        height={400}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[oklch(0.25_0.04_265)]/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      <div className="absolute top-6 right-6 glass-effect px-5 py-3 rounded-2xl backdrop-blur-xl">
-                        <span className="text-[oklch(0.72_0.12_75)] font-bold text-lg">{room.price}đ</span>
-                        <span className="text-white/90 text-sm">/đêm</span>
-                      </div>
-                      <div className="absolute top-6 left-6 bg-[oklch(0.72_0.12_75)] text-[oklch(0.18_0.02_265)] px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Còn {room.available}/{room.total} phòng
-                      </div>
-                    </div>
-
-                    <div className="p-8">
-                      <h3 className="font-serif text-3xl font-bold mb-3 text-foreground">{room.name}</h3>
-                      <p className="text-muted-foreground text-sm mb-5 leading-loose">
-                        Phòng sang trọng với thiết kế hiện đại và đầy đủ tiện nghi
-                      </p>
-
-                      <div className="flex flex-wrap gap-3 mb-5">
-                        {room.features.map((feature, i) => (
-                          <span
-                            key={i}
-                            className="flex items-center gap-2 text-sm text-muted-foreground bg-muted px-3 py-1.5 rounded-full"
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            {feature}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-border pt-5 mb-6">
-                        <p className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-                          Tiện nghi
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Wifi className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            WiFi miễn phí
-                          </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Tv className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            TV 55 inch
-                          </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Coffee className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            Minibar
-                          </span>
-                          <span className="text-sm text-foreground flex items-center gap-2">
-                            <Shield className="w-4 h-4 text-[oklch(0.72_0.12_75)]" />
-                            Két an toàn
-                          </span>
-                        </div>
-                      </div>
-
-                      <Link href="/rooms">
-                        <Button className="w-full luxury-gradient hover:opacity-90 text-white h-12 font-semibold text-base shadow-lg shadow-[oklch(0.72_0.12_75)]/20 hover:shadow-xl hover:shadow-[oklch(0.72_0.12_75)]/30 transition-all duration-300">
-                          Xem chi tiết & Đặt phòng
-                        </Button>
-                      </Link>
+                    <div className="relative h-64 overflow-hidden bg-muted animate-pulse"></div>
+                    <div className="p-6 space-y-4">
+                      <div className="h-6 bg-muted rounded animate-pulse"></div>
+                      <div className="h-4 bg-muted rounded animate-pulse"></div>
+                      <div className="h-10 bg-muted rounded animate-pulse"></div>
                     </div>
                   </div>
                 ))}
+            </div>
           </div>
 
           <div className="text-center mt-16">
@@ -385,62 +341,115 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              {
-                icon: Waves,
-                title: "Hồ bơi vô cực",
-                desc: "Hồ bơi ngoài trời với view tuyệt đẹp, mở cửa từ 6h-22h",
-              },
-              {
-                icon: UtensilsCrossed,
-                title: "Nhà hàng 5 sao",
-                desc: "Ẩm thực đa quốc gia cao cấp từ đầu bếp Michelin",
-              },
-              {
-                icon: Sparkles,
-                title: "Spa & Massage",
-                desc: "Dịch vụ chăm sóc sức khỏe chuyên nghiệp với liệu pháp cao cấp",
-              },
-              {
-                icon: Dumbbell,
-                title: "Phòng gym",
-                desc: "Trang thiết bị hiện đại 24/7 với huấn luyện viên cá nhân",
-              },
-              {
-                icon: ParkingCircle,
-                title: "Bãi đỗ xe",
-                desc: "Miễn phí cho khách lưu trú, có dịch vụ valet parking",
-              },
-              {
-                icon: Wifi,
-                title: "WiFi tốc độ cao",
-                desc: "Kết nối internet miễn phí tốc độ 1Gbps toàn khách sạn",
-              },
-              {
-                icon: Headphones,
-                title: "Lễ tân 24/7",
-                desc: "Hỗ trợ khách hàng mọi lúc với đội ngũ đa ngôn ngữ",
-              },
-              {
-                icon: Car,
-                title: "Đưa đón sân bay",
-                desc: "Dịch vụ xe riêng sang trọng theo yêu cầu",
-              },
-            ].map((amenity, index) => {
-              const IconComponent = amenity.icon
-              return (
+            {isLoadingAmenities ? (
+              // Loading skeleton
+              Array.from({ length: 8 }).map((_, index) => (
                 <div
                   key={index}
-                  className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2"
+                  className="bg-card rounded-2xl p-8 text-center border border-border animate-pulse"
                 >
-                  <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
-                    <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                  <div className="mb-5 flex justify-center">
+                    <div className="w-16 h-16 bg-muted rounded-full"></div>
                   </div>
-                  <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-loose">{amenity.desc}</p>
+                  <div className="h-6 bg-muted rounded mb-3 mx-auto w-3/4"></div>
+                  <div className="h-4 bg-muted rounded mb-2"></div>
+                  <div className="h-4 bg-muted rounded w-5/6 mx-auto"></div>
                 </div>
-              )
-            })}
+              ))
+            ) : amenities.length > 0 ? (
+              // Display amenities from API
+              amenities.map((amenity, index) => {
+                // Map amenity name to icon
+                const getAmenityIcon = (name: string) => {
+                  const lowerName = name.toLowerCase()
+                  if (lowerName.includes('hồ bơi') || lowerName.includes('pool')) return Waves
+                  if (lowerName.includes('nhà hàng') || lowerName.includes('restaurant')) return UtensilsCrossed
+                  if (lowerName.includes('spa') || lowerName.includes('massage')) return Sparkles
+                  if (lowerName.includes('gym') || lowerName.includes('fitness')) return Dumbbell
+                  if (lowerName.includes('đỗ xe') || lowerName.includes('parking')) return ParkingCircle
+                  if (lowerName.includes('wifi') || lowerName.includes('internet')) return Wifi
+                  if (lowerName.includes('lễ tân') || lowerName.includes('reception')) return Headphones
+                  if (lowerName.includes('đưa đón') || lowerName.includes('shuttle') || lowerName.includes('airport')) return Car
+                  return Sparkles // Default icon
+                }
+
+                const IconComponent = getAmenityIcon(amenity.amenityName)
+
+                return (
+                  <div
+                    key={amenity.amenityId}
+                    className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2 animate-scale-in"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
+                      <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                    </div>
+                    <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.amenityName}</h3>
+                    <p className="text-sm text-muted-foreground leading-loose">
+                      {amenity.description || "Tiện nghi cao cấp phục vụ nhu cầu của bạn"}
+                    </p>
+                  </div>
+                )
+              })
+            ) : (
+              // Fallback static amenities if API returns empty
+              [
+                {
+                  icon: Waves,
+                  title: "Hồ bơi vô cực",
+                  desc: "Hồ bơi ngoài trời với view tuyệt đẹp, mở cửa từ 6h-22h",
+                },
+                {
+                  icon: UtensilsCrossed,
+                  title: "Nhà hàng 5 sao",
+                  desc: "Ẩm thực đa quốc gia cao cấp từ đầu bếp Michelin",
+                },
+                {
+                  icon: Sparkles,
+                  title: "Spa & Massage",
+                  desc: "Dịch vụ chăm sóc sức khỏe chuyên nghiệp với liệu pháp cao cấp",
+                },
+                {
+                  icon: Dumbbell,
+                  title: "Phòng gym",
+                  desc: "Trang thiết bị hiện đại 24/7 với huấn luyện viên cá nhân",
+                },
+                {
+                  icon: ParkingCircle,
+                  title: "Bãi đỗ xe",
+                  desc: "Miễn phí cho khách lưu trú, có dịch vụ valet parking",
+                },
+                {
+                  icon: Wifi,
+                  title: "WiFi tốc độ cao",
+                  desc: "Kết nối internet miễn phí tốc độ 1Gbps toàn khách sạn",
+                },
+                {
+                  icon: Headphones,
+                  title: "Lễ tân 24/7",
+                  desc: "Hỗ trợ khách hàng mọi lúc với đội ngũ đa ngôn ngữ",
+                },
+                {
+                  icon: Car,
+                  title: "Đưa đón sân bay",
+                  desc: "Dịch vụ xe riêng sang trọng theo yêu cầu",
+                },
+              ].map((amenity, index) => {
+                const IconComponent = amenity.icon
+                return (
+                  <div
+                    key={index}
+                    className="bg-card rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 border border-border hover:border-[oklch(0.72_0.12_75)]/30 group hover:-translate-y-2"
+                  >
+                    <div className="mb-5 group-hover:scale-110 transition-transform duration-300 flex justify-center">
+                      <IconComponent className="w-16 h-16 text-[oklch(0.72_0.12_75)]" />
+                    </div>
+                    <h3 className="font-semibold text-xl mb-3 text-foreground">{amenity.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-loose">{amenity.desc}</p>
+                  </div>
+                )
+              })
+            )}
           </div>
 
           <div className="text-center mt-16">
@@ -604,7 +613,11 @@ export default function Home() {
                   value={checkInDate}
                   onChange={setCheckInDate}
                   placeholder="Chọn ngày"
-                  minDate={new Date()}
+                  minDate={(() => {
+                    const today = new Date()
+                    today.setHours(0, 0, 0, 0)
+                    return today
+                  })()}
                   className="[&_button]:bg-white/20 [&_button]:border-white/30 [&_button]:text-white [&_button:hover]:bg-white/30 [&_button:hover]:border-white/50 [&_button]:backdrop-blur-sm"
                 />
               </div>

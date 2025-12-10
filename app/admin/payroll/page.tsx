@@ -49,8 +49,8 @@ export default function PayrollPage() {
   })
 
   const { data: employeesData } = useEmployees({
-    PageIndex: 0,
-    PageSize: 100,
+    PageIndex: 1,
+    PageSize: 50,
     Search: "",
     SortBy: "FullName",
     SortDesc: false,
@@ -84,7 +84,7 @@ export default function PayrollPage() {
   const getStatusBadge = (statusName: string) => {
     const statusMap: Record<string, { color: string; label: string }> = {
       "Chờ duyệt": { color: "bg-yellow-500", label: "Chờ duyệt" },
-      "Đã duyệt": { color: "bg-blue-500", label: "Đã duyệt" },
+      "Đã duyệt": { color: "bg-[#00008b]", label: "Đã duyệt" },
       "Đã giải ngân": { color: "bg-green-500", label: "Đã giải ngân" },
     }
 
@@ -101,7 +101,7 @@ export default function PayrollPage() {
         </div>
         <Button
           onClick={() => setIsCalculateDialogOpen(true)}
-          className="bg-gradient-to-r from-[#ff5e7e] to-[#a78bfa] hover:opacity-90"
+          className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200]"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -249,7 +249,7 @@ export default function PayrollPage() {
                           <Button
                             size="sm"
                             onClick={() => handleApprove(payroll)}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-[#00008b] hover:bg-[#00008b]/90"
                           >
                             Duyệt
                           </Button>

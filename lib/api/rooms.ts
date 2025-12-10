@@ -1,21 +1,31 @@
-import { apiClient } from "./client";
+import { apiClient, publicApiClient } from "./client";
 import type {
-  CreateRoomDto,
-  UpdateRoomDto,
-  PaginatedResponse,
   ApiResponse,
   IPaginationParams,
+  RoomSearchParams,
+  RoomSearchResponse,
+  FloorMap,
+  RoomDetails,
+  RoomStats,
+  AvailableStatusResponse,
+  ChangeRoomStatusDto,
+  BulkChangeRoomStatusDto,
+  BulkChangeRoomStatusResponse,
+  RoomType,
 } from "@/lib/types/api";
 
 export interface GetAllRoomsParams extends IPaginationParams {
-  NumberOfGuests: number;
-  MinPrice: number;
-  MaxPrice: number;
-  BedType: string;
-  MinRoomSize: number;
-  CheckInDate: string;
-  CheckOutDate: string;
-  OnlyActive: boolean;
+  NumberOfGuests?: number;
+  MinPrice?: number;
+  MaxPrice?: number;
+  BedType?: string;
+  MinRoomSize?: number;
+  CheckInDate?: string;
+  CheckOutDate?: string;
+  OnlyActive?: boolean;
+  Search?: string;
+  SortBy?: string;
+  SortDesc?: boolean;
 }
 
 export interface RoomTypeImage {
@@ -28,20 +38,26 @@ export interface RoomTypeImage {
 }
 
 export interface Room {
+  roomId: number;
+  roomNumber: string;
   roomTypeId: number;
-  typeName: string;
-  typeCode: string;
-  description: string;
-  basePriceNight: number;
-  maxOccupancy: number;
-  roomSize: number;
-  numberOfBeds: number;
-  bedType: string;
+  floorNumber: number;
+  roomStatus: string;
+  notes: string | null;
   isActive: boolean;
-  images: RoomTypeImage[];
-  amenities: string[];
-  availableRoomCount: number | null;
-  totalRoomCount: number;
+  roomType: {
+    roomTypeId: number;
+    typeName: string;
+    typeCode: string;
+    description: string;
+    basePriceNight: number;
+    maxOccupancy: number;
+    roomSize: number;
+    numberOfBeds: number;
+    bedType: string;
+    isActive: boolean;
+    images: RoomTypeImage[];
+  };
 }
 
 export interface GetRoomParams {
@@ -51,45 +67,102 @@ export interface GetRoomParams {
 }
 
 export const roomsApi = {
-  getAll: async (
-    params: Partial<GetAllRoomsParams>
-  ): Promise<PaginatedResponse<Room>> => {
-    const res = await apiClient.get<ApiResponse<PaginatedResponse<Room>>>(
-      "/room/search",
-      { params }
+  // Search rooms with filters (works for both authenticated and public)
+  search: async (
+    params: Partial<RoomSearchParams> = {},
+    isPublic = false
+  ): Promise<RoomSearchResponse> => {
+    const queryParams = new URLSearchParams();
+
+    if (params.roomName) queryParams.append("roomName", params.roomName);
+    if (params.roomTypeId)
+      queryParams.append("roomTypeId", params.roomTypeId.toString());
+    if (params.status) queryParams.append("status", params.status);
+    if (params.floor) queryParams.append("floor", params.floor.toString());
+    if (params.minPrice)
+      queryParams.append("minPrice", params.minPrice.toString());
+    if (params.maxPrice)
+      queryParams.append("maxPrice", params.maxPrice.toString());
+    queryParams.append("pageNumber", (params.pageNumber || 1).toString());
+    queryParams.append("pageSize", (params.pageSize || 10).toString());
+
+    const client = isPublic ? publicApiClient : apiClient;
+    const res = await client.get<ApiResponse<RoomSearchResponse>>(
+      `/rooms/search?${queryParams.toString()}`
+    );
+    return res.data.data || res.data;
+  },
+
+  // Get room type details by ID
+  getById: async (
+    id: number,
+    checkInDate?: string,
+    checkOutDate?: string
+  ): Promise<RoomType> => {
+    const queryParams = new URLSearchParams();
+    if (checkInDate) queryParams.append("checkInDate", checkInDate);
+    if (checkOutDate) queryParams.append("checkOutDate", checkOutDate);
+
+    const url = queryParams.toString()
+      ? `/Room/types/${id}?${queryParams.toString()}`
+      : `/Room/types/${id}`;
+
+    const res = await publicApiClient.get<ApiResponse<RoomType>>(url);
+    return res.data.data;
+  },
+};
+
+export const roomManagementApi = {
+  // Search and filter rooms
+  search: async (
+    params: RoomSearchParams = {}
+  ): Promise<RoomSearchResponse> => {
+    return roomsApi.search(params, false);
+  },
+
+  // Get room map by floor
+  getMap: async (floor?: number): Promise<FloorMap[]> => {
+    const url = floor ? `/rooms/map?floor=${floor}` : "/rooms/map";
+    const res = await apiClient.get<ApiResponse<FloorMap[]>>(url);
+    return res.data;
+  },
+
+  // Get room details
+  getDetails: async (roomId: number): Promise<RoomDetails> => {
+    const res = await apiClient.get<ApiResponse<RoomDetails>>(
+      `/rooms/${roomId}`
     );
     return res.data;
   },
 
-  getById: async (params: GetRoomParams): Promise<Room> => {
-    const { id, ...rest } = params;
-    const res = await apiClient.get<ApiResponse<Room>>(`/room/search/${id}`, {
-      params: rest,
-    });
+  // Get room statistics
+  getStats: async (): Promise<RoomStats> => {
+    const res = await apiClient.get<ApiResponse<RoomStats>>("/rooms/stats");
     return res.data;
   },
 
-  getAvailable: async (checkIn: string, checkOut: string): Promise<Room[]> => {
-    return apiClient.get<Room[]>("/rooms/available", {
-      params: { checkIn, checkOut },
-    });
+  // Get available status transitions for a room
+  getAvailableStatus: async (
+    roomId: number
+  ): Promise<AvailableStatusResponse> => {
+    const res = await apiClient.get<ApiResponse<AvailableStatusResponse>>(
+      `/rooms/${roomId}/available-status`
+    );
+    return res.data;
   },
 
-  create: async (data: CreateRoomDto): Promise<Room> => {
-    return apiClient.post<Room>("/rooms", data);
+  // Change room status
+  changeStatus: async (data: ChangeRoomStatusDto): Promise<void> => {
+    await apiClient.patch<ApiResponse<void>>("/rooms/status", data);
   },
 
-  update: async (data: UpdateRoomDto): Promise<Room> => {
-    const { roomId, ...updateData } = data;
-    return apiClient.put<Room>(`/rooms/${roomId}`, updateData);
+  // Bulk change room status
+  bulkChangeStatus: async (
+    data: BulkChangeRoomStatusDto
+  ): Promise<BulkChangeRoomStatusResponse> => {
+    const res = await apiClient.patch<
+      ApiResponse<BulkChangeRoomStatusResponse>
+    >("/rooms/bulk-status", data);
+    return res.data;
   },
-
-  delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/rooms/${id}`);
-  },
-
-  toggleAvailability: async (id: number): Promise<Room> => {
-    return apiClient.patch<Room>(`/rooms/${id}/toggle-availability`);
-  },
-  
 };

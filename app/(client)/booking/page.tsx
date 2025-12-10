@@ -596,57 +596,7 @@ function BookingPageContent() {
                       )}
                     </div>
 
-                    <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-                      <Label className="text-base font-medium">Chọn phòng cụ thể (Tùy chọn)</Label>
-                      {selectedSpecificRoomName ? (
-                        <div className="flex items-center justify-between p-3 border rounded-lg bg-accent/5 border-accent/20">
-                          <div className="flex items-center gap-2">
-                            <Key className="w-4 h-4 text-accent" />
-                            <span className="font-medium text-accent">Phòng {selectedSpecificRoomName}</span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-muted-foreground hover:text-destructive h-auto p-1"
-                            onClick={() => setSelectedSpecificRoomName(null)}
-                          >
-                            Bỏ chọn
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="border rounded-lg p-3 space-y-3">
-                          {!checkInDate || !checkOutDate ? (
-                            <p className="text-sm text-muted-foreground italic text-center py-2">
-                              Vui lòng chọn ngày để xem danh sách phòng trống
-                            </p>
-                          ) : availableSpecificRooms.length > 0 ? (
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-48 overflow-y-auto">
-                              {availableSpecificRooms
-                                .filter((r) => r.statusCode === "Available")
-                                .map((r) => (
-                                  <div
-                                    key={r.roomId}
-                                    onClick={() => setSelectedSpecificRoomName(r.roomName)}
-                                    className="cursor-pointer border rounded-md p-2 text-center text-sm hover:bg-accent hover:text-white transition-colors"
-                                  >
-                                    {r.roomName}
-                                  </div>
-                                ))}
-                              {availableSpecificRooms.filter((r) => r.statusCode === "Available").length === 0 && (
-                                <p className="col-span-full text-sm text-muted-foreground text-center">
-                                  Không có phòng trống cho ngày đã chọn
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="flex justify-center py-2">
-                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+
 
                     <div className="flex justify-end pt-4">
                       <Button type="submit" className="luxury-gradient text-white" size="lg">

@@ -105,7 +105,7 @@ export default function RoomDetailPage({
     sessionStorage.setItem(
       "bookingData",
       JSON.stringify({
-        roomTypeId: roomType.roomTypeId,
+        roomId: roomType.roomTypeId, // Changed from roomTypeId to roomId
         roomType: roomType.typeName,
         roomTypeCode: roomType.typeCode,
         price: roomType.basePriceNight,

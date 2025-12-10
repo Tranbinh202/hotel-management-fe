@@ -13,7 +13,7 @@ let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
 
 const refreshClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:5001/api",
   headers: { "Content-Type": "application/json" },
 });
 

@@ -190,10 +190,12 @@ export interface CreateRoomDto {
   roomNumber: string;
   roomTypeId: number;
   floorNumber: number;
-  roomStatus: RoomStatusCode | string;
+  roomStatus?: RoomStatusCode | string; // For backward compatibility
+  statusId?: number; // New: statusId for create
   notes?: string;
   isActive?: boolean;
-  imageUrls?: string[];
+  imageUrls?: string[]; // For backward compatibility
+  imageMedia?: ImageMediaDto[]; // For create mode with Media CRUD
 }
 
 export interface UpdateRoomDto {
@@ -667,6 +669,77 @@ export interface CustomerProfileDetails {
   identityCard: string;
   address: string;
   avatarUrl: string | null;
+}
+
+// Customer management
+export interface CustomerListItem {
+  customerId: number;
+  accountId: number;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  isLocked: boolean;
+  totalBookings: number;
+  totalSpent: number;
+  lastBookingDate: string | null;
+  createdAt: string;
+}
+
+export type CustomerListResponse = PaginatedResponse<CustomerListItem>;
+
+export interface CustomerBasicInfo {
+  customerId: number;
+  accountId: number;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  identityCard: string;
+  address: string;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
+export interface CustomerAccountInfo {
+  accountId: number;
+  username: string;
+  email: string;
+  isLocked: boolean;
+  lastLoginAt: string | null;
+  roles: string[];
+}
+
+export interface CustomerStatistics {
+  totalBookings: number;
+  completedBookings: number;
+  cancelledBookings: number;
+  upcomingBookings: number;
+  totalSpent: number;
+  lastBookingDate: string | null;
+  totalFeedbacks: number;
+  totalTransactions: number;
+  totalPaidAmount: number;
+}
+
+export interface CustomerRecentBooking {
+  bookingId: number;
+  statusCode: string;
+  statusName: string;
+  bookingType: string;
+  checkInDate: string;
+  checkOutDate: string;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface CustomerDetails {
+  basicInfo: CustomerBasicInfo;
+  account: CustomerAccountInfo;
+  statistics: CustomerStatistics;
+  recentBookings: CustomerRecentBooking[];
+}
+
+export interface ToggleCustomerBanDto {
+  isLocked: boolean;
 }
 
 export interface AccountStatistics {

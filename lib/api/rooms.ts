@@ -102,7 +102,22 @@ export const roomsApi = {
 
   // Create a room
   create: async (data: CreateRoomDto): Promise<Room> => {
-    const res = await apiClient.post<ApiResponse<Room>>("/RoomManagement", data)
+    const { roomNumber, notes, imageUrls, imageMedia, roomStatus, statusId, ...rest } = data
+
+    // Build payload according to API spec (same structure as update)
+    const payload: any = {
+      roomName: roomNumber, // Backend expects "roomName" not "roomNumber"
+      roomTypeId: rest.roomTypeId,
+      statusId: statusId, // Use statusId directly from data
+      description: notes || "",
+    }
+
+    // Add imageMedia if provided (for Media CRUD system)
+    if (imageMedia && imageMedia.length > 0) {
+      payload.imageMedia = imageMedia
+    }
+
+    const res = await apiClient.post<ApiResponse<Room>>("/Room/rooms", payload)
     return (res.data as any)?.data ?? (res.data as any)
   },
 

@@ -1007,15 +1007,25 @@ export default function IndividualRoomsManagement() {
           }
         }
       } else {
-        // Create mode: Use simple imageUrls array
-        const imageUrls = images.filter((img) => !img.isMarkedForRemoval).map((img) => img.url)
+        // Create mode: Use Media CRUD system (same as update)
+        const imageMedia = buildImageMedia()
+
+        // Map roomStatus string to statusId
+        const statusItem = roomStatuses?.find(
+          (s) => s.codeName === formData.roomStatus || (s as any).codeKey === formData.roomStatus
+        )
+        if (!statusItem) {
+          throw new Error("Không tìm thấy trạng thái hợp lệ")
+        }
+        const statusId = (statusItem as any).codeId ?? (statusItem as any).commonCodeId
+
         await createMutation.mutateAsync({
           roomNumber: formData.roomNumber,
           roomTypeId: formData.roomTypeId,
           floorNumber: formData.floorNumber,
-          roomStatus: formData.roomStatus,
+          statusId: statusId,
           notes: formData.notes,
-          imageUrls: imageUrls,
+          imageMedia: imageMedia.length > 0 ? imageMedia : undefined,
         })
       }
 

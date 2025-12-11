@@ -8,20 +8,29 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Upload, X } from "lucide-react"
-import type { RoomType, CreateRoomTypeDto, UpdateRoomTypeDto } from "@/lib/types/api"
+import { Loader2, Upload, X, GripVertical } from "lucide-react"
+import type { RoomType, CreateRoomTypeDto, UpdateRoomTypeDto, ImageMediaDto } from "@/lib/types/api"
 import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/lib/hooks/use-room-type"
 import { fileApi } from "@/lib/api/file"
 import { toast } from "@/hooks/use-toast"
 
 const BED_TYPES = ["Single", "Double", "Queen", "King"]
 
+// Extended image type for form state management
+interface FormImageState {
+  mediaId: number | null // null for new images, number for existing
+  url: string
+  altText: string
+  isMarkedForRemoval: boolean // Track if user wants to remove this image
+}
+
 export default function RoomTypesManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRoomType, setEditingRoomType] = useState<RoomType | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
 
-  const [formData, setFormData] = useState<CreateRoomTypeDto | UpdateRoomTypeDto>({
+  // Basic form data (without images)
+  const [formData, setFormData] = useState({
     typeName: "",
     typeCode: "",
     description: "",
@@ -30,10 +39,13 @@ export default function RoomTypesManagement() {
     maxOccupancy: 2,
     numberOfBeds: 1,
     bedType: "Double",
-    images: [],
   })
+
+  // Separate state for images with Media CRUD tracking
+  const [images, setImages] = useState<FormImageState[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [uploadingCount, setUploadingCount] = useState(0)
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useRoomTypes({
     PageSize: 20,
@@ -48,9 +60,9 @@ export default function RoomTypesManagement() {
 
   const handleOpenModal = (roomType?: RoomType) => {
     if (roomType) {
+      // Edit mode: Load existing room type data
       setEditingRoomType(roomType)
       setFormData({
-        roomTypeId: roomType.roomTypeId,
         typeName: roomType.typeName,
         typeCode: roomType.typeCode,
         description: roomType.description,
@@ -59,9 +71,19 @@ export default function RoomTypesManagement() {
         maxOccupancy: roomType.maxOccupancy,
         numberOfBeds: roomType.numberOfBeds,
         bedType: roomType.bedType,
-        images: roomType.images.map((img) => img.filePath),
       })
+
+      // Load existing images into form state
+      setImages(
+        roomType.images.map((img) => ({
+          mediaId: img.mediaId,
+          url: img.filePath,
+          altText: img.description || "",
+          isMarkedForRemoval: false,
+        }))
+      )
     } else {
+      // Create mode: Reset to defaults
       setEditingRoomType(null)
       setFormData({
         typeName: "",
@@ -72,8 +94,8 @@ export default function RoomTypesManagement() {
         maxOccupancy: 2,
         numberOfBeds: 1,
         bedType: "Double",
-        images: [],
       })
+      setImages([])
     }
     setErrors({})
     setIsModalOpen(true)
@@ -83,6 +105,7 @@ export default function RoomTypesManagement() {
     setIsModalOpen(false)
     setEditingRoomType(null)
     setErrors({})
+    setImages([])
   }
 
   const validateForm = () => {
@@ -138,10 +161,15 @@ export default function RoomTypesManagement() {
       const successfulUrls = uploadedUrls.filter((url): url is string => url !== null)
 
       if (successfulUrls.length > 0) {
-        setFormData((prev) => ({
-          ...prev,
-          images: [...(prev.images || []), ...successfulUrls],
+        // Add new images to state (mediaId = null means new image)
+        const newImages: FormImageState[] = successfulUrls.map((url) => ({
+          mediaId: null,
+          url: url,
+          altText: "",
+          isMarkedForRemoval: false,
         }))
+
+        setImages((prev) => [...prev, ...newImages])
 
         toast({
           title: "Thành công",
@@ -161,10 +189,81 @@ export default function RoomTypesManagement() {
   }
 
   const removeImage = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      images: prev.images?.filter((_, i) => i !== index) || [],
-    }))
+    const image = images[index]
+
+    if (image.mediaId === null) {
+      // New image (not saved yet) - just remove from array
+      setImages((prev) => prev.filter((_, i) => i !== index))
+    } else {
+      // Existing image - mark for removal (will be sent as "remove" in CRUD)
+      setImages((prev) => prev.map((img, i) => (i === index ? { ...img, isMarkedForRemoval: true } : img)))
+    }
+  }
+
+  const updateImageAltText = (index: number, altText: string) => {
+    setImages((prev) => prev.map((img, i) => (i === index ? { ...img, altText } : img)))
+  }
+
+  // Drag and drop handlers for reordering
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (draggedIndex === null || draggedIndex === index) return
+
+    const newImages = [...images]
+    const draggedItem = newImages[draggedIndex]
+    newImages.splice(draggedIndex, 1)
+    newImages.splice(index, 0, draggedItem)
+
+    setImages(newImages)
+    setDraggedIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null)
+  }
+
+  // Build imageMedia array for Media CRUD API
+  const buildImageMedia = (): ImageMediaDto[] => {
+    const imageMedia: ImageMediaDto[] = []
+
+    images.forEach((img, index) => {
+      if (img.isMarkedForRemoval && img.mediaId !== null) {
+        // Remove existing image
+        imageMedia.push({
+          id: img.mediaId,
+          crudKey: "remove",
+          url: null,
+          altText: null,
+          providerId: null,
+        })
+      } else if (!img.isMarkedForRemoval) {
+        if (img.mediaId === null) {
+          // Add new image
+          imageMedia.push({
+            id: null,
+            crudKey: "add",
+            url: img.url,
+            altText: img.altText || null,
+            providerId: null,
+          })
+        } else {
+          // Keep existing image (update alt text and order)
+          imageMedia.push({
+            id: img.mediaId,
+            crudKey: "keep",
+            url: null, // Don't modify URL
+            altText: img.altText || null,
+            providerId: null,
+          })
+        }
+      }
+    })
+
+    return imageMedia
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -174,9 +273,26 @@ export default function RoomTypesManagement() {
 
     try {
       if (editingRoomType) {
-        await updateMutation.mutateAsync(formData as UpdateRoomTypeDto)
+        // Update mode: Use Media CRUD system
+        const imageMedia = buildImageMedia()
+
+        const updateDto: UpdateRoomTypeDto = {
+          roomTypeId: editingRoomType.roomTypeId,
+          ...formData,
+          imageMedia: imageMedia.length > 0 ? imageMedia : null,
+        }
+
+        await updateMutation.mutateAsync(updateDto)
       } else {
-        await createMutation.mutateAsync(formData as CreateRoomTypeDto)
+        // Create mode: Use simple imageUrls array
+        const imageUrls = images.filter((img) => !img.isMarkedForRemoval).map((img) => img.url)
+
+        const createDto: CreateRoomTypeDto = {
+          ...formData,
+          imageUrls: imageUrls,
+        }
+
+        await createMutation.mutateAsync(createDto)
       }
       handleCloseModal()
     } catch (error) {
@@ -189,6 +305,9 @@ export default function RoomTypesManagement() {
       await deleteMutation.mutateAsync(roomTypeId)
     }
   }
+
+  // Filter out images marked for removal for display
+  const visibleImages = images.filter((img) => !img.isMarkedForRemoval)
 
   return (
     <div className="space-y-4">
@@ -348,7 +467,7 @@ export default function RoomTypesManagement() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
               <h2 className="text-2xl font-bold text-slate-900">
                 {editingRoomType ? "Chỉnh sửa loại phòng" : "Thêm loại phòng mới"}
               </h2>
@@ -491,25 +610,68 @@ export default function RoomTypesManagement() {
 
               <div className="space-y-2">
                 <Label>Hình ảnh</Label>
+                <p className="text-xs text-slate-500">
+                  {editingRoomType
+                    ? "Kéo thả để sắp xếp lại thứ tự hình ảnh. Hình đầu tiên sẽ là ảnh đại diện."
+                    : "Tải lên hình ảnh cho loại phòng"}
+                </p>
 
-                {formData.images && formData.images.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 mb-2">
-                    {formData.images.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url || "/placeholder.svg"}
-                          alt={`Image ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg border border-slate-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                {visibleImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    {visibleImages.map((img, index) => {
+                      const actualIndex = images.findIndex((i) => i === img)
+                      return (
+                        <div
+                          key={actualIndex}
+                          draggable={editingRoomType !== null}
+                          onDragStart={() => handleDragStart(actualIndex)}
+                          onDragOver={(e) => handleDragOver(e, actualIndex)}
+                          onDragEnd={handleDragEnd}
+                          className={`relative group border-2 rounded-lg overflow-hidden ${
+                            draggedIndex === actualIndex ? "border-blue-500 opacity-50" : "border-slate-200"
+                          } ${editingRoomType ? "cursor-move" : ""}`}
                         >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                          {/* Drag handle */}
+                          {editingRoomType && (
+                            <div className="absolute top-2 left-2 bg-white/90 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                              <GripVertical className="w-4 h-4 text-slate-600" />
+                            </div>
+                          )}
+
+                          <img
+                            src={img.url || "/placeholder.svg"}
+                            alt={img.altText || `Image ${index + 1}`}
+                            className="w-full h-32 object-cover"
+                          />
+
+                          {/* Image info overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                            <input
+                              type="text"
+                              value={img.altText}
+                              onChange={(e) => updateImageAltText(actualIndex, e.target.value)}
+                              placeholder="Mô tả ảnh..."
+                              className="w-full text-xs bg-white/20 text-white placeholder-white/70 border-0 rounded px-2 py-1 focus:outline-none focus:bg-white/30"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+
+                          {/* Remove button */}
+                          <button
+                            type="button"
+                            onClick={() => removeImage(actualIndex)}
+                            className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Order badge */}
+                          <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs font-bold px-2 py-0.5 rounded">
+                            #{index + 1}
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
 
@@ -535,14 +697,14 @@ export default function RoomTypesManagement() {
                 </label>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={handleCloseModal} className="flex-1 bg-transparent">
+              <div className="flex gap-3 pt-4 border-t border-slate-200">
+                <Button type="button" variant="outline" onClick={handleCloseModal} className="flex-1">
                   Hủy
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
+                  className="flex-1 bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
                 >
                   {(createMutation.isPending || updateMutation.isPending) && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

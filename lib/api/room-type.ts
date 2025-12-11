@@ -28,6 +28,8 @@ export const roomTypesApi = {
 
   update: async (data: UpdateRoomTypeDto): Promise<RoomType> => {
     const { roomTypeId, ...updateData } = data
+    // Supports both old (imageUrls) and new (imageMedia) approaches
+    // imageMedia uses Media CRUD system: add/keep/remove operations
     const response = await apiClient.put<ApiResponse<RoomType>>(`/Room/types/${roomTypeId}`, updateData)
     return response.data
   },

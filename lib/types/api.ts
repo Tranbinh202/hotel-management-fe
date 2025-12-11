@@ -25,11 +25,24 @@ export interface ApiError {
 }
 
 export interface IPaginationParams {
-  PageIndex: number;
-  PageSize: number;
-  Search: string;
-  SortBy: string;
-  SortDesc: boolean;
+  PageIndex?: number;
+  PageSize?: number;
+  Search?: string;
+  SortBy?: string;
+  SortDesc?: boolean;
+}
+
+// Common code / lookup
+export interface CommonCode {
+  codeId: number;
+  codeType: string;
+  codeName: string;
+  codeValue: string;
+  description?: string | null;
+  displayOrder: number | null;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string | null;
 }
 
 // Authentication types
@@ -175,17 +188,24 @@ export type Room = RoomType;
 
 export interface CreateRoomDto {
   roomNumber: string;
-  roomType: string;
-  price: number;
-  capacity: number;
-  description: string;
-  isAvailable: boolean;
-  images?: string[];
-  amenityIds?: number[];
+  roomTypeId: number;
+  floorNumber: number;
+  roomStatus: RoomStatusCode | string;
+  notes?: string;
+  isActive?: boolean;
+  imageUrls?: string[];
 }
 
-export interface UpdateRoomDto extends Partial<CreateRoomDto> {
+export interface UpdateRoomDto {
   roomId: number;
+  roomNumber?: string;
+  roomTypeId?: number;
+  floorNumber?: number;
+  roomStatus?: RoomStatusCode | string;
+  notes?: string;
+  isActive?: boolean;
+  imageUrls?: string[]; // For create mode
+  imageMedia?: ImageMediaDto[]; // For update mode with Media CRUD
 }
 
 // Room status and management types
@@ -202,7 +222,10 @@ export interface RoomSearchParams {
   roomName?: string;
   roomTypeId?: number;
   status?: RoomStatusCode;
+  statusId?: number;
   floor?: number;
+  minPrice?: number;
+  maxPrice?: number;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -219,6 +242,15 @@ export interface RoomSearchItem {
   statusCode: RoomStatusCode;
   maxOccupancy: number;
   images: string[];
+  roomNumber?: string;
+  floorNumber?: number;
+  roomStatus?: RoomStatusCode | string;
+  notes?: string | null;
+  roomType?: {
+    roomTypeId: number;
+    typeName: string;
+    typeCode: string;
+  };
 }
 
 export interface RoomSearchResponse {
@@ -470,6 +502,18 @@ export interface UpdateBookingDto {
   specialRequests?: string;
 }
 
+// Media CRUD types for image management
+export type CrudKey = "add" | "keep" | "remove";
+
+export interface ImageMediaDto {
+  id: number | null; // Database media ID (required for keep/remove, null for add)
+  crudKey: CrudKey; // Action: add, keep, or remove
+  url: string | null; // Cloudinary URL (for add/keep)
+  altText: string | null; // Image description/alt text
+  providerId: string | null; // Cloudinary public ID (alternative to url)
+  displayOrder?: number; // Optional: position in array determines order
+}
+
 export interface CreateRoomTypeDto {
   typeName: string;
   typeCode: string;
@@ -479,11 +523,21 @@ export interface CreateRoomTypeDto {
   roomSize: number;
   numberOfBeds: number;
   bedType: string;
-  imageUrls: string[];
+  imageUrls: string[]; // For creating new room types
 }
 
-export interface UpdateRoomTypeDto extends CreateRoomTypeDto {
+export interface UpdateRoomTypeDto {
   roomTypeId: number;
+  typeName: string;
+  typeCode: string;
+  description: string;
+  basePriceNight: number;
+  maxOccupancy: number;
+  roomSize: number;
+  numberOfBeds: number;
+  bedType: string;
+  imageMedia?: ImageMediaDto[] | null; // New Media CRUD system (preferred)
+  imageUrls?: string[]; // Deprecated: backward compatibility only
 }
 
 // Attendance types

@@ -1134,7 +1134,7 @@ export interface SalaryInfo {
   employeeName?: string
   year: number
   baseSalary: number
-  bonus?: number | null
+  yearBonus?: number | null
   allowance?: number | null
   createdAt?: string | null
   updatedAt?: string | null

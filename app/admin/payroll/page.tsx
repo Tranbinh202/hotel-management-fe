@@ -20,7 +20,8 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { usePayroll, useCalculatePayroll, useApprovePayroll, useDisbursePayroll } from "@/lib/hooks/use-payroll"
 import { useEmployees } from "@/lib/hooks/use-employees"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
-import type { PayrollDisbursement } from "@/lib/types/api"
+import type { PayrollDisbursement, SalaryInfo } from "@/lib/types/api"
+import { useSalaryInfos } from "@/lib/hooks/use-salary-info"
 
 export default function PayrollPage() {
   const currentDate = new Date()
@@ -31,15 +32,24 @@ export default function PayrollPage() {
   const [isCalculateDialogOpen, setIsCalculateDialogOpen] = useState(false)
   const [selectedPayroll, setSelectedPayroll] = useState<PayrollDisbursement | null>(null)
 
-  const { data: payrollData, isLoading: isLoadingPayroll } = usePayroll({
+  // const { data: payrollData, isLoading: isLoadingPayroll } = usePayroll({
+  //   PageIndex: pageIndex,
+  //   PageSize: 20,
+  //   Search: "",
+  //   SortBy: "CreatedAt",
+  //   SortDesc: true,
+  //   EmployeeId: selectedEmployee,
+  //   Month: selectedMonth,
+  //   Year: selectedYear,
+  // })
+
+  const { data: payrollData, isLoading: isLoadingPayroll } = useSalaryInfos({
     PageIndex: pageIndex,
     PageSize: 20,
-    Search: "",
+    EmployeeId: selectedEmployee,
+    Year: selectedYear,
     SortBy: "CreatedAt",
     SortDesc: true,
-    EmployeeId: selectedEmployee,
-    Month: selectedMonth,
-    Year: selectedYear,
   })
 
   const { data: calculationData, isLoading: isCalculating } = useCalculatePayroll({
@@ -220,21 +230,21 @@ export default function PayrollPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nhân viên</TableHead>
-                  <TableHead>Tháng/Năm</TableHead>
+                  {/* <TableHead>Tháng/Năm</TableHead> */}
                   <TableHead className="text-right">Lương cơ bản</TableHead>
                   <TableHead className="text-right">Tổng lương</TableHead>
                   <TableHead className="text-right">Đã giải ngân</TableHead>
-                  <TableHead>Trạng thái</TableHead>
+                  {/* <TableHead>Trạng thái</TableHead> */}
                   <TableHead>Ngày tạo</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              {/* <TableBody>
                 {payrollData?.items.map((payroll) => (
                   <TableRow key={payroll.payrollDisbursementId}>
                     <TableCell className="font-medium">{payroll.employeeName}</TableCell>
                     <TableCell>
-                      {payroll.payrollMonth}/{payroll.payrollYear}
+                      {payroll.payrollMonth}/{payroll.payrollYear} 
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(payroll.baseSalary)}</TableCell>
                     <TableCell className="text-right font-semibold text-green-600">
@@ -265,6 +275,46 @@ export default function PayrollPage() {
                         )}
                       </div>
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody> */}
+
+              <TableBody>
+                {payrollData?.items.map((payroll:SalaryInfo) => (
+                  <TableRow key={payroll.salaryInfoId}>
+                    <TableCell className="font-medium">{payroll.employeeName}</TableCell>
+                    {/* <TableCell>
+                      {payroll.payrollMonth}/{payroll.payrollYear}
+                    </TableCell> */}
+                    <TableCell className="text-right">{formatCurrency(payroll.baseSalary)}</TableCell>
+                    <TableCell className="text-right font-semibold text-green-600">
+                      {formatCurrency((payroll.baseSalary||0)+(payroll.yearBonus||0))}
+                    </TableCell>
+                    <TableCell className="text-right">{formatCurrency(payroll.baseSalary)}</TableCell>
+                    {/* <TableCell>{getStatusBadge(payroll.statusName)}</TableCell> */}
+                    <TableCell>{format(new Date(payroll.createdAt||""), "dd/MM/yyyy", { locale: vi })}</TableCell>
+                    {/* <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {payroll.statusName === "Chờ duyệt" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(payroll)}
+                            className="bg-[#00008b] hover:bg-[#00008b]/90"
+                          >
+                            Duyệt
+                          </Button>
+                        )}
+                        {payroll.statusName === "Đã duyệt" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleDisburse(payroll)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Giải ngân
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>

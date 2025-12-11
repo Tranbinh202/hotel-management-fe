@@ -23,7 +23,7 @@ class ApiClient {
   constructor() {
     this.instance = axios.create({
       baseURL:
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api",
+        process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:5001/api",
       timeout: 10000,
       headers: { "Content-Type": "application/json" },
     });
@@ -358,7 +358,7 @@ class ApiClient {
 export const apiClient = new ApiClient();
 
 export const publicApiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "https://localhost:5001/api",
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
 });

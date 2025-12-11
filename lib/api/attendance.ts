@@ -38,8 +38,8 @@ export const attendanceApi = {
     return response.data
   },
 
-  update: async ({ id, data }: { id: number; data: UpdateAttendanceDto }): Promise<AttendanceRecord> => {
-    const response = await apiClient.put<ApiResponse<AttendanceRecord>>(`/Attendance/${id}`, data)
+  update: async ({ data }: { data: AttendanceRecord }): Promise<AttendanceRecord> => {
+    const response = await apiClient.post<ApiResponse<AttendanceRecord>>(`/Attendance/UpsertAttendance`, data)
     return response.data
   },
 

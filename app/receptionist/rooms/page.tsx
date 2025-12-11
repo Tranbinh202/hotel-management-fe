@@ -15,6 +15,7 @@ import {
   useAvailableStatus,
   useChangeRoomStatus,
 } from "@/lib/hooks/use-rooms"
+import { useRoomStatuses } from "@/lib/hooks/use-common-code"
 import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
 
 export default function ReceptionistRoomsPage() {
@@ -35,6 +36,7 @@ export default function ReceptionistRoomsPage() {
   const { data: statsData } = useRoomStats()
   const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
   const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
+  const { data: roomStatuses } = useRoomStatuses()
   const changeStatusMutation = useChangeRoomStatus()
 
   const rooms = searchData?.rooms || []
@@ -59,9 +61,15 @@ export default function ReceptionistRoomsPage() {
 
   const handleStatusChange = (newStatus: RoomStatusCode) => {
     if (!selectedRoomId) return
+    const statusItem = roomStatuses?.find(
+      (s) => s.codeName === newStatus || (s as any).codeKey === newStatus
+    )
+    const statusId = (statusItem as any)?.codeId ?? (statusItem as any)?.commonCodeId
+
     changeStatusMutation.mutate({
       roomId: selectedRoomId,
-      newStatus,
+      statusId,
+      newStatus: statusId ? undefined : newStatus,
     })
     setDetailDialogOpen(false)
   }

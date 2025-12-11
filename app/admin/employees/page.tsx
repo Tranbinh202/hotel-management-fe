@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,6 +54,11 @@ export default function EmployeesPage() {
   const employees = data?.items || []
   const totalPages = data?.totalPages || 1
   const totalRecords = data?.totalCount || 0
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [searchTerm, employeeTypeFilter])
 
   const handleOpenModal = (employee?: Employee) => {
     if (employee) {
@@ -369,22 +374,22 @@ export default function EmployeesPage() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
                   <div className="text-sm text-slate-600">
-                    Trang {currentPage} / {totalPages}
+                    Trang {currentPage + 1} / {totalPages}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+                      disabled={currentPage === 0}
                     >
                       Trước
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+                      disabled={currentPage >= totalPages - 1}
                     >
                       Sau
                     </Button>

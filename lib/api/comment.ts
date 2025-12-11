@@ -1,43 +1,69 @@
+import { apiClient } from "./client";
+import type { ApiResponse } from "../types/api";
 import type {
-  ApiResponse,
-  AttendanceRecord,
-  AttendanceSummary,
-  CommmentRecord,
-  CreateAttendanceDto,
-  IPaginationParams,
-  PaginatedResponse,
-  UpdateAttendanceDto,
-} from "../types/api"
-import { apiClient } from "./client"
-
-export interface GetCommentParams extends IPaginationParams {
-  RoomId?: number
-  IsNewest?: number
-}
+  CommentDTO,
+  CommentResponse,
+  AddCommentRequest,
+  UpdateCommentRequest,
+  GetCommentRequest,
+} from "../types/comment";
 
 export const commentApi = {
-  getAll: async (params: GetCommentParams): Promise<PaginatedResponse<CommmentRecord>> => {
-    const response = await apiClient.get<ApiResponse<PaginatedResponse<CommmentRecord>>>(`/Comment`, { params })
-    return response.data
+  /**
+   * Get comments by room type ID or parent comment ID
+   */
+  getComments: async (
+    params: GetCommentRequest
+  ): Promise<ApiResponse<CommentResponse>> => {
+    const queryParams = new URLSearchParams();
+
+    if (params.roomTypeId)
+      queryParams.append("RoomTypeId", params.roomTypeId.toString());
+    if (params.parentCommentId)
+      queryParams.append("ParentCommentId", params.parentCommentId.toString());
+    if (params.includeReplies !== undefined)
+      queryParams.append("IncludeReplies", params.includeReplies.toString());
+    if (params.maxReplyDepth)
+      queryParams.append("MaxReplyDepth", params.maxReplyDepth.toString());
+    if (params.pageIndex)
+      queryParams.append("PageIndex", params.pageIndex.toString());
+    if (params.pageSize)
+      queryParams.append("PageSize", params.pageSize.toString());
+    if (params.isNewest !== undefined)
+      queryParams.append("IsNewest", params.isNewest.toString());
+
+    return apiClient.get<ApiResponse<CommentResponse>>(
+      `/Comment?${queryParams.toString()}`
+    );
   },
 
-  getById: async (id: number): Promise<CommmentRecord> => {
-    const response = await apiClient.get<ApiResponse<CommmentRecord>>(`/Comment/${id}`)
-    return response.data
+  /**
+   * Add a new comment or reply (requires authentication)
+   */
+  addComment: async (data: AddCommentRequest): Promise<ApiResponse<number>> => {
+    return apiClient.post<ApiResponse<number>>("/Comment", data);
   },
 
-
-  create: async (data: CommmentRecord): Promise<CommmentRecord> => {
-    const response = await apiClient.post<ApiResponse<CommmentRecord>>("/Comment", data)
-    return response.data
+  /**
+   * Update an existing comment (requires authentication & ownership)
+   */
+  updateComment: async (
+    data: UpdateCommentRequest
+  ): Promise<ApiResponse<null>> => {
+    return apiClient.put<ApiResponse<null>>("/Comment", data);
   },
 
-  update: async ({ id, data }: { id: number; data: CommmentRecord }): Promise<CommmentRecord> => {
-    const response = await apiClient.put<ApiResponse<CommmentRecord>>(`/Comment/${id}`, data)
-    return response.data
+  /**
+   * Hide a comment (requires staff role: Receptionist, Manager, or Admin)
+   */
+  hideComment: async (commentId: number): Promise<ApiResponse<null>> => {
+    return apiClient.patch<ApiResponse<null>>(`/Comment/${commentId}/hide`);
   },
 
-  delete: async (id: number): Promise<void> => {
-    await apiClient.delete(`/Comment/${id}`)
+  /**
+   * Delete a comment (requires authentication & ownership or staff role)
+   */
+  deleteComment: async (commentId: number): Promise<ApiResponse<null>> => {
+    return apiClient.delete<ApiResponse<null>>(`/Comment/${commentId}`);
   },
-}
+};

@@ -2,8 +2,9 @@ import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
+  useQuery,
 } from "@tanstack/react-query";
-import { roomTypesApi, type GetAllRoomTypesParams } from "@/lib/api/room-type";
+import { roomTypesApi, type GetAllRoomTypesParams, type RoomTypeSearchParams } from "@/lib/api/room-type";
 import { toast } from "@/hooks/use-toast";
 import type { CreateRoomTypeDto, UpdateRoomTypeDto } from "@/lib/types/api";
 
@@ -106,5 +107,14 @@ export function useDeleteRoomType() {
         variant: "destructive",
       });
     },
+  });
+}
+
+export function useRoomTypeSearch(params: RoomTypeSearchParams) {
+  return useQuery({
+    queryKey: ["roomTypesSearch", params],
+    queryFn: () => roomTypesApi.search(params),
+    enabled: !!params.checkInDate && !!params.checkOutDate,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }

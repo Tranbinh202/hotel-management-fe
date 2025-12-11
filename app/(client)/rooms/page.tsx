@@ -9,10 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Users, Search, Sparkles, Star, Loader2, Home, Bed } from "lucide-react"
+import { Users, Search, Sparkles, Star, Loader2, Home, Bed, Calendar } from "lucide-react"
 import { useRooms } from "@/lib/hooks/use-rooms"
 import type { RoomSearchItem } from "@/lib/types/api"
-import { useRoomTypes } from "@/lib/hooks/use-room-type"
+import { useRoomTypeSearch } from "@/lib/hooks/use-room-type"
+import type { RoomTypeSearchParams } from "@/lib/api/room-type"
 
 interface RoomTypeGroup {
   roomTypeId: number
@@ -24,45 +25,72 @@ interface RoomTypeGroup {
   images: string[]
   rooms: RoomSearchItem[]
   totalRooms: number
+  availableRooms: number
 }
 
 export default function RoomsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("")
   const [capacityFilter, setCapacityFilter] = useState<string>("all")
   const [priceRange, setPriceRange] = useState([0, 5000000])
   const [sortBy, setSortBy] = useState<string>("price-asc")
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [searchTerm])
+  // Initialize with today and tomorrow
+  const today = new Date()
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
 
-  const { data, isLoading } = useRoomTypes({
-    Search: debouncedSearchTerm || undefined,
-    PageSize: 50,
+  const [checkInDate, setCheckInDate] = useState(today.toISOString().split('T')[0])
+  const [checkOutDate, setCheckOutDate] = useState(tomorrow.toISOString().split('T')[0])
+
+  // Search params that are actually sent to API
+  const [searchParams, setSearchParams] = useState({
+    checkInDate: today.toISOString().split('T')[0],
+    checkOutDate: tomorrow.toISOString().split('T')[0],
+    numberOfGuests: undefined as number | undefined,
+    minPrice: undefined as number | undefined,
+    maxPrice: undefined as number | undefined,
   })
 
-  // Extract all room types from infinite query pages
+  // Calculate number of nights
+  const numberOfNights = useMemo(() => {
+    const checkIn = new Date(searchParams.checkInDate)
+    const checkOut = new Date(searchParams.checkOutDate)
+    const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays > 0 ? diffDays : 1
+  }, [searchParams.checkInDate, searchParams.checkOutDate])
+
+  const { data, isLoading } = useRoomTypeSearch({
+    ...searchParams,
+    pageSize: 50,
+  })
+
+  // Extract all room types from search response (data is array directly)
   const allRoomTypes = useMemo(() => {
-    if (!data?.pages) return []
-    return data.pages.flatMap((page) => page.items || [])
+    if (!data) return []
+    return Array.isArray(data) ? data : []
   }, [data])
+
+  // Handle search button click
+  const handleSearch = () => {
+    setSearchParams({
+      checkInDate,
+      checkOutDate,
+      numberOfGuests: capacityFilter !== "all" ? Number(capacityFilter) : undefined,
+      minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+      maxPrice: priceRange[1] < 5000000 ? priceRange[1] : undefined,
+    })
+  }
 
   // Filter and process room types
   const filteredRoomTypes = useMemo(() => {
     return allRoomTypes
       .filter((roomType) => {
-        // Price filter
-        if (priceRange[0] > 0 && roomType.basePriceNight < priceRange[0]) return false
-        if (priceRange[1] < 5000000 && roomType.basePriceNight > priceRange[1]) return false
-
-        // Capacity filter
-        if (capacityFilter !== "all" && roomType.maxOccupancy < Number(capacityFilter)) return false
-
+        // Client-side search filter
+        if (searchTerm && !roomType.typeName?.toLowerCase().includes(searchTerm.toLowerCase())) {
+          return false
+        }
         return true
       })
       .map((roomType) => ({
@@ -75,8 +103,9 @@ export default function RoomsPage() {
         images: roomType.images?.map(img => img.filePath) || [],
         rooms: [], // Not needed for room types view
         totalRooms: roomType.totalRoomCount || 0,
+        availableRooms: roomType.availableRoomCount || 0,
       }))
-  }, [allRoomTypes, priceRange, capacityFilter])
+  }, [allRoomTypes, searchTerm])
 
   const sortedRoomTypes = [...filteredRoomTypes].sort((a, b) => {
     switch (sortBy) {
@@ -103,7 +132,7 @@ export default function RoomsPage() {
     sessionStorage.setItem(
       "bookingData",
       JSON.stringify({
-        roomTypeId: roomType.roomTypeId,
+        roomId: roomType.roomTypeId, // Changed from roomTypeId to roomId
         roomType: roomType.roomTypeName,
         roomTypeCode: roomType.roomTypeCode,
         price: roomType.basePriceNight,
@@ -145,6 +174,36 @@ export default function RoomsPage() {
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-1 h-6 bg-accent rounded-full"></div>
                     <h3 className="font-semibold text-lg">Bộ lọc</h3>
+                  </div>
+
+                  {/* Check-in Date */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Ngày nhận phòng</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={checkInDate}
+                        onChange={(e) => setCheckInDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="pl-10 h-10 bg-background/50 border-primary/20 focus:border-accent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Check-out Date */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">Ngày trả phòng</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        type="date"
+                        value={checkOutDate}
+                        onChange={(e) => setCheckOutDate(e.target.value)}
+                        min={checkInDate}
+                        className="pl-10 h-10 bg-background/50 border-primary/20 focus:border-accent"
+                      />
+                    </div>
                   </div>
 
                   {/* Search */}
@@ -212,13 +271,35 @@ export default function RoomsPage() {
                     </Select>
                   </div>
 
+                  {/* Search Button */}
+                  <Button
+                    onClick={handleSearch}
+                    className="w-full luxury-gradient hover:opacity-90"
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Tìm kiếm
+                  </Button>
+
                   {/* Reset */}
                   <Button
                     onClick={() => {
+                      const today = new Date()
+                      const tomorrow = new Date(today)
+                      tomorrow.setDate(tomorrow.getDate() + 1)
+                      setCheckInDate(today.toISOString().split('T')[0])
+                      setCheckOutDate(tomorrow.toISOString().split('T')[0])
                       setSearchTerm("")
                       setCapacityFilter("all")
                       setPriceRange([0, 5000000])
                       setSortBy("price-asc")
+                      // Reset search params
+                      setSearchParams({
+                        checkInDate: today.toISOString().split('T')[0],
+                        checkOutDate: tomorrow.toISOString().split('T')[0],
+                        numberOfGuests: undefined,
+                        minPrice: undefined,
+                        maxPrice: undefined,
+                      })
                     }}
                     variant="outline"
                     className="w-full border-primary/20 hover:bg-accent hover:text-accent-foreground"
@@ -250,8 +331,9 @@ export default function RoomsPage() {
                 <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {sortedRoomTypes.map((group, index) => {
                     const firstImage = group.images?.[0]
-                    const availableCount = group.totalRooms // Use totalRooms from API
+                    const availableCount = group.availableRooms
                     const isAvailable = availableCount > 0
+                    const totalPrice = group.basePriceNight * numberOfNights
 
                     return (
                       <Card
@@ -297,17 +379,33 @@ export default function RoomsPage() {
                             {/* Bed info removed because it is not available in RoomSearchItem */}
                           </div>
 
-                          <div className="pt-4 border-t border-primary/10 flex items-center justify-between gap-3 mt-auto">
-                            <div>
-                              <p className="text-xs text-muted-foreground mb-1">Mỗi đêm từ</p>
-                              <p className="text-xl font-bold luxury-text-gradient">
-                                {formatPrice(group.basePriceNight)}
-                              </p>
+                          {/* Available rooms badge */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Phòng trống:</span>
+                            <span className={`font-semibold ${isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                              {availableCount}/{group.totalRooms}
+                            </span>
+                          </div>
+
+                          <div className="pt-4 border-t border-primary/10 flex flex-col gap-3 mt-auto">
+                            <div className="flex items-baseline justify-between">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">Mỗi đêm</p>
+                                <p className="text-lg font-semibold luxury-text-gradient">
+                                  {formatPrice(group.basePriceNight)}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-muted-foreground mb-1">{numberOfNights} đêm</p>
+                                <p className="text-xl font-bold luxury-text-gradient">
+                                  {formatPrice(totalPrice)}
+                                </p>
+                              </div>
                             </div>
                             <Button
                               onClick={() => handleBookNow(group)}
                               disabled={!isAvailable}
-                              className={`${isAvailable
+                              className={`w-full ${isAvailable
                                 ? "luxury-gradient hover:opacity-90"
                                 : "bg-gray-300 cursor-not-allowed"
                                 } transition-all duration-300`}

@@ -491,15 +491,17 @@ export interface AttendanceRecord {
   attendanceId: number;
   employeeId: number;
   employeeName: string;
-  deviceEmployeeId: string | null;
+  deviceEmployeeId: string | undefined;
   checkIn: string;
-  checkOut: string | null;
+  checkOut: string | undefined;
   shiftDate: string;
   workedHours: number;
   normalHours: number;
   overtimeHours: number;
   lateMinutes: number;
   notes: string | null;
+  status: string| undefined;
+  IsApproved: string | undefined;
   createdAt: string;
   updatedAt: string | null;
 }

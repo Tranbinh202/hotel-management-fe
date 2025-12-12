@@ -3,12 +3,13 @@
 import type React from "react"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Upload, X, GripVertical } from "lucide-react"
+import { Loader2, Upload, X, GripVertical, ExternalLink } from "lucide-react"
 import type { RoomType, CreateRoomTypeDto, UpdateRoomTypeDto, ImageMediaDto } from "@/lib/types/api"
 import { useRoomTypes, useCreateRoomType, useUpdateRoomType, useDeleteRoomType } from "@/lib/hooks/use-room-type"
 import { fileApi } from "@/lib/api/file"
@@ -318,16 +319,24 @@ export default function RoomTypesManagement() {
             Tổng số: <span className="font-semibold text-slate-900">{data?.pages[0]?.totalCount || 0}</span> loại phòng
           </p>
         </div>
-        <Button
-          onClick={() => handleOpenModal()}
-          size="sm"
-          className="h-8 text-xs bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
-        >
-          <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Thêm
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs">
+            <Link href="/rooms" target="_blank" rel="noreferrer">
+              <ExternalLink className="w-3.5 h-3.5 mr-1" />
+              Xem trang khách
+            </Link>
+          </Button>
+          <Button
+            onClick={() => handleOpenModal()}
+            size="sm"
+            className="h-8 text-xs bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
+          >
+            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Thêm
+          </Button>
+        </div>
       </div>
 
       <Card className="border-0 shadow">
@@ -404,6 +413,15 @@ export default function RoomTypesManagement() {
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-end gap-2">
+                            <Link
+                              href={`/rooms/${roomType.roomTypeId}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Xem trên trang khách"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Link>
                             <button
                               onClick={() => handleOpenModal(roomType)}
                               className="p-1.5 text-slate-600 hover:text-[#14b8a6] hover:bg-[#14b8a6]/10 rounded-lg transition-colors"

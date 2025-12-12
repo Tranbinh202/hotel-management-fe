@@ -24,11 +24,17 @@ export default function ReceptionistRoomsPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [checkInDate, setCheckInDate] = useState<string>("")
+  const [checkOutDate, setCheckOutDate] = useState<string>("")
+  const [numberOfGuests, setNumberOfGuests] = useState<string>("")
 
   const { data: searchData, isLoading } = useRoomManagement({
     roomName: searchQuery || undefined,
     floor: selectedFloor !== "all" ? Number.parseInt(selectedFloor) : undefined,
     status: selectedStatus !== "all" ? (selectedStatus as RoomStatusCode) : undefined,
+    checkInDate: checkInDate || undefined,
+    checkOutDate: checkOutDate || undefined,
+    numberOfGuests: numberOfGuests ? Number.parseInt(numberOfGuests) : undefined,
     pageNumber: 1,
     pageSize: 100,
   })
@@ -101,8 +107,8 @@ export default function ReceptionistRoomsPage() {
 
       {/* Search & Filter Bar */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex flex-col md:flex-row items-center gap-4">
-          <div className="flex-1 w-full relative">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="col-span-1 md:col-span-2 lg:col-span-1 relative">
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"
               fill="none"
@@ -117,14 +123,15 @@ export default function ReceptionistRoomsPage() {
               />
             </svg>
             <Input
-              placeholder="Tìm theo số phòng hoặc loại phòng..."
+              placeholder="Tìm theo số phòng..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 text-base border-slate-300"
+              className="pl-10 h-10 border-slate-300"
             />
           </div>
+
           <Select value={selectedFloor} onValueChange={setSelectedFloor}>
-            <SelectTrigger className="w-full md:w-40 h-12">
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Chọn tầng" />
             </SelectTrigger>
             <SelectContent>
@@ -135,8 +142,9 @@ export default function ReceptionistRoomsPage() {
               <SelectItem value="4">Tầng 4</SelectItem>
             </SelectContent>
           </Select>
+
           <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-            <SelectTrigger className="w-full md:w-48 h-12">
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
             <SelectContent>
@@ -147,17 +155,55 @@ export default function ReceptionistRoomsPage() {
               <SelectItem value="Cleaning">Đang dọn dẹp</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setSearchQuery("")
-              setSelectedFloor("all")
-              setSelectedStatus("all")
-            }}
-            className="w-full md:w-auto h-12 px-6 border-slate-300 hover:bg-slate-50"
-          >
-            Xóa bộ lọc
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium whitespace-nowrap">Số khách:</span>
+            <Input
+              type="number"
+              min="1"
+              value={numberOfGuests}
+              onChange={(e) => setNumberOfGuests(e.target.value)}
+              className="h-10 w-full"
+              placeholder="Nhập số khách"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium whitespace-nowrap">Từ ngày:</span>
+            <Input
+              type="date"
+              value={checkInDate}
+              onChange={(e) => setCheckInDate(e.target.value)}
+              className="h-10 w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium whitespace-nowrap">Đến ngày:</span>
+            <Input
+              type="date"
+              value={checkOutDate}
+              onChange={(e) => setCheckOutDate(e.target.value)}
+              className="h-10 w-full"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchQuery("")
+                setSelectedFloor("all")
+                setSelectedStatus("all")
+                setCheckInDate("")
+                setCheckOutDate("")
+                setNumberOfGuests("")
+              }}
+              className="w-full md:w-auto px-6 border-slate-300 hover:bg-slate-50"
+            >
+              Xóa bộ lọc
+            </Button>
+          </div>
         </div>
       </div>
 

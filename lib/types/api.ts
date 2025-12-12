@@ -1,4 +1,4 @@
-import { number } from "zod"
+import { number } from "zod";
 
 // Common API response types
 export interface ApiResponse<T> {
@@ -229,6 +229,9 @@ export interface RoomSearchParams {
   floor?: number;
   minPrice?: number;
   maxPrice?: number;
+  checkInDate?: string;
+  checkOutDate?: string;
+  numberOfGuests?: number;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -559,7 +562,7 @@ export interface AttendanceRecord {
   overtimeHours: number;
   lateMinutes: number;
   notes: string | null;
-  status: string| undefined;
+  status: string | undefined;
   IsApproved: string | undefined;
   createdAt: string;
   updatedAt: string | null;
@@ -1114,31 +1117,31 @@ export interface BookingByTokenResponse {
 // </CHANGE>
 
 export interface CommmentRecord {
-  commentId: number
-  roomId: number
-  replyId?: number
-  accountId?: number
-  content: string
-  rating?: number
+  commentId: number;
+  roomId: number;
+  replyId?: number;
+  accountId?: number;
+  content: string;
+  rating?: number;
 
-  createdDate: Date
+  createdDate: Date;
 
-  createdTime?: Date
+  createdTime?: Date;
 
-  updatedAt?: Date
+  updatedAt?: Date;
 
-  status: string
+  status: string;
 }
 
 // SalaryInfo & SalaryRecord types
 export interface SalaryInfo {
-  salaryInfoId?: number
-  employeeId: number
-  employeeName?: string
-  year: number
-  baseSalary: number
-  yearBonus?: number | null
-  allowance?: number | null
-  createdAt?: string | null
-  updatedAt?: string | null
+  salaryInfoId?: number;
+  employeeId: number;
+  employeeName?: string;
+  year: number;
+  baseSalary: number;
+  yearBonus?: number | null;
+  allowance?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }

@@ -102,7 +102,7 @@ export const roomsApi = {
 
   // Create a room
   create: async (data: CreateRoomDto): Promise<Room> => {
-    const { roomNumber, notes, imageUrls, imageMedia, roomStatus, statusId, ...rest } = data
+    const { roomNumber, notes, imageUrls, imageMedia, roomStatus, statusId, floorNumber, isActive, ...rest } = data
 
     // Build payload according to API spec (same structure as update)
     const payload: any = {
@@ -110,11 +110,16 @@ export const roomsApi = {
       roomTypeId: rest.roomTypeId,
       statusId: statusId, // Use statusId directly from data
       description: notes || "",
+      floorNumber: floorNumber,
     }
 
     // Add imageMedia if provided (for Media CRUD system)
     if (imageMedia && imageMedia.length > 0) {
       payload.imageMedia = imageMedia
+    }
+
+    if (typeof isActive === "boolean") {
+      payload.isActive = isActive
     }
 
     const res = await apiClient.post<ApiResponse<Room>>("/Room/rooms", payload)
@@ -123,13 +128,14 @@ export const roomsApi = {
 
   // Update room by id
   update: async (data: UpdateRoomDto): Promise<Room> => {
-    const { roomId, roomNumber, notes, imageMedia, imageUrls, roomStatus, ...rest } = data
+    const { roomId, roomNumber, notes, imageMedia, imageUrls, roomStatus, statusId, floorNumber, isActive, ...rest } = data
 
     // Build payload according to API spec
     const payload: any = {
       roomName: roomNumber, // Backend expects "roomName" not "roomNumber"
       roomTypeId: rest.roomTypeId,
       description: notes || "",
+      floorNumber: floorNumber,
     }
 
     // Add imageMedia if provided (for Media CRUD system)
@@ -137,8 +143,14 @@ export const roomsApi = {
       payload.imageMedia = imageMedia
     }
 
-    // Note: statusId is handled separately via /api/RoomManagement/status endpoint
-    // We don't include it in the room update payload
+    // Include statusId if provided
+    if (statusId !== undefined) {
+      payload.statusId = statusId
+    }
+
+    if (typeof isActive === "boolean") {
+      payload.isActive = isActive
+    }
 
     const res = await apiClient.put<ApiResponse<Room>>(`/Room/rooms/${roomId}`, payload)
     return (res.data as any)?.data ?? (res.data as any)
@@ -183,7 +195,17 @@ export const roomManagementApi = {
 
   // Change room status
   changeStatus: async (data: ChangeRoomStatusDto): Promise<void> => {
-    await apiClient.patch<ApiResponse<void>>("/RoomManagement/status", data)
+    const { roomId, statusId, newStatus, reason } = data
+    const payload: Record<string, unknown> = {}
+
+    if (statusId !== undefined) {
+      payload.statusId = statusId
+    } else if (newStatus) {
+      payload.status = newStatus
+    }
+    if (reason) payload.reason = reason
+
+    await apiClient.patch<ApiResponse<void>>(`/Room/rooms/${roomId}`, payload)
   },
 
   // Bulk change room status

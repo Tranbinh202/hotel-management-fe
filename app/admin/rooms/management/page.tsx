@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Search, Building2, MapPin, Filter, ChevronRight } from "lucide-react"
 import { useRoomManagement, useRoomDetails, useAvailableStatus, useChangeRoomStatus } from "@/lib/hooks/use-rooms"
+import { useRoomStatuses } from "@/lib/hooks/use-common-code"
 import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
 
 const STATUS_COLORS = {
@@ -40,6 +41,7 @@ export default function AdminRoomManagementPage() {
 
   const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
   const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
+  const { data: roomStatuses } = useRoomStatuses()
   const changeStatusMutation = useChangeRoomStatus()
 
   const rooms = roomsData?.rooms || []
@@ -51,9 +53,15 @@ export default function AdminRoomManagementPage() {
 
   const handleStatusChange = async (newStatus: RoomStatusCode) => {
     if (!selectedRoomId) return
+    const statusItem = roomStatuses?.find(
+      (s) => s.codeName === newStatus || (s as any).codeKey === newStatus
+    )
+    const statusId = (statusItem as any)?.codeId ?? (statusItem as any)?.commonCodeId
+
     await changeStatusMutation.mutateAsync({
       roomId: selectedRoomId,
-      newStatus,
+      statusId,
+      newStatus: statusId ? undefined : newStatus,
     })
     setIsDetailOpen(false)
   }

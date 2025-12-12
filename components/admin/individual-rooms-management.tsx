@@ -140,7 +140,10 @@ type RoomActionType =
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080"
 
 async function roomManagementRequest(path: string, options: RequestInit = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("authToken") : null
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("access_token") || localStorage.getItem("authToken")
+      : null
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -977,6 +980,13 @@ export default function IndividualRoomsManagement() {
         }
 
         const imageMedia = buildImageMedia()
+        const statusItem = roomStatuses?.find(
+          (s) => s.codeName === formData.roomStatus || (s as any).codeKey === formData.roomStatus
+        )
+        if (!statusItem) {
+          throw new Error("Không tìm thấy trạng thái hợp lệ")
+        }
+        const statusId = (statusItem as any).codeId ?? (statusItem as any).commonCodeId
 
         // Update room with imageMedia
         await updateMutation.mutateAsync({
@@ -984,28 +994,10 @@ export default function IndividualRoomsManagement() {
           roomNumber: formData.roomNumber,
           roomTypeId: formData.roomTypeId,
           floorNumber: formData.floorNumber,
+          statusId,
           notes: formData.notes,
           imageMedia: imageMedia.length > 0 ? imageMedia : undefined,
         })
-
-        // If status changed, update it separately
-        const currentStatusCode = editingRoom.statusCode || editingRoom.roomStatus
-        if (formData.roomStatus !== currentStatusCode) {
-          const statusItem = roomStatuses?.find(
-            (s) => s.codeName === formData.roomStatus || (s as any).codeKey === formData.roomStatus
-          )
-          if (statusItem) {
-            const statusId = (statusItem as any).codeId ?? (statusItem as any).commonCodeId
-            await roomManagementRequest(`/api/RoomManagement/status`, {
-              method: "PATCH",
-              body: JSON.stringify({
-                roomId: formData.roomId,
-                newStatusId: statusId,
-                reason: "Cập nhật từ form chỉnh sửa phòng",
-              }),
-            })
-          }
-        }
       } else {
         // Create mode: Use Media CRUD system (same as update)
         const imageMedia = buildImageMedia()
@@ -1147,11 +1139,10 @@ export default function IndividualRoomsManagement() {
 
       const statusId = (statusItem as any).codeId ?? (statusItem as any).commonCodeId
 
-      await roomManagementRequest(`/api/RoomManagement/status`, {
+      await roomManagementRequest(`/api/Room/rooms/${changeStatusModal.roomId}`, {
         method: "PATCH",
         body: JSON.stringify({
-          roomId: changeStatusModal.roomId,
-          newStatusId: statusId,
+          statusId: statusId,
           reason: reason || undefined,
         }),
       })

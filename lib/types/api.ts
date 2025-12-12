@@ -204,6 +204,7 @@ export interface UpdateRoomDto {
   roomTypeId?: number;
   floorNumber?: number;
   roomStatus?: RoomStatusCode | string;
+  statusId?: number;
   notes?: string;
   isActive?: boolean;
   imageUrls?: string[]; // For create mode
@@ -331,7 +332,9 @@ export interface AvailableStatusResponse {
 
 export interface ChangeRoomStatusDto {
   roomId: number;
-  newStatus: RoomStatusCode;
+  statusId?: number;
+  newStatus?: RoomStatusCode;
+  reason?: string;
 }
 
 export interface BulkChangeRoomStatusDto {

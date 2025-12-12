@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useSearchCustomer, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
+import { useSearchCustomer, useSearchAvailableRoomTypes, useGetAvailableRoomsByType, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
 import { toast } from "@/hooks/use-toast"
 import { Search, Loader2, User, Calendar, Hotel, CreditCard, CheckCircle2, X, Copy, Printer } from "lucide-react"
 import { format } from "date-fns"
@@ -55,6 +55,8 @@ export default function NewOfflineBookingPage() {
     // Room search state
     const [selectedRooms, setSelectedRooms] = useState<SelectedRoom[]>([])
     const [shouldSearchRooms, setShouldSearchRooms] = useState(false)
+    const [expandedRoomType, setExpandedRoomType] = useState<number | null>(null)
+    const [roomsByType, setRoomsByType] = useState<Record<number, any[]>>({})
 
     // Booking state
     const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -72,7 +74,8 @@ export default function NewOfflineBookingPage() {
     // React Query hooks
     const { data: customerSearchData, isLoading: isSearching } = useSearchCustomer(debouncedSearchKey)
 
-    const checkAvailableRoomsMutation = useCheckAvailableRooms()
+    const searchRoomTypesMutation = useSearchAvailableRoomTypes()
+    const getRoomsByTypeMutation = useGetAvailableRoomsByType()
 
     const createBookingMutation = useCreateOfflineBooking()
 
@@ -133,20 +136,26 @@ export default function NewOfflineBookingPage() {
             return
         }
 
-        checkAvailableRoomsMutation.mutate(
+        searchRoomTypesMutation.mutate(
             {
                 checkInDate: formData.checkInDate,
                 checkOutDate: formData.checkOutDate,
+                pageNumber: 1,
                 pageSize: 50,
             },
             {
                 onSuccess: (response) => {
                     if (response.isSuccess) {
-                        // availableRooms is now from mutation data
+                        const totalRooms = response.data.reduce((sum, rt) => sum + rt.availableRoomCount, 0)
                         toast({
                             title: "Tìm thấy phòng",
-                            description: `Có ${response.data.totalCount} phòng trống`,
+                            description: `Có ${response.data.length} loại phòng với ${totalRooms} phòng trống`,
                         })
+                        // Reset selected rooms and expanded state
+                        setSelectedRooms([])
+                        setExpandedRoomType(null)
+                        setRoomsByType({})
+                        setFormData(prev => ({ ...prev, roomIds: [] }))
                     }
                 },
                 onError: (error: any) => {
@@ -158,6 +167,45 @@ export default function NewOfflineBookingPage() {
                 },
             }
         )
+    }
+
+    // Handle expanding room type to view available rooms
+    const handleExpandRoomType = (roomTypeId: number) => {
+        if (expandedRoomType === roomTypeId) {
+            setExpandedRoomType(null)
+            return
+        }
+
+        setExpandedRoomType(roomTypeId)
+
+        // If rooms not yet loaded, fetch them
+        if (!roomsByType[roomTypeId]) {
+            getRoomsByTypeMutation.mutate(
+                {
+                    checkInDate: formData.checkInDate,
+                    checkOutDate: formData.checkOutDate,
+                    roomTypeId,
+                },
+                {
+                    onSuccess: (response) => {
+                        if (response.isSuccess) {
+                            setRoomsByType(prev => ({
+                                ...prev,
+                                [roomTypeId]: response.data,
+                            }))
+                        }
+                    },
+                    onError: (error: any) => {
+                        toast({
+                            title: "Lỗi",
+                            description: error.message || "Không thể tải danh sách phòng",
+                            variant: "destructive",
+                        })
+                        setExpandedRoomType(null)
+                    },
+                }
+            )
+        }
     }
 
     // Toggle room selection
@@ -476,10 +524,10 @@ export default function NewOfflineBookingPage() {
 
                             <Button
                                 onClick={handleSearchRooms}
-                                disabled={checkAvailableRoomsMutation.isPending || !formData.checkInDate || !formData.checkOutDate}
+                                disabled={searchRoomTypesMutation.isPending || !formData.checkInDate || !formData.checkOutDate}
                                 className="w-full"
                             >
-                                {checkAvailableRoomsMutation.isPending ? (
+                                {searchRoomTypesMutation.isPending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                         Đang tìm phòng...
@@ -492,34 +540,112 @@ export default function NewOfflineBookingPage() {
                                 )}
                             </Button>
 
-                            {/* Available Rooms */}
-                            {checkAvailableRoomsMutation.data?.data.rooms && checkAvailableRoomsMutation.data.data.rooms.length > 0 && (
-                                <div className="space-y-2">
-                                    <Label>Chọn phòng ({checkAvailableRoomsMutation.data.data.rooms.length} phòng trống):</Label>
-                                    <div className="grid gap-2 max-h-96 overflow-y-auto">
-                                        {checkAvailableRoomsMutation.data.data.rooms.map((room) => {
-                                            const isSelected = selectedRooms.some(r => r.roomId === room.roomId)
-                                            return (
+                            {/* Available Room Types */}
+                            {searchRoomTypesMutation.data?.data && searchRoomTypesMutation.data.data.length > 0 && (
+                                <div className="space-y-4">
+                                    <Label>
+                                        Chọn phòng ({searchRoomTypesMutation.data.data.reduce((total, rt) => total + rt.availableRoomCount, 0)} phòng trống)
+                                    </Label>
+                                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                                        {searchRoomTypesMutation.data.data.map((roomType) => (
+                                            <div key={roomType.roomTypeId} className="space-y-2">
                                                 <Card
-                                                    key={room.roomId}
-                                                    className={`cursor-pointer transition-all ${isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-slate-50"
-                                                        }`}
-                                                    onClick={() => handleToggleRoom(room)}
+                                                    className={`cursor-pointer transition-all hover:shadow-md ${
+                                                        expandedRoomType === roomType.roomTypeId ? "border-blue-500" : ""
+                                                    }`}
+                                                    onClick={() => handleExpandRoomType(roomType.roomTypeId)}
                                                 >
                                                     <CardContent className="p-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <Checkbox checked={isSelected} />
+                                                        <div className="flex items-start justify-between">
                                                             <div className="flex-1">
-                                                                <p className="font-semibold">{room.roomName} - {room.roomTypeName}</p>
-                                                                <p className="text-sm text-slate-600">
-                                                                    {room.pricePerNight.toLocaleString("vi-VN")} VNĐ/đêm • {room.maxOccupancy} người
-                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-lg">{roomType.typeName}</h4>
+                                                                    <Badge variant="outline" className="text-xs">
+                                                                        {roomType.typeCode}
+                                                                    </Badge>
+                                                                </div>
+                                                                <p className="text-sm text-slate-600 mt-1 line-clamp-2">{roomType.description}</p>
+                                                                <div className="flex flex-wrap gap-3 mt-2 text-sm text-slate-700">
+                                                                    <span>💰 {roomType.basePriceNight.toLocaleString("vi-VN")} VNĐ/đêm</span>
+                                                                    <span>👥 {roomType.maxOccupancy} người</span>
+                                                                    <span>📏 {roomType.roomSize}m²</span>
+                                                                    <span>🛏️ {roomType.numberOfBeds} {roomType.bedType}</span>
+                                                                </div>
                                                             </div>
+                                                            <Badge variant="secondary" className="ml-2 shrink-0">
+                                                                {roomType.availableRoomCount}/{roomType.totalRoomCount} trống
+                                                            </Badge>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
-                                            )
-                                        })}
+
+                                                {/* Expanded: Show available rooms */}
+                                                {expandedRoomType === roomType.roomTypeId && (
+                                                    <div className="pl-4 space-y-2">
+                                                        {getRoomsByTypeMutation.isPending && (
+                                                            <div className="flex items-center justify-center py-4">
+                                                                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                                                                <span className="ml-2 text-sm text-slate-600">Đang tải danh sách phòng...</span>
+                                                            </div>
+                                                        )}
+
+                                                        {roomsByType[roomType.roomTypeId] && roomsByType[roomType.roomTypeId].length > 0 && (
+                                                            <div className="grid gap-2">
+                                                                {roomsByType[roomType.roomTypeId].map((room) => {
+                                                                    const isSelected = selectedRooms.some(r => r.roomId === room.roomId)
+                                                                    const roomData = {
+                                                                        roomId: room.roomId,
+                                                                        roomName: room.roomName,
+                                                                        roomTypeName: roomType.typeName,
+                                                                        pricePerNight: roomType.basePriceNight,
+                                                                        maxOccupancy: roomType.maxOccupancy,
+                                                                        images: roomType.images?.map((img: any) => img.filePath) || [],
+                                                                    }
+                                                                    return (
+                                                                        <Card
+                                                                            key={room.roomId}
+                                                                            className={`cursor-pointer transition-all ${
+                                                                                isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-slate-50"
+                                                                            }`}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                handleToggleRoom(roomData)
+                                                                            }}
+                                                                        >
+                                                                            <CardContent className="p-3">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <Checkbox checked={isSelected} />
+                                                                                    <div className="flex-1">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <p className="font-medium">{room.roomName}</p>
+                                                                                            <Badge variant="outline" className="text-xs">
+                                                                                                Tầng {room.floor}
+                                                                                            </Badge>
+                                                                                            <Badge variant="outline" className="text-xs">
+                                                                                                {room.status}
+                                                                                            </Badge>
+                                                                                        </div>
+                                                                                        <p className="text-sm text-slate-600">
+                                                                                            {roomType.basePriceNight.toLocaleString("vi-VN")} VNĐ/đêm
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </CardContent>
+                                                                        </Card>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        )}
+
+                                                        {roomsByType[roomType.roomTypeId] && roomsByType[roomType.roomTypeId].length === 0 && (
+                                                            <p className="text-sm text-slate-500 text-center py-4">
+                                                                Không có phòng trống
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

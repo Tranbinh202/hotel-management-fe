@@ -1,54 +1,41 @@
+import { apiClient } from "./client"
 import type {
   ApiResponse,
-  AttendanceRecord,
-  AttendanceSummary,
-  CreateAttendanceDto,
-  IPaginationParams,
   PaginatedResponse,
+  Attendance,
+  CreateAttendanceDto,
   UpdateAttendanceDto,
-} from "../types/api"
-import { apiClient } from "./client"
-
-export interface GetAttendanceParams extends IPaginationParams {
-  EmployeeId?: number
-  Month?: number
-  Year?: number
-}
+  AttendanceSearchParams,
+} from "@/lib/types/api"
 
 export const attendanceApi = {
-  getAll: async (params: GetAttendanceParams): Promise<PaginatedResponse<AttendanceRecord>> => {
-    const response = await apiClient.post<ApiResponse<PaginatedResponse<AttendanceRecord>>>(`/Attendance/GetAttendance`, { ...params })
-    return response.data
+  // Get attendance records with filters
+  getAttendances: async (params: AttendanceSearchParams = {}): Promise<PaginatedResponse<Attendance>> => {
+    const response = await apiClient.get<ApiResponse<PaginatedResponse<Attendance>>>("/Attendance", { params })
+    return response.data.data
   },
 
-  getById: async (id: number): Promise<AttendanceRecord> => {
-    const response = await apiClient.get<ApiResponse<AttendanceRecord>>(`/Attendance/${id}`)
-    return response.data
+  // Get attendance by ID
+  getById: async (id: number): Promise<Attendance> => {
+    const response = await apiClient.get<ApiResponse<Attendance>>(`/Attendance/${id}`)
+    return response.data.data
   },
 
-  getSummary: async (employeeId: number, month: number, year: number): Promise<AttendanceSummary> => {
-    const response = await apiClient.get<ApiResponse<AttendanceSummary>>(`/Attendance/summary`, {
-      params: { employeeId, month, year },
-    })
-    return response.data
+  // Create new attendance
+  create: async (data: CreateAttendanceDto): Promise<Attendance> => {
+    const response = await apiClient.post<ApiResponse<Attendance>>("/Attendance", data)
+    return response.data.data
   },
 
-  create: async (data: CreateAttendanceDto): Promise<AttendanceRecord> => {
-    const response = await apiClient.post<ApiResponse<AttendanceRecord>>("/Attendance", data)
-    return response.data
+  // Update attendance
+  update: async (data: UpdateAttendanceDto): Promise<Attendance> => {
+    const { attendanceId, ...updateData } = data
+    const response = await apiClient.put<ApiResponse<Attendance>>(`/Attendance/${attendanceId}`, updateData)
+    return response.data.data
   },
 
-  update: async ({ data }: { data: AttendanceRecord }): Promise<AttendanceRecord> => {
-    const response = await apiClient.post<ApiResponse<AttendanceRecord>>(`/Attendance/UpsertAttendance`, data)
-    return response.data
-  },
-
+  // Delete attendance
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/Attendance/${id}`)
-  },
-
-  syncFromDevice: async (): Promise<{ count: number; message: string }> => {
-    const response = await apiClient.post<ApiResponse<{ count: number; message: string }>>("/Attendance/sync")
-    return response.data
   },
 }

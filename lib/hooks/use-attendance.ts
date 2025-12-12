@@ -1,15 +1,22 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { attendanceApi } from "@/lib/api/attendance"
 import { toast } from "@/hooks/use-toast"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { attendanceApi, type GetAttendanceParams } from "../api/attendance"
+import type {
+  AttendanceSearchParams,
+  CreateAttendanceDto,
+  UpdateAttendanceDto,
+} from "@/lib/types/api"
 
-export function useAttendance(params: GetAttendanceParams) {
+// Get attendance records with filters
+export function useAttendances(params: AttendanceSearchParams = {}) {
   return useQuery({
-    queryKey: ["attendance", params],
-    queryFn: () => attendanceApi.getAll(params),
+    queryKey: ["attendances", params],
+    queryFn: () => attendanceApi.getAttendances(params),
   })
 }
 
-export function useAttendanceRecord(id: number) {
+// Get attendance by ID
+export function useAttendance(id: number) {
   return useQuery({
     queryKey: ["attendance", id],
     queryFn: () => attendanceApi.getById(id),
@@ -17,22 +24,14 @@ export function useAttendanceRecord(id: number) {
   })
 }
 
-export function useAttendanceSummary(employeeId: number, month: number, year: number) {
-  return useQuery({
-    queryKey: ["attendance-summary", employeeId, month, year],
-    queryFn: () => attendanceApi.getSummary(employeeId, month, year),
-    enabled: !!employeeId && !!month && !!year,
-  })
-}
-
+// Create attendance
 export function useCreateAttendance() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: attendanceApi.create,
+    mutationFn: (data: CreateAttendanceDto) => attendanceApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] })
-      queryClient.invalidateQueries({ queryKey: ["attendance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["attendances"] })
       toast({
         title: "Thành công",
         description: "Đã thêm bản ghi chấm công",
@@ -48,15 +47,14 @@ export function useCreateAttendance() {
   })
 }
 
+// Update attendance
 export function useUpdateAttendance() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: attendanceApi.update,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] })
-      queryClient.invalidateQueries({ queryKey: ["attendance", data.attendanceId] })
-      queryClient.invalidateQueries({ queryKey: ["attendance-summary"] })
+    mutationFn: (data: UpdateAttendanceDto) => attendanceApi.update(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendances"] })
       toast({
         title: "Thành công",
         description: "Đã cập nhật bản ghi chấm công",
@@ -72,14 +70,14 @@ export function useUpdateAttendance() {
   })
 }
 
+// Delete attendance
 export function useDeleteAttendance() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: attendanceApi.delete,
+    mutationFn: (id: number) => attendanceApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] })
-      queryClient.invalidateQueries({ queryKey: ["attendance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["attendances"] })
       toast({
         title: "Thành công",
         description: "Đã xóa bản ghi chấm công",
@@ -89,28 +87,6 @@ export function useDeleteAttendance() {
       toast({
         title: "Lỗi",
         description: error.message || "Không thể xóa bản ghi chấm công",
-        variant: "destructive",
-      })
-    },
-  })
-}
-
-export function useSyncAttendance() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: attendanceApi.syncFromDevice,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] })
-      toast({
-        title: "Đồng bộ thành công",
-        description: `Đã đồng bộ ${data.count} bản ghi chấm công từ máy`,
-      })
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Lỗi đồng bộ",
-        description: error.message || "Không thể đồng bộ dữ liệu từ máy chấm công",
         variant: "destructive",
       })
     },

@@ -215,41 +215,40 @@ export const offlineBookingsApi = {
     })
   },
 
-  // Search available rooms (new endpoint)
-  searchAvailableRooms: async (data: {
+  // Search available rooms by room types (new endpoint)
+  searchAvailableRoomTypes: async (data: {
     checkInDate: string
     checkOutDate: string
-    roomTypeId?: number
-    minPrice?: number
-    maxPrice?: number
-    maxOccupancy?: number
-    searchTerm?: string
     pageNumber?: number
     pageSize?: number
   }): Promise<{
     isSuccess: boolean
-    data: {
-      rooms: Array<{
-        roomId: number
-        roomName: string
-        roomTypeId: number
-        roomTypeName: string
-        roomTypeCode: string
-        pricePerNight: number
-        maxOccupancy: number
-        roomSize: number
-        numberOfBeds: number
-        bedType: string
+    responseCode: string
+    statusCode: number
+    data: Array<{
+      roomTypeId: number
+      typeName: string
+      typeCode: string
+      description: string
+      basePriceNight: number
+      maxOccupancy: number
+      roomSize: number
+      numberOfBeds: number
+      bedType: string
+      isActive: boolean
+      images: Array<{
+        mediaId: number
+        filePath: string
         description: string
-        status: string
-        amenities: string[]
-        images: string[]
+        referenceTable: string
+        referenceKey: string
+        isActive: boolean
       }>
-      totalCount: number
-      pageNumber: number
-      pageSize: number
-      totalPages: number
-    }
+      amenities: any[]
+      comments: any[]
+      availableRoomCount: number
+      totalRoomCount: number
+    }>
     message: string
   }> => {
     if (!data.checkInDate || !data.checkOutDate) {
@@ -259,15 +258,42 @@ export const offlineBookingsApi = {
     const params = new URLSearchParams()
     params.append("checkInDate", data.checkInDate)
     params.append("checkOutDate", data.checkOutDate)
-    if (data.roomTypeId) params.append("roomTypeId", String(data.roomTypeId))
-    if (data.minPrice) params.append("minPrice", String(data.minPrice))
-    if (data.maxPrice) params.append("maxPrice", String(data.maxPrice))
-    if (data.maxOccupancy) params.append("maxOccupancy", String(data.maxOccupancy))
-    if (data.searchTerm) params.append("searchTerm", data.searchTerm)
     params.append("pageNumber", String(data.pageNumber || 1))
-    params.append("pageSize", String(data.pageSize || 20))
+    params.append("pageSize", String(data.pageSize || 50))
 
-    return apiClient.get(`/BookingManagement/rooms/search?${params.toString()}`)
+    return apiClient.get(`/room/types/search?${params.toString()}`)
+  },
+
+  // Get available rooms by room type
+  getAvailableRoomsByType: async (data: {
+    checkInDate: string
+    checkOutDate: string
+    roomTypeId: number
+  }): Promise<{
+    isSuccess: boolean
+    data: Array<{
+      roomId: number
+      roomName: string
+      roomTypeId: number
+      floor: number
+      status: string
+    }>
+    message: string
+  }> => {
+    if (!data.checkInDate || !data.checkOutDate) {
+      throw new Error("Vui lòng chọn ngày nhận phòng và trả phòng")
+    }
+
+    if (!data.roomTypeId) {
+      throw new Error("Vui lòng chọn loại phòng")
+    }
+
+    const params = new URLSearchParams()
+    params.append("checkInDate", data.checkInDate)
+    params.append("checkOutDate", data.checkOutDate)
+    params.append("roomTypeId", String(data.roomTypeId))
+
+    return apiClient.get(`/room/available?${params.toString()}`)
   },
 }
 

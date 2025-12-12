@@ -22,6 +22,18 @@ export function useCheckAvailableRooms() {
   })
 }
 
+export function useSearchAvailableRoomTypes() {
+  return useMutation({
+    mutationFn: offlineBookingsApi.searchAvailableRoomTypes,
+  })
+}
+
+export function useGetAvailableRoomsByType() {
+  return useMutation({
+    mutationFn: offlineBookingsApi.getAvailableRoomsByType,
+  })
+}
+
 export function useCreateOfflineBooking() {
   const queryClient = useQueryClient()
 

@@ -1208,3 +1208,95 @@ export interface Employee {
   isActive: boolean
   createdAt: string
 }
+
+// Attendance Management types
+export type AttendanceStatus = "Present" | "Absent" | "Late" | "OnLeave" | "HalfDay"
+
+export interface Attendance {
+  attendanceId: number
+  employeeId: number
+  employeeName: string
+  employeeRole?: string
+  employeeAvatar?: string
+  date: string // ISO date format
+  checkInTime?: string // HH:mm:ss format
+  checkOutTime?: string // HH:mm:ss format
+  status: AttendanceStatus
+  workingHours?: number
+  notes?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateAttendanceDto {
+  employeeId: number
+  date: string
+  checkInTime?: string
+  checkOutTime?: string
+  status: AttendanceStatus
+  notes?: string
+}
+
+export interface UpdateAttendanceDto {
+  attendanceId: number
+  employeeId?: number
+  date?: string
+  checkInTime?: string
+  checkOutTime?: string
+  status?: AttendanceStatus
+  notes?: string
+}
+
+export interface AttendanceSearchParams {
+  employeeId?: number
+  startDate?: string
+  endDate?: string
+  status?: AttendanceStatus
+  pageIndex?: number
+  pageSize?: number
+}
+
+// Dashboard Statistics types
+export interface DashboardStats {
+  totalBookings: number
+  totalRevenue: number
+  totalCustomers: number
+  newCustomersThisMonth: number
+  totalRooms: number
+  availableRooms: number
+  occupiedRooms: number
+  maintenanceRooms: number
+  occupancyRate: number
+  averageRoomRate: number
+  totalTransactions: number
+  pendingPayments: number
+  completedPayments: number
+  revenueThisMonth: number
+  revenueLastMonth: number
+  revenueGrowth: number
+  bookingsThisMonth: number
+  bookingsLastMonth: number
+  bookingsGrowth: number
+  customersGrowth: number
+}
+
+export interface RevenueByMonth {
+  month: string
+  year: number
+  revenue: number
+  bookings: number
+}
+
+export interface RoomStatusSummary {
+  status: string
+  count: number
+  percentage: number
+}
+
+export interface TopRoomType {
+  roomTypeId: number
+  typeName: string
+  totalBookings: number
+  totalRevenue: number
+  averagePrice: number
+}

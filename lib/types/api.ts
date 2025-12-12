@@ -1,5 +1,3 @@
-import { number } from "zod"
-
 // Common API response types
 export interface ApiResponse<T> {
   isSuccess: boolean;
@@ -1141,4 +1139,72 @@ export interface SalaryInfo {
   allowance?: number | null
   createdAt?: string | null
   updatedAt?: string | null
+}
+
+// Employee Schedule Management types
+export type ShiftType = "morning" | "afternoon" | "night"
+
+export interface ShiftDefinition {
+  shiftType: ShiftType
+  name: string
+  startTime: string // HH:mm format
+  endTime: string // HH:mm format
+  color: string // for UI display
+}
+
+export interface EmployeeSchedule {
+  scheduleId: number
+  employeeId: number
+  employeeName: string
+  employeeRole?: string
+  employeeAvatar?: string
+  date: string // ISO date format
+  shiftType: ShiftType
+  shiftName: string
+  startTime: string
+  endTime: string
+  status: "Scheduled" | "Completed" | "Absent" | "Cancelled"
+  notes?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateScheduleDto {
+  employeeId: number
+  date: string
+  shiftType: ShiftType
+  notes?: string
+}
+
+export interface UpdateScheduleDto {
+  scheduleId: number
+  employeeId?: number
+  date?: string
+  shiftType?: ShiftType
+  status?: string
+  notes?: string
+}
+
+export interface ScheduleSearchParams {
+  employeeId?: number
+  startDate?: string
+  endDate?: string
+  shiftType?: ShiftType
+  status?: string
+  pageIndex?: number
+  pageSize?: number
+}
+
+export interface Employee {
+  employeeId: number
+  accountId: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: string
+  avatarUrl?: string
+  identityCard?: string
+  address?: string
+  isActive: boolean
+  createdAt: string
 }

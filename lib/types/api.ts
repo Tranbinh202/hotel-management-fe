@@ -374,6 +374,22 @@ export interface RoomTypeAvailability {
   isAvailable: boolean;
   basePriceNight: number;
   message: string;
+  availableRooms: Array<{
+    roomId: number;
+    roomName: string;
+    roomTypeId: number;
+    roomTypeName: string;
+    pricePerNight: number;
+    maxOccupancy: number;
+    roomSize: number;
+    numberOfBeds: number;
+    bedType: string;
+    description: string;
+    status: string;
+    floor: number;
+    amenities: string[];
+    images: string[];
+  }>;
 }
 
 export interface CheckAvailabilityResponse {
@@ -839,12 +855,40 @@ export interface CreateOfflineBookingDto {
   phoneNumber: string;
   identityCard?: string;
   address?: string;
-  roomIds: number[]; // Changed from roomTypes to roomIds array
+  roomIds: number[]; // Array of specific room IDs
   checkInDate: string;
   checkOutDate: string;
   specialRequests?: string;
   paymentMethod: "Cash" | "Card" | "Transfer";
   paymentNote?: string;
+}
+
+// For availability check before selecting rooms
+export interface CheckAvailabilityRequest {
+  roomTypes: BookingRoomType[];
+  checkInDate: string;
+  checkOutDate: string;
+}
+
+// Response for room search
+export interface AvailableRoomDto {
+  roomId: number;
+  roomName: string;
+  roomTypeId: number;
+  roomTypeName: string;
+  pricePerNight: number;
+  maxOccupancy: number;
+  roomSize: number;
+  numberOfBeds: number;
+  bedType: string;
+  floor: number;
+  status: string;
+  amenities: any[];
+  images: Array<{
+    mediaId: number;
+    filePath: string;
+    description: string;
+  }>;
 }
 
 export interface QRPaymentInfo {

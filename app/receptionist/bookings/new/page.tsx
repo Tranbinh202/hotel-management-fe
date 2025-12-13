@@ -10,22 +10,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { useSearchCustomer, useSearchAvailableRoomTypes, useGetAvailableRoomsByType, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
+import { useSearchCustomer, useSearchAvailableRoomTypes, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
 import { toast } from "@/hooks/use-toast"
-import { Search, Loader2, User, Calendar, Hotel, CreditCard, CheckCircle2, X, Copy, Printer } from "lucide-react"
+import { Search, Loader2, User, Calendar, CreditCard, CheckCircle2, Copy, Printer } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import type { CustomerSearchResult, CreateOfflineBookingDto, OfflineBookingResponse } from "@/lib/types/api"
+import { Checkbox } from "@/components/ui/checkbox"
+import type { CustomerSearchResult, CreateOfflineBookingDto, OfflineBookingResponse, RoomTypeAvailability } from "@/lib/types/api"
 
 interface SelectedRoom {
     roomId: number
     roomName: string
+    roomTypeId: number
     roomTypeName: string
     pricePerNight: number
-    maxOccupancy: number
-    images: string[]
+    floor: number
 }
 
 export default function NewOfflineBookingPage() {
@@ -53,10 +53,9 @@ export default function NewOfflineBookingPage() {
     })
 
     // Room search state
+    const [availableRoomTypes, setAvailableRoomTypes] = useState<RoomTypeAvailability[]>([])
+    const [isAvailabilityChecked, setIsAvailabilityChecked] = useState(false)
     const [selectedRooms, setSelectedRooms] = useState<SelectedRoom[]>([])
-    const [shouldSearchRooms, setShouldSearchRooms] = useState(false)
-    const [expandedRoomType, setExpandedRoomType] = useState<number | null>(null)
-    const [roomsByType, setRoomsByType] = useState<Record<number, any[]>>({})
 
     // Booking state
     const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -75,8 +74,7 @@ export default function NewOfflineBookingPage() {
     const { data: customerSearchData, isLoading: isSearching } = useSearchCustomer(debouncedSearchKey)
 
     const searchRoomTypesMutation = useSearchAvailableRoomTypes()
-    const getRoomsByTypeMutation = useGetAvailableRoomsByType()
-
+    const checkAvailabilityMutation = useCheckAvailableRooms()
     const createBookingMutation = useCreateOfflineBooking()
 
     // Handle customer search results
@@ -126,7 +124,7 @@ export default function NewOfflineBookingPage() {
     }
 
     // Search available rooms
-    const handleSearchRooms = () => {
+    const handleSearchRooms = async () => {
         if (!formData.checkInDate || !formData.checkOutDate) {
             toast({
                 title: "Lỗi",
@@ -136,109 +134,92 @@ export default function NewOfflineBookingPage() {
             return
         }
 
-        searchRoomTypesMutation.mutate(
-            {
+        try {
+            setIsAvailabilityChecked(false)
+            setSelectedRooms([])
+            setAvailableRoomTypes([])
+            setFormData(prev => ({ ...prev, roomIds: [] }))
+            if (searchRoomTypesMutation.reset) searchRoomTypesMutation.reset()
+            if (checkAvailabilityMutation.reset) checkAvailabilityMutation.reset()
+
+            const roomTypesResponse = await searchRoomTypesMutation.mutateAsync({
                 checkInDate: formData.checkInDate,
                 checkOutDate: formData.checkOutDate,
                 pageNumber: 1,
                 pageSize: 50,
-            },
-            {
-                onSuccess: (response) => {
-                    if (response.isSuccess) {
-                        const totalRooms = response.data.reduce((sum, rt) => sum + rt.availableRoomCount, 0)
-                        toast({
-                            title: "Tìm thấy phòng",
-                            description: `Có ${response.data.length} loại phòng với ${totalRooms} phòng trống`,
-                        })
-                        // Reset selected rooms and expanded state
-                        setSelectedRooms([])
-                        setExpandedRoomType(null)
-                        setRoomsByType({})
-                        setFormData(prev => ({ ...prev, roomIds: [] }))
-                    }
-                },
-                onError: (error: any) => {
-                    toast({
-                        title: "Lỗi tìm phòng",
-                        description: error.message || "Không thể tìm phòng trống",
-                        variant: "destructive",
-                    })
-                },
+            })
+
+            if (!roomTypesResponse.isSuccess) {
+                throw new Error(roomTypesResponse.message || "Không thể tìm phòng trống")
             }
-        )
+
+            const availableTypes = roomTypesResponse.data.filter(rt => rt.availableRoomCount > 0)
+            const totalRooms = availableTypes.reduce((sum, rt) => sum + rt.availableRoomCount, 0)
+
+            if (availableTypes.length === 0 || totalRooms === 0) {
+                toast({
+                    title: "Hết phòng",
+                    description: "Không còn phòng trống trong khoảng thời gian này",
+                    variant: "destructive",
+                })
+                return
+            }
+
+            const availabilityPayload = {
+                checkInDate: formData.checkInDate,
+                checkOutDate: formData.checkOutDate,
+                roomTypes: availableTypes.map(rt => ({
+                    roomTypeId: rt.roomTypeId,
+                    quantity: 1,
+                })),
+            }
+
+            const availabilityResponse = await checkAvailabilityMutation.mutateAsync(availabilityPayload)
+
+            if (!availabilityResponse.isSuccess) {
+                throw new Error(availabilityResponse.message || "Không thể kiểm tra phòng trống")
+            }
+
+            setAvailableRoomTypes(availabilityResponse.data.roomTypes || [])
+            setIsAvailabilityChecked(true)
+
+            toast({
+                title: "Tìm thấy phòng",
+                description: `Có ${totalRooms} phòng trống trong ${availableTypes.length} loại phòng`,
+            })
+        } catch (error: any) {
+            setIsAvailabilityChecked(false)
+            toast({
+                title: "Lỗi tìm phòng",
+                description: error.message || "Không thể tìm phòng trống",
+                variant: "destructive",
+            })
+        }
     }
 
-    // Handle expanding room type to view available rooms
-    const handleExpandRoomType = (roomTypeId: number) => {
-        if (expandedRoomType === roomTypeId) {
-            setExpandedRoomType(null)
-            return
-        }
+    const toggleRoomSelection = (room: any, roomTypeName: string, defaultPrice: number) => {
+        setSelectedRooms(prev => {
+            const exists = prev.find(r => r.roomId === room.roomId)
+            if (exists) {
+                return prev.filter(r => r.roomId !== room.roomId)
+            }
 
-        setExpandedRoomType(roomTypeId)
-
-        // If rooms not yet loaded, fetch them
-        if (!roomsByType[roomTypeId]) {
-            getRoomsByTypeMutation.mutate(
-                {
-                    checkInDate: formData.checkInDate,
-                    checkOutDate: formData.checkOutDate,
-                    roomTypeId,
-                },
-                {
-                    onSuccess: (response) => {
-                        if (response.isSuccess) {
-                            setRoomsByType(prev => ({
-                                ...prev,
-                                [roomTypeId]: response.data,
-                            }))
-                        }
-                    },
-                    onError: (error: any) => {
-                        toast({
-                            title: "Lỗi",
-                            description: error.message || "Không thể tải danh sách phòng",
-                            variant: "destructive",
-                        })
-                        setExpandedRoomType(null)
-                    },
-                }
-            )
-        }
-    }
-
-    // Toggle room selection
-    const handleToggleRoom = (room: any) => {
-        const isSelected = selectedRooms.some(r => r.roomId === room.roomId)
-
-        if (isSelected) {
-            setSelectedRooms(prev => prev.filter(r => r.roomId !== room.roomId))
-            setFormData(prev => ({
-                ...prev,
-                roomIds: prev.roomIds.filter(id => id !== room.roomId),
-            }))
-        } else {
             const newRoom: SelectedRoom = {
                 roomId: room.roomId,
                 roomName: room.roomName,
-                roomTypeName: room.roomTypeName,
-                pricePerNight: room.pricePerNight,
-                maxOccupancy: room.maxOccupancy,
-                images: room.images || [],
+                roomTypeId: room.roomTypeId,
+                roomTypeName,
+                pricePerNight: room.pricePerNight ?? defaultPrice,
+                floor: room.floor ?? 0,
             }
-            setSelectedRooms(prev => [...prev, newRoom])
-            setFormData(prev => ({
-                ...prev,
-                roomIds: [...prev.roomIds, room.roomId],
-            }))
-        }
+            return [...prev, newRoom]
+        })
     }
 
     // Calculate total
     const calculateTotal = () => {
         if (!formData.checkInDate || !formData.checkOutDate || selectedRooms.length === 0) {
-            return { nights: 0, totalAmount: 0, depositAmount: 0 }
+            return { nights: 0, totalAmount: 0, depositAmount: 0, totalRooms: 0 }
         }
 
         const checkIn = new Date(formData.checkInDate)
@@ -247,8 +228,9 @@ export default function NewOfflineBookingPage() {
 
         const totalAmount = selectedRooms.reduce((sum, room) => sum + (room.pricePerNight * nights), 0)
         const depositAmount = Math.round(totalAmount * 0.3)
+        const totalRooms = selectedRooms.length
 
-        return { nights, totalAmount, depositAmount }
+        return { nights, totalAmount, depositAmount, totalRooms }
     }
 
     // Submit booking
@@ -284,13 +266,28 @@ export default function NewOfflineBookingPage() {
         if (selectedRooms.length === 0) {
             toast({
                 title: "Lỗi",
-                description: "Vui lòng chọn ít nhất một phòng",
+                description: "Vui lòng chọn phòng trước khi đặt",
                 variant: "destructive",
             })
             return
         }
 
-        createBookingMutation.mutate(formData, {
+        if (!isAvailabilityChecked) {
+            toast({
+                title: "Lỗi",
+                description: "Vui lòng kiểm tra phòng trống trước khi đặt",
+                variant: "destructive",
+            })
+            return
+        }
+
+        // Update roomIds in formData
+        const updatedFormData = {
+            ...formData,
+            roomIds: selectedRooms.map(r => r.roomId),
+        }
+
+        createBookingMutation.mutate(updatedFormData, {
             onSuccess: (response) => {
                 if (response.isSuccess) {
                     setBookingResult(response.data)
@@ -328,9 +325,13 @@ export default function NewOfflineBookingPage() {
             paymentMethod: "Cash",
             paymentNote: "",
         })
+        setAvailableRoomTypes([])
         setSelectedRooms([])
         setSearchResults([])
         setSearchKey("")
+        setIsAvailabilityChecked(false)
+        if (searchRoomTypesMutation.reset) searchRoomTypesMutation.reset()
+        if (checkAvailabilityMutation.reset) checkAvailabilityMutation.reset()
     }
 
     // Copy to clipboard
@@ -342,7 +343,7 @@ export default function NewOfflineBookingPage() {
         })
     }
 
-    const { nights, totalAmount, depositAmount } = calculateTotal()
+    const { nights, totalAmount, depositAmount, totalRooms } = calculateTotal()
 
     return (
         <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -524,13 +525,13 @@ export default function NewOfflineBookingPage() {
 
                             <Button
                                 onClick={handleSearchRooms}
-                                disabled={searchRoomTypesMutation.isPending || !formData.checkInDate || !formData.checkOutDate}
+                                disabled={searchRoomTypesMutation.isPending || checkAvailabilityMutation.isPending || !formData.checkInDate || !formData.checkOutDate}
                                 className="w-full"
                             >
-                                {searchRoomTypesMutation.isPending ? (
+                                {searchRoomTypesMutation.isPending || checkAvailabilityMutation.isPending ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Đang tìm phòng...
+                                        Đang kiểm tra phòng...
                                     </>
                                 ) : (
                                     <>
@@ -544,19 +545,29 @@ export default function NewOfflineBookingPage() {
                             {searchRoomTypesMutation.data?.data && searchRoomTypesMutation.data.data.length > 0 && (
                                 <div className="space-y-4">
                                     <Label>
-                                        Chọn phòng ({searchRoomTypesMutation.data.data.reduce((total, rt) => total + rt.availableRoomCount, 0)} phòng trống)
+                                        Chọn phòng ({availableRoomTypes.reduce((total, rt) => total + (rt.availableRooms?.length || 0), 0)} phòng trống)
                                     </Label>
-                                    <div className="space-y-3 max-h-96 overflow-y-auto">
-                                        {searchRoomTypesMutation.data.data.map((roomType) => (
-                                            <div key={roomType.roomTypeId} className="space-y-2">
+
+                                    {!isAvailabilityChecked && (
+                                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Đang tải phòng trống...
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-3 max-h-[520px] overflow-y-auto">
+                                        {searchRoomTypesMutation.data.data.map((roomType) => {
+                                            const availability = availableRoomTypes.find(rt => rt.roomTypeId === roomType.roomTypeId)
+                                            const availableRooms = availability?.availableRooms || []
+                                            const selectedCount = selectedRooms.filter(r => r.roomTypeId === roomType.roomTypeId).length
+
+                                            return (
                                                 <Card
-                                                    className={`cursor-pointer transition-all hover:shadow-md ${
-                                                        expandedRoomType === roomType.roomTypeId ? "border-blue-500" : ""
-                                                    }`}
-                                                    onClick={() => handleExpandRoomType(roomType.roomTypeId)}
+                                                    key={roomType.roomTypeId}
+                                                    className="transition-all hover:shadow-md"
                                                 >
-                                                    <CardContent className="p-4">
-                                                        <div className="flex items-start justify-between">
+                                                    <CardContent className="p-4 space-y-3">
+                                                        <div className="flex items-start justify-between gap-4">
                                                             <div className="flex-1">
                                                                 <div className="flex items-center gap-2">
                                                                     <h4 className="font-semibold text-lg">{roomType.typeName}</h4>
@@ -572,80 +583,58 @@ export default function NewOfflineBookingPage() {
                                                                     <span>🛏️ {roomType.numberOfBeds} {roomType.bedType}</span>
                                                                 </div>
                                                             </div>
-                                                            <Badge variant="secondary" className="ml-2 shrink-0">
-                                                                {roomType.availableRoomCount}/{roomType.totalRoomCount} trống
-                                                            </Badge>
+
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                <Badge variant="secondary" className="shrink-0">
+                                                                    {roomType.availableRoomCount}/{roomType.totalRoomCount} trống
+                                                                </Badge>
+                                                                <Badge variant={availableRooms.length > 0 ? "default" : "destructive"}>
+                                                                    {availableRooms.length > 0 ? `${availableRooms.length} phòng khả dụng` : "Hết phòng"}
+                                                                </Badge>
+                                                                {selectedCount > 0 && (
+                                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                                                        Đã chọn {selectedCount} phòng
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            {availableRooms.length === 0 ? (
+                                                                <p className="text-sm text-slate-500 italic">Không còn phòng trống cho loại phòng này.</p>
+                                                            ) : (
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                    {availableRooms.map((room) => {
+                                                                        const isSelected = selectedRooms.some(r => r.roomId === room.roomId)
+                                                                        const displayPrice = (room.pricePerNight ?? roomType.basePriceNight).toLocaleString("vi-VN")
+                                                                        const floorLabel = room.floor ?? "-"
+                                                                        return (
+                                                                            <Card
+                                                                                key={room.roomId}
+                                                                                className={`cursor-pointer transition-all ${isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-slate-50"}`}
+                                                                                onClick={() => toggleRoomSelection(room, roomType.typeName, roomType.basePriceNight)}
+                                                                            >
+                                                                                <CardContent className="p-3">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <Checkbox checked={isSelected} />
+                                                                                        <div className="flex-1">
+                                                                                            <p className="font-medium">{room.roomName}</p>
+                                                                                            <p className="text-xs text-slate-600">
+                                                                                                Tầng {floorLabel} • {displayPrice} VNĐ/đêm
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </CardContent>
+                                                                            </Card>
+                                                                        )
+                                                                    })}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </CardContent>
                                                 </Card>
-
-                                                {/* Expanded: Show available rooms */}
-                                                {expandedRoomType === roomType.roomTypeId && (
-                                                    <div className="pl-4 space-y-2">
-                                                        {getRoomsByTypeMutation.isPending && (
-                                                            <div className="flex items-center justify-center py-4">
-                                                                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                                                                <span className="ml-2 text-sm text-slate-600">Đang tải danh sách phòng...</span>
-                                                            </div>
-                                                        )}
-
-                                                        {roomsByType[roomType.roomTypeId] && roomsByType[roomType.roomTypeId].length > 0 && (
-                                                            <div className="grid gap-2">
-                                                                {roomsByType[roomType.roomTypeId].map((room) => {
-                                                                    const isSelected = selectedRooms.some(r => r.roomId === room.roomId)
-                                                                    const roomData = {
-                                                                        roomId: room.roomId,
-                                                                        roomName: room.roomName,
-                                                                        roomTypeName: roomType.typeName,
-                                                                        pricePerNight: roomType.basePriceNight,
-                                                                        maxOccupancy: roomType.maxOccupancy,
-                                                                        images: roomType.images?.map((img: any) => img.filePath) || [],
-                                                                    }
-                                                                    return (
-                                                                        <Card
-                                                                            key={room.roomId}
-                                                                            className={`cursor-pointer transition-all ${
-                                                                                isSelected ? "border-blue-500 bg-blue-50" : "hover:bg-slate-50"
-                                                                            }`}
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation()
-                                                                                handleToggleRoom(roomData)
-                                                                            }}
-                                                                        >
-                                                                            <CardContent className="p-3">
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <Checkbox checked={isSelected} />
-                                                                                    <div className="flex-1">
-                                                                                        <div className="flex items-center gap-2">
-                                                                                            <p className="font-medium">{room.roomName}</p>
-                                                                                            <Badge variant="outline" className="text-xs">
-                                                                                                Tầng {room.floor}
-                                                                                            </Badge>
-                                                                                            <Badge variant="outline" className="text-xs">
-                                                                                                {room.status}
-                                                                                            </Badge>
-                                                                                        </div>
-                                                                                        <p className="text-sm text-slate-600">
-                                                                                            {roomType.basePriceNight.toLocaleString("vi-VN")} VNĐ/đêm
-                                                                                        </p>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </CardContent>
-                                                                        </Card>
-                                                                    )
-                                                                })}
-                                                            </div>
-                                                        )}
-
-                                                        {roomsByType[roomType.roomTypeId] && roomsByType[roomType.roomTypeId].length === 0 && (
-                                                            <p className="text-sm text-slate-500 text-center py-4">
-                                                                Không có phòng trống
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -720,18 +709,18 @@ export default function NewOfflineBookingPage() {
                                 <div className="space-y-2">
                                     <Label className="text-sm font-semibold">Phòng đã chọn:</Label>
                                     {selectedRooms.map((room) => (
-                                        <div key={room.roomId} className="flex items-start justify-between text-sm">
-                                            <div className="flex-1">
-                                                <p className="font-medium">{room.roomName}</p>
-                                                <p className="text-slate-600">{room.roomTypeName}</p>
+                                        <div key={room.roomId} className="text-sm p-2 bg-slate-50 rounded">
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <p className="font-medium">{room.roomName}</p>
+                                                    <p className="text-slate-600 text-xs">
+                                                        {room.roomTypeName} - Tầng {room.floor}
+                                                    </p>
+                                                    <p className="text-slate-600 text-xs">
+                                                        {room.pricePerNight.toLocaleString("vi-VN")} VNĐ/đêm
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleToggleRoom(room)}
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </Button>
                                         </div>
                                     ))}
                                 </div>
@@ -740,15 +729,15 @@ export default function NewOfflineBookingPage() {
                             <Separator />
 
                             {/* Pricing */}
-                            {nights > 0 && (
+                            {nights > 0 && totalRooms > 0 && (
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-slate-600">Số đêm:</span>
                                         <span className="font-medium">{nights} đêm</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-600">Số phòng:</span>
-                                        <span className="font-medium">{selectedRooms.length} phòng</span>
+                                        <span className="text-slate-600">Tổng số phòng:</span>
+                                        <span className="font-medium">{totalRooms} phòng</span>
                                     </div>
                                     <Separator />
                                     <div className="flex justify-between text-base">
@@ -769,7 +758,7 @@ export default function NewOfflineBookingPage() {
                         <CardFooter className="flex flex-col gap-2">
                             <Button
                                 onClick={handleConfirmBooking}
-                                disabled={createBookingMutation.isPending || selectedRooms.length === 0}
+                                disabled={createBookingMutation.isPending || selectedRooms.length === 0 || !isAvailabilityChecked}
                                 className="w-full bg-linear-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200] text-white"
                                 size="lg"
                             >

@@ -1,8 +1,8 @@
 import { apiClient } from "./client"
 import type {
   CustomerSearchResult,
-  RoomSearchAvailableRequest as AvailableRoomsRequest,
-  RoomSearchAvailableResponse as AvailableRoomsResponse,
+  CheckAvailabilityRequest,
+  CheckAvailabilityResponse,
   CreateOfflineBookingDto,
   UpdateOfflineBookingDto,
   OfflineBookingResponse,
@@ -32,7 +32,7 @@ export const offlineBookingsApi = {
   },
 
   // Check available rooms
-  checkAvailableRooms: async (data: AvailableRoomsRequest): Promise<AvailableRoomsResponse> => {
+  checkAvailableRooms: async (data: CheckAvailabilityRequest): Promise<CheckAvailabilityResponse> => {
     if (!data.checkInDate || !data.checkOutDate) {
       throw new Error("Vui lòng chọn ngày nhận phòng và trả phòng")
     }
@@ -63,7 +63,7 @@ export const offlineBookingsApi = {
       }
     }
 
-    return apiClient.post<AvailableRoomsResponse>("/BookingManagement/available-rooms", data)
+    return apiClient.post<CheckAvailabilityResponse>("/BookingManagement/available-rooms", data)
   },
 
   // Create offline booking
@@ -294,6 +294,57 @@ export const offlineBookingsApi = {
     params.append("roomTypeId", String(data.roomTypeId))
 
     return apiClient.get(`/room/available?${params.toString()}`)
+  },
+
+  // Search available rooms (returns detailed room list for selection)
+  searchAvailableRooms: async (data: {
+    checkInDate: string
+    checkOutDate: string
+    roomTypeId?: number
+    pageNumber?: number
+    pageSize?: number
+  }): Promise<{
+    isSuccess: boolean
+    data: {
+      rooms: Array<{
+        roomId: number
+        roomName: string
+        roomTypeId: number
+        roomTypeName: string
+        pricePerNight: number
+        maxOccupancy: number
+        roomSize: number
+        numberOfBeds: number
+        bedType: string
+        floor: number
+        status: string
+        amenities: any[]
+        images: Array<{
+          mediaId: number
+          filePath: string
+          description: string
+        }>
+      }>
+      totalCount: number
+      pageNumber: number
+      pageSize: number
+    }
+    message: string
+  }> => {
+    if (!data.checkInDate || !data.checkOutDate) {
+      throw new Error("Vui lòng chọn ngày nhận phòng và trả phòng")
+    }
+
+    const params = new URLSearchParams()
+    params.append("checkInDate", data.checkInDate)
+    params.append("checkOutDate", data.checkOutDate)
+    if (data.roomTypeId) {
+      params.append("roomTypeId", String(data.roomTypeId))
+    }
+    params.append("pageNumber", String(data.pageNumber || 1))
+    params.append("pageSize", String(data.pageSize || 50))
+
+    return apiClient.get(`/BookingManagement/rooms/search?${params.toString()}`)
   },
 }
 

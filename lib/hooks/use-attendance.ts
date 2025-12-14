@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { attendanceApi } from "@/lib/api/attendance"
 import { toast } from "@/hooks/use-toast"
 import type {
+  AttendanceRecord,
   AttendanceSearchParams,
   CreateAttendanceDto,
   UpdateAttendanceDto,
@@ -52,7 +53,7 @@ export function useUpdateAttendance() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: UpdateAttendanceDto) => attendanceApi.update(data),
+    mutationFn: (data: AttendanceRecord) => attendanceApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendances"] })
       toast({

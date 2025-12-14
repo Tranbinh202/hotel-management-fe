@@ -565,6 +565,7 @@ export interface AttendanceRecord {
   employeeId: number;
   employeeName: string;
   deviceEmployeeId: string | undefined;
+  workDate: string;
   checkIn: string;
   checkOut: string | undefined;
   shiftDate: string;
@@ -601,6 +602,7 @@ export interface AttendanceSummary {
 export interface CreateAttendanceDto {
   employeeId: number;
   deviceEmployeeId?: string;
+  workDate: string
   checkIn: string;
   checkOut?: string;
   shiftDate: string;
@@ -1262,9 +1264,9 @@ export interface Attendance {
   employeeName: string
   employeeRole?: string
   employeeAvatar?: string
-  date: string // ISO date format
-  checkInTime?: string // HH:mm:ss format
-  checkOutTime?: string // HH:mm:ss format
+  workDate: string // ISO date format
+  checkIn?: string // HH:mm:ss format
+  checkOut?: string // HH:mm:ss format
   status: AttendanceStatus
   workingHours?: number
   notes?: string

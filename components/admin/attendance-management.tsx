@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Pencil, Trash2, Plus, Calendar, Users, CheckCircle2, XCircle, Clock, UserX, UserCheck } from "lucide-react"
-import type { Attendance, AttendanceStatus, CreateAttendanceDto, UpdateAttendanceDto, Employee } from "@/lib/types/api"
+import type { Attendance, AttendanceStatus, CreateAttendanceDto, UpdateAttendanceDto, Employee, AttendanceRecord } from "@/lib/types/api"
 import { format, subDays } from "date-fns"
 
 // Mock employees for fallback data
@@ -202,7 +202,7 @@ const generateMockAttendances = (): Attendance[] => {
         employeeName: employee.fullName,
         employeeRole: employee.role,
         employeeAvatar: employee.avatarUrl,
-        date: dateStr,
+        workDate: dateStr,
         checkInTime,
         checkOutTime,
         status,
@@ -253,21 +253,23 @@ export default function AttendanceManagement() {
 
   // Use mock data if API fails or returns no data
   const attendances = useMemo(() => {
-    if (error || !apiData?.data || apiData.data.length === 0) {
+    if (error || !apiData?.items || apiData.items.length === 0) {
       return MOCK_ATTENDANCES
     }
-    return apiData.data
+    return apiData.items
   }, [apiData, error])
 
   // Filter attendances
   const filteredAttendances = useMemo(() => {
+    console.log("filterDate:", filterDate)
+    console.log("attendances:", attendances)
     return attendances.filter((attendance) => {
       const nameMatch = searchName === "" ||
         attendance.employeeName.toLowerCase().includes(searchName.toLowerCase())
 
       const statusMatch = filterStatus === "all" || attendance.status === filterStatus
 
-      const dateMatch = filterDate === "" || attendance.date === filterDate
+      const dateMatch = filterDate === "" || format(new Date(attendance.workDate), "yyyy-MM-dd") === filterDate
 
       return nameMatch && statusMatch && dateMatch
     })
@@ -290,9 +292,9 @@ export default function AttendanceManagement() {
   // Form state
   const [formData, setFormData] = useState({
     employeeId: 0,
-    date: format(new Date(), "yyyy-MM-dd"),
-    checkInTime: "08:00",
-    checkOutTime: "17:30",
+    workDate: format(new Date(), "yyyy-MM-dd"),
+    checkIn: "08:00",
+    checkOut: "17:30",
     status: "Present" as AttendanceStatus,
     workingHours: 8,
     notes: "",
@@ -300,12 +302,13 @@ export default function AttendanceManagement() {
 
   const handleOpenDialog = (attendance?: Attendance) => {
     if (attendance) {
+      console.log("editing attendance:", attendance )
       setEditingAttendance(attendance)
       setFormData({
         employeeId: attendance.employeeId,
-        date: attendance.date,
-        checkInTime: attendance.checkInTime || "08:00",
-        checkOutTime: attendance.checkOutTime || "17:30",
+        workDate: attendance.workDate!=null?format(new Date(attendance.workDate), "yyyy-MM-dd"):format(new Date(), "yyyy-MM-dd"),
+        checkIn: attendance.checkIn || "08:00",
+        checkOut: attendance.checkOut || "17:30",
         status: attendance.status,
         workingHours: attendance.workingHours || 0,
         notes: attendance.notes || "",
@@ -314,9 +317,9 @@ export default function AttendanceManagement() {
       setEditingAttendance(null)
       setFormData({
         employeeId: 0,
-        date: format(new Date(), "yyyy-MM-dd"),
-        checkInTime: "08:00",
-        checkOutTime: "17:30",
+        workDate: format(new Date(), "yyyy-MM-dd"),
+        checkIn: "08:00",
+        checkOut: "17:30",
         status: "Present",
         workingHours: 8,
         notes: "",
@@ -332,12 +335,12 @@ export default function AttendanceManagement() {
 
   const handleSubmit = () => {
     if (editingAttendance) {
-      const updateData: UpdateAttendanceDto = {
+      const updateData: AttendanceRecord = {
         attendanceId: editingAttendance.attendanceId,
         employeeId: formData.employeeId,
-        date: formData.date,
-        checkInTime: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkInTime,
-        checkOutTime: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOutTime,
+        workDate: formData.workDate,
+        checkIn: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkIn,
+        checkOut: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOut,
         status: formData.status,
         workingHours: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.workingHours,
         notes: formData.notes,
@@ -348,9 +351,9 @@ export default function AttendanceManagement() {
     } else {
       const createData: CreateAttendanceDto = {
         employeeId: formData.employeeId,
-        date: formData.date,
-        checkInTime: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkInTime,
-        checkOutTime: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOutTime,
+        workDate: formData.workDate,
+        checkIn: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkIn,
+        checkOut: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOut,
         status: formData.status,
         workingHours: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.workingHours,
         notes: formData.notes,
@@ -492,7 +495,7 @@ export default function AttendanceManagement() {
         <CardHeader>
           <CardTitle>Danh sách chấm công ({filteredAttendances.length})</CardTitle>
           <CardDescription>
-            {error || !apiData?.data || apiData.data.length === 0
+            {error || !apiData?.items || apiData.items.length === 0
               ? "Đang sử dụng dữ liệu mẫu (mock data)"
               : "Dữ liệu từ API"}
           </CardDescription>
@@ -546,12 +549,12 @@ export default function AttendanceManagement() {
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">{attendance.employeeRole}</TableCell>
-                      <TableCell>{format(new Date(attendance.date), "dd/MM/yyyy")}</TableCell>
-                      <TableCell>{attendance.checkInTime || "-"}</TableCell>
-                      <TableCell>{attendance.checkOutTime || "-"}</TableCell>
+                      <TableCell>{attendance.workDate==null?"":format(new Date(attendance.workDate), "dd/MM/yyyy")}</TableCell>
+                      <TableCell>{attendance.checkIn || "-"}</TableCell>
+                      <TableCell>{attendance.checkOut || "-"}</TableCell>
                       <TableCell>{attendance.workingHours ? `${attendance.workingHours.toFixed(1)}h` : "-"}</TableCell>
                       <TableCell>
-                        <StatusBadge status={attendance.status} />
+                        {/* <StatusBadge status={attendance.status} /> */}
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
                         {attendance.notes || "-"}
@@ -618,8 +621,8 @@ export default function AttendanceManagement() {
               <Input
                 id="date"
                 type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                value={formData.workDate}
+                onChange={(e) => setFormData({ ...formData, workDate: e.target.value })}
               />
             </div>
 
@@ -633,11 +636,9 @@ export default function AttendanceManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Present">Có mặt</SelectItem>
-                  <SelectItem value="Absent">Vắng mặt</SelectItem>
-                  <SelectItem value="Late">Đến muộn</SelectItem>
-                  <SelectItem value="OnLeave">Nghỉ phép</SelectItem>
-                  <SelectItem value="HalfDay">Nửa ngày</SelectItem>
+                  <SelectItem value="0">Có mặt</SelectItem>
+                  <SelectItem value="1">Vắng mặt</SelectItem>
+                  <SelectItem value="2">Đến muộn</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -650,8 +651,11 @@ export default function AttendanceManagement() {
                     <Input
                       id="checkInTime"
                       type="time"
-                      value={formData.checkInTime}
-                      onChange={(e) => setFormData({ ...formData, checkInTime: e.target.value })}
+                      value={formData.checkIn}
+                      onChange={(e) => {
+                        console.log("formData", formData)
+                        setFormData({ ...formData, checkIn: e.target.value })
+                      }}
                     />
                   </div>
 
@@ -660,8 +664,8 @@ export default function AttendanceManagement() {
                     <Input
                       id="checkOutTime"
                       type="time"
-                      value={formData.checkOutTime}
-                      onChange={(e) => setFormData({ ...formData, checkOutTime: e.target.value })}
+                      value={formData.checkOut}
+                      onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
                     />
                   </div>
                 </div>

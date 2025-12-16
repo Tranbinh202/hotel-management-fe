@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useBookingManagement, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
 import { bookingManagementApi } from "@/lib/api/bookings"
@@ -11,6 +11,7 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { BookingListItem } from "@/lib/types/api"
 import { BookingDetailModal } from "@/components/booking-detail-modal"
+import { CheckoutModal } from "@/components/features/checkout/checkout-modal"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -25,13 +26,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export default function ReceptionistBookingsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false)
+  const [checkoutBookingId, setCheckoutBookingId] = useState<number | null>(null)
   const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
@@ -45,8 +57,8 @@ export default function ReceptionistBookingsPage() {
     customerName: searchQuery.includes("@") ? "" : searchQuery,
     phoneNumber: searchQuery.match(/^\d+$/) ? searchQuery : "",
     email: searchQuery.includes("@") ? searchQuery : "",
-    pageNumber: 1,
-    pageSize: 50,
+    pageNumber: currentPage,
+    pageSize: 10,
     sortBy: "CheckInDate",
     isDescending: false,
   }
@@ -56,7 +68,14 @@ export default function ReceptionistBookingsPage() {
 
   const { data: bookingDetailData, isLoading: isLoadingDetail } = useBookingManagementDetail(selectedBookingId || 0)
 
-  const bookingsData = bookings?.pages?.flatMap((page) => page.data.items) || []
+  const bookingsData = (bookings?.pages?.[0] as any)?.data?.items || []
+  const totalPages = (bookings?.pages?.[0] as any)?.data?.totalPages || 1
+  const totalCount = (bookings?.pages?.[0] as any)?.data?.totalCount || 0
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
 
   const getStatusColor = (statusName: string) => {
     const colors: Record<string, string> = {
@@ -172,23 +191,16 @@ export default function ReceptionistBookingsPage() {
     }
   }
 
-  const handleCheckOut = async (bookingId: number) => {
-    if (!confirm("Xác nhận khách đã check-out?")) return
+  const handleCheckOut = (bookingId: number) => {
+    setCheckoutBookingId(bookingId)
+    setCheckoutModalOpen(true)
+  }
 
-    try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedOut", note: "Check-out tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-out",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể check-out",
-        variant: "destructive",
-      })
-    }
+  const handleCheckoutSuccess = () => {
+    refetch()
+    setCheckoutBookingId(null)
+    setDetailModalOpen(false) // Close detail modal after checkout
+    setCurrentPage(1) // Reset to first page
   }
 
   const handleSubmitStatus = async () => {
@@ -315,7 +327,7 @@ export default function ReceptionistBookingsPage() {
                     {/* Booking ID & Status */}
                     <div className="flex items-center gap-2 min-w-[100px]">
                       <span className="text-lg font-bold text-slate-900">#{booking.bookingId}</span>
-                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatusName)}`} />
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatusName || "")}`} />
                     </div>
 
                     {/* Customer Info */}
@@ -399,7 +411,7 @@ export default function ReceptionistBookingsPage() {
 
                           {/* Only show actions for non-cancelled and non-checked-out bookings */}
                           {booking.paymentStatusName !== "Cancelled" &&
-                            !booking.depositStatus?.includes("CheckedOut") && (
+                            booking.paymentStatusName !== "CheckedOut" && (
                               <>
                                 <DropdownMenuSeparator />
 
@@ -417,23 +429,22 @@ export default function ReceptionistBookingsPage() {
                                   </DropdownMenuItem>
                                 )}
 
-                                {/* Check-in - for paid bookings */}
-                                {booking.paymentStatusName === "Confirmed" &&
-                                  !booking.depositStatus?.includes("CheckedIn") && (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleCheckIn(booking.bookingId)
-                                      }}
-                                      className="text-blue-600 focus:text-blue-600"
-                                    >
-                                      <LogIn className="mr-2 h-4 w-4" />
-                                      Check-in
-                                    </DropdownMenuItem>
-                                  )}
+                                {/* Check-in - for confirmed bookings */}
+                                {booking.paymentStatusName === "Confirmed" && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleCheckIn(booking.bookingId)
+                                    }}
+                                    className="text-blue-600 focus:text-blue-600"
+                                  >
+                                    <LogIn className="mr-2 h-4 w-4" />
+                                    Check-in
+                                  </DropdownMenuItem>
+                                )}
 
                                 {/* Check-out - for checked-in bookings */}
-                                {booking.depositStatus?.includes("CheckedIn") && (
+                                {booking.paymentStatusName === "CheckedIn" && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -447,21 +458,23 @@ export default function ReceptionistBookingsPage() {
                                 )}
 
                                 {/* Cancel - only for bookings that haven't checked in yet */}
-                                {!booking.depositStatus?.includes("CheckedIn") && booking.paymentStatusName !== "Confirmed" && booking.paymentStatusName !== "Paid" && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleCancelBooking(booking)
-                                      }}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <XCircle className="mr-2 h-4 w-4" />
-                                      Hủy booking
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                {booking.paymentStatusName !== "CheckedIn" &&
+                                  booking.paymentStatusName !== "Confirmed" &&
+                                  booking.paymentStatusName !== "Paid" && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleCancelBooking(booking)
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Hủy booking
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                               </>
                             )}
                         </DropdownMenuContent>
@@ -475,12 +488,73 @@ export default function ReceptionistBookingsPage() {
         </div>
       </div>
 
+      {/* Pagination */}
+      {!isLoading && bookingsData.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="text-sm text-slate-600">
+            Trang {currentPage} / {totalPages} · Tổng {totalCount} booking(s)
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+
+              {(() => {
+                // Calculate page range to display
+                const maxPagesToShow = 5
+                let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2))
+                let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1)
+
+                // Adjust if we're near the end
+                if (endPage - startPage < maxPagesToShow - 1) {
+                  startPage = Math.max(1, endPage - maxPagesToShow + 1)
+                }
+
+                return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                  const pageNum = startPage + i
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(pageNum)}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                })
+              })()}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
+
       {/* Booking Detail Modal */}
       <BookingDetailModal
         open={detailModalOpen}
         onOpenChange={setDetailModalOpen}
         booking={bookingDetailData?.data || null}
         isLoading={isLoadingDetail}
+      />
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        bookingId={checkoutBookingId}
+        open={checkoutModalOpen}
+        onOpenChange={setCheckoutModalOpen}
+        onSuccess={handleCheckoutSuccess}
       />
 
       {/* Update Status Dialog */}

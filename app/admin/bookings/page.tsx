@@ -11,6 +11,7 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { BookingListItem } from "@/lib/types/api"
 import { BookingDetailModal } from "@/components/booking-detail-modal"
+import { CheckoutModal } from "@/components/features/checkout/checkout-modal"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -32,6 +33,8 @@ export default function AdminBookingsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false)
+  const [checkoutBookingId, setCheckoutBookingId] = useState<number | null>(null)
   const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
@@ -172,23 +175,14 @@ export default function AdminBookingsPage() {
     }
   }
 
-  const handleCheckOut = async (bookingId: number) => {
-    if (!confirm("Xác nhận khách đã check-out?")) return
+  const handleCheckOut = (bookingId: number) => {
+    setCheckoutBookingId(bookingId)
+    setCheckoutModalOpen(true)
+  }
 
-    try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedOut", note: "Check-out tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-out",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể check-out",
-        variant: "destructive",
-      })
-    }
+  const handleCheckoutSuccess = () => {
+    refetch()
+    setCheckoutBookingId(null)
   }
 
   const handleSubmitStatus = async () => {
@@ -420,7 +414,10 @@ export default function AdminBookingsPage() {
                                     </DropdownMenuItem>
                                   )}
 
-                                {booking.depositStatus?.includes("CheckedIn") && (
+                                {(booking.bookingStatusCode?.includes("CheckedIn") ||
+                                  booking.depositStatus?.includes("CheckedIn") ||
+                                  booking.paymentStatus === "Đã nhận phòng" ||
+                                  booking.paymentStatusName?.includes("CheckedIn")) && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation()

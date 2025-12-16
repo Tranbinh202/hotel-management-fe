@@ -2,6 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { format } from "date-fns"
@@ -10,21 +11,34 @@ import type { BookingManagementDetails, CustomerSearchResult } from "@/lib/types
 import { useEffect, useState } from "react"
 import { bookingManagementApi } from "@/lib/api/bookings"
 import { QRCodeSVG } from "qrcode.react"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, LogOut } from "lucide-react"
 import { offlineBookingsApi } from "@/lib/api/offline-bookings"
+import { CheckoutModal } from "@/components/features/checkout/checkout-modal"
 
 interface BookingDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   booking: BookingManagementDetails | null
   isLoading?: boolean
+  onCheckoutSuccess?: () => void
 }
 
-export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: BookingDetailModalProps) {
+export function BookingDetailModal({ open, onOpenChange, booking, isLoading, onCheckoutSuccess }: BookingDetailModalProps) {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const [isLoadingPayment, setIsLoadingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [enrichedCustomer, setEnrichedCustomer] = useState<CustomerSearchResult | null>(null)
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false)
+
+  const handleCheckoutClick = () => {
+    setCheckoutModalOpen(true)
+  }
+
+  const handleCheckoutSuccess = () => {
+    setCheckoutModalOpen(false)
+    onOpenChange(false)
+    onCheckoutSuccess?.()
+  }
 
   const paidAmount = booking?.paidAmount ?? 0
   const remainingAmount =
@@ -171,6 +185,19 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
     )
   }
 
+  // Check both English codes and Vietnamese display text to determine if checked-in
+  // - bookingStatusCode (from preview/detail API): "CheckedIn"
+  // - paymentStatusName (from booking list API): "CheckedIn"  
+  // - bookingStatus (Vietnamese display): "Đã nhận phòng"
+  // - paymentStatus (Vietnamese display in modal): "Đã nhận phòng"
+  console.log("Booking Status Code:", booking)
+  const isCheckedIn = Boolean(
+    (booking?.bookingStatusCode && booking.bookingStatusCode.includes("CheckedIn")) ||
+    (booking?.paymentStatusName && booking.paymentStatusName === "CheckedIn") ||
+    (booking?.bookingStatus && booking.bookingStatus === "Đã nhận phòng") ||
+    (booking?.paymentStatus && booking.paymentStatus === "Đã nhận phòng")
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="min-w-5xl max-h-[90vh] p-0">
@@ -283,13 +310,13 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                                 <div>
                                   <p className="text-slate-500">Giá/đêm</p>
                                   <p className="font-medium text-slate-900">
-                            {new Intl.NumberFormat("vi-VN").format(room.pricePerNight)}đ
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-slate-500">Số đêm</p>
-                          <p className="font-medium text-slate-900">{room.numberOfNights ?? nights}</p>
-                        </div>
+                                    {new Intl.NumberFormat("vi-VN").format(room.pricePerNight)}đ
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-slate-500">Số đêm</p>
+                                  <p className="font-medium text-slate-900">{room.numberOfNights ?? nights}</p>
+                                </div>
                                 <div>
                                   <p className="text-slate-500">Sức chứa</p>
                                   <p className="font-medium text-slate-900">{room.maxOccupancy} người</p>
@@ -384,25 +411,38 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Đã thanh toán</span>
-                    <span className="font-medium text-green-600">
-                      {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                        paidAmount,
+                        <span className="text-slate-600">Đã thanh toán</span>
+                        <span className="font-medium text-green-600">
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                            paidAmount,
+                          )}
+                        </span>
+                      </div>
+                      {remainingAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Còn lại</span>
+                          <span className="font-medium text-red-600">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                              remainingAmount,
+                            )}
+                          </span>
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </div>
-                  {remainingAmount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Còn lại</span>
-                      <span className="font-medium text-red-600">
-                        {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                          remainingAmount,
-                        )}
-                      </span>
+
+                  {/* Show checkout button when checked in - prefer `bookingStatusCode` logic field */}
+                  {isCheckedIn && (
+                    <div>
+                      <Button
+                        onClick={handleCheckoutClick}
+                        className="w-full bg-gradient-to-r from-[#8C68E6] to-[#7552cc] hover:from-[#7552cc] hover:to-[#6444b8] text-white"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Checkout & Thanh toán
+                      </Button>
                     </div>
                   )}
-                </div>
-                  </div>
 
                   {hasRemainingAmount ? (
                     <div>
@@ -422,14 +462,14 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                             <div className="bg-white p-4 rounded-lg mb-3 shadow-sm">
                               <QRCodeSVG value={paymentUrl} size={180} level="H" includeMargin />
                             </div>
-                          <p className="text-xs text-slate-600 text-center mb-2">Quét mã QR để thanh toán</p>
-                          <p className="text-sm font-semibold text-[#8C68E6] text-center">
-                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                              remainingAmount,
-                            )}
-                          </p>
-                          <a
-                            href={paymentUrl}
+                            <p className="text-xs text-slate-600 text-center mb-2">Quét mã QR để thanh toán</p>
+                            <p className="text-sm font-semibold text-[#8C68E6] text-center">
+                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                                remainingAmount,
+                              )}
+                            </p>
+                            <a
+                              href={paymentUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="mt-3 text-xs text-[#8C68E6] hover:text-[#7552cc] underline"
@@ -525,6 +565,13 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <CheckoutModal
+        bookingId={booking?.bookingId ?? null}
+        open={checkoutModalOpen}
+        onOpenChange={setCheckoutModalOpen}
+        onSuccess={handleCheckoutSuccess}
+      />
     </Dialog>
   )
 }

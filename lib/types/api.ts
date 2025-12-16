@@ -1268,11 +1268,23 @@ export interface Attendance {
   checkIn?: string // HH:mm:ss format
   checkOut?: string // HH:mm:ss format
   status: AttendanceStatus
+  // Approval state: can be numeric code ("0"|"1"|"2") or string label
+  isApproved?: string | number
   workingHours?: number
+  overtimeHours?: number
   notes?: string
   createdAt?: string
   updatedAt?: string
 }
+
+export interface AttendanceStatic {
+  attendance: number
+  attend: number
+  absentWithLeave: number
+  absentWithoutLeave: number
+}
+
+
 
 export interface CreateAttendanceDto {
   employeeId: number
@@ -1280,6 +1292,7 @@ export interface CreateAttendanceDto {
   checkInTime?: string
   checkOutTime?: string
   status: AttendanceStatus
+  isApproved?: string | number
   notes?: string
 }
 
@@ -1290,6 +1303,7 @@ export interface UpdateAttendanceDto {
   checkInTime?: string
   checkOutTime?: string
   status?: AttendanceStatus
+  isApproved?: string | number
   notes?: string
 }
 

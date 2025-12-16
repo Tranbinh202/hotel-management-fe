@@ -6,12 +6,20 @@ import type {
   CreateAttendanceDto,
   UpdateAttendanceDto,
   AttendanceSearchParams,
+  AttendanceStatic,
 } from "@/lib/types/api"
 
 export const attendanceApi = {
   // Get attendance records with filters
   getAttendances: async (params: AttendanceSearchParams = {}): Promise<PaginatedResponse<Attendance>> => {
     const response = await apiClient.get<ApiResponse<PaginatedResponse<Attendance>>>("/Attendance", { params })
+    console.log("Fetched attendances:", response.data)
+    return response.data
+  },
+
+  //get static info
+  getAttendancesStatic: async (params: AttendanceSearchParams = {}): Promise<AttendanceStatic> => {
+    const response = await apiClient.get<ApiResponse<AttendanceStatic>>("/Attendance/static-info", { params })
     console.log("Fetched attendances:", response.data)
     return response.data
   },

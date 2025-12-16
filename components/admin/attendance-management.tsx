@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { useAttendances, useCreateAttendance, useUpdateAttendance, useDeleteAttendance } from "@/lib/hooks/use-attendance"
+import { useState, useMemo, useEffect } from "react"
+import { useAttendances, useCreateAttendance, useUpdateAttendance, useDeleteAttendance, useAttendanceStatic } from "@/lib/hooks/use-attendance"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -32,6 +32,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Pencil, Trash2, Plus, Calendar, Users, CheckCircle2, XCircle, Clock, UserX, UserCheck } from "lucide-react"
 import type { Attendance, AttendanceStatus, CreateAttendanceDto, UpdateAttendanceDto, Employee, AttendanceRecord } from "@/lib/types/api"
 import { format, subDays } from "date-fns"
+import { el } from "date-fns/locale"
 
 // Mock employees for fallback data
 const MOCK_EMPLOYEES: Employee[] = [
@@ -220,22 +221,69 @@ const generateMockAttendances = (): Attendance[] => {
 const MOCK_ATTENDANCES = generateMockAttendances()
 
 // Status badge component
-const StatusBadge = ({ status }: { status: AttendanceStatus }) => {
-  const config = {
-    Present: { label: "Có mặt", className: "bg-green-100 text-green-700 border-green-300" },
-    Absent: { label: "Vắng mặt", className: "bg-red-100 text-red-700 border-red-300" },
-    Late: { label: "Đến muộn", className: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-    OnLeave: { label: "Nghỉ phép", className: "bg-blue-100 text-blue-700 border-blue-300" },
-    HalfDay: { label: "Nửa ngày", className: "bg-purple-100 text-purple-700 border-purple-300" },
+const StatusBadge = ({ status }: { status: string }) => {
+  // Accept either numeric code strings ("0","1","2") or AttendanceStatus strings
+  let code = status
+
+  let label = ""
+  let className = ""
+
+  if (code === "Attended") {
+    label = "Có mặt"
+    className = "bg-green-100 text-green-800 border-green-200"
+  } else if (code === "AbsentWithoutLeave") {
+    label = "Vắng mặt"
+    className = "bg-red-100 text-red-800 border-red-200"
+  } else if (code === "AbsentWithLeave") {
+    label = "Nghỉ phép"
+    className = "bg-blue-100 text-blue-800 border-blue-200"
   }
 
-  const { label, className } = config[status]
-
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+    <span title={label} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${className}`}>
       {label}
     </span>
   )
+}
+
+// Approval badge component
+const ApprovalBadge = ({ value }: { value: any }) => {
+  // Accept numeric codes or string labels
+  let code = value
+
+  let label = ""
+  let className = ""
+  if (code === "Approved") {
+    label = "Phê duyệt"
+    className = "bg-green-100 text-green-800 border-green-200"
+  } else if (code === "Pending") {
+    label = "Đang chờ"
+    className = "bg-yellow-100 text-yellow-800 border-yellow-200"
+  } else if (code === "Aborted") {
+    label = "Hủy"
+    className = "bg-red-100 text-red-800 border-red-200"
+  }
+
+  return (
+    <span title={label} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+      {label}
+    </span>
+  )
+}
+
+function calcWorkingHours(start, end) {
+  if(!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+
+  const diffMinutes = endMinutes - startMinutes;
+
+  if (diffMinutes < 0) return 0; // hoặc throw error nếu muốn
+
+  return diffMinutes / 60; // trả về số giờ (float)
 }
 
 export default function AttendanceManagement() {
@@ -244,50 +292,71 @@ export default function AttendanceManagement() {
   const [searchName, setSearchName] = useState("")
   const [filterStatus, setFilterStatus] = useState<AttendanceStatus | "all">("all")
   const [filterDate, setFilterDate] = useState("")
+  // Pagination (server-side load more)
+  const [pageIndex, setPageIndex] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [items, setItems] = useState<Attendance[]>([])
 
-  // Fetch attendances from API
-  const { data: apiData, isLoading, error } = useAttendances({})
+  const { data: attendanceStaticData, isLoading: isStaticLoading } = useAttendanceStatic()
   const createMutation = useCreateAttendance()
   const updateMutation = useUpdateAttendance()
   const deleteMutation = useDeleteAttendance()
 
-  // Use mock data if API fails or returns no data
-  const attendances = useMemo(() => {
-    if (error || !apiData?.items || apiData.items.length === 0) {
-      return MOCK_ATTENDANCES
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPageIndex(1)
+    setItems([])
+  }, [searchName, filterStatus, filterDate, pageSize])
+
+  // Build API params
+  const apiParams: any = {
+    pageIndex,
+    pageSize,
+  }
+  if (filterStatus && filterStatus !== "all") {
+    const statusMap: Record<string, AttendanceStatus> = {
+      "0": "Present",
+      "1": "Absent",
+      "2": "OnLeave",
     }
-    return apiData.items
-  }, [apiData, error])
+    apiParams.status = (statusMap as any)[filterStatus] ?? filterStatus
+  }
+  if (searchName && searchName.trim() !== "") apiParams.search = searchName.trim()
+  if (filterDate) {
+    apiParams.workDate = filterDate
+  }
 
-  // Filter attendances
-  const filteredAttendances = useMemo(() => {
-    console.log("filterDate:", filterDate)
-    console.log("attendances:", attendances)
-    return attendances.filter((attendance) => {
-      const nameMatch = searchName === "" ||
-        attendance.employeeName.toLowerCase().includes(searchName.toLowerCase())
+  // Fetch one page from server
+  const { data: pagedData, isLoading, error, isFetching } = useAttendances(apiParams)
 
-      const statusMatch = filterStatus === "all" || attendance.status === filterStatus
+  // Append fetched page to items
+  useEffect(() => {
+    if (!pagedData) return
+    if (!pagedData.items || pagedData.items.length === 0) return
 
-      const dateMatch = filterDate === "" || format(new Date(attendance.workDate), "yyyy-MM-dd") === filterDate
-
-      return nameMatch && statusMatch && dateMatch
+    setItems((prev) => {
+      // If pageIndex is 1, replace; otherwise append
+      if (pageIndex === 1) return pagedData.items
+      // Avoid duplicates by attendanceId
+      const existingIds = new Set(prev.map((i) => i.attendanceId))
+      const newItems = pagedData.items.filter((i) => !existingIds.has(i.attendanceId))
+      return [...prev, ...newItems]
     })
-  }, [attendances, searchName, filterStatus, filterDate])
+  }, [pagedData, pageIndex])
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const today = format(new Date(), "yyyy-MM-dd")
-    const todayAttendances = attendances.filter((a) => a.date === today)
+  const totalItems = pagedData?.totalCount ?? items.length
+  const totalPages = pagedData?.totalPages ?? Math.max(1, Math.ceil(items.length / pageSize))
 
-    return {
-      total: todayAttendances.length,
-      present: todayAttendances.filter((a) => a.status === "Present").length,
-      late: todayAttendances.filter((a) => a.status === "Late").length,
-      absent: todayAttendances.filter((a) => a.status === "Absent").length,
-      onLeave: todayAttendances.filter((a) => a.status === "OnLeave").length,
-    }
-  }, [attendances])
+  // Client-side filtering for searchName only (server filters applied for status/date)
+  const filteredAttendances = useMemo(() => {
+    const source = items.length > 0 ? items : ((error || !pagedData) ? MOCK_ATTENDANCES : [])
+    return source.filter((attendance) => {
+      const nameMatch = searchName === "" || attendance.employeeName.toLowerCase().includes(searchName.toLowerCase())
+      return nameMatch
+    })
+  }, [items, searchName, error, pagedData])
+
+  
 
   // Form state
   const [formData, setFormData] = useState({
@@ -296,22 +365,24 @@ export default function AttendanceManagement() {
     checkIn: "08:00",
     checkOut: "17:30",
     status: "Present" as AttendanceStatus,
+    isApproved: "1",
     workingHours: 8,
     notes: "",
   })
 
   const handleOpenDialog = (attendance?: Attendance) => {
     if (attendance) {
-      console.log("editing attendance:", attendance )
+      console.log("editing attendance:", attendance)
       setEditingAttendance(attendance)
       setFormData({
         employeeId: attendance.employeeId,
-        workDate: attendance.workDate!=null?format(new Date(attendance.workDate), "yyyy-MM-dd"):format(new Date(), "yyyy-MM-dd"),
+        workDate: attendance.workDate != null ? format(new Date(attendance.workDate), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
         checkIn: attendance.checkIn || "08:00",
         checkOut: attendance.checkOut || "17:30",
         status: attendance.status,
         workingHours: attendance.workingHours || 0,
         notes: attendance.notes || "",
+        isApproved: (attendance as any).isApproved ?? (attendance as any).IsApproved ?? "1",
       })
     } else {
       setEditingAttendance(null)
@@ -321,6 +392,7 @@ export default function AttendanceManagement() {
         checkIn: "08:00",
         checkOut: "17:30",
         status: "Present",
+        isApproved: "1",
         workingHours: 8,
         notes: "",
       })
@@ -342,6 +414,7 @@ export default function AttendanceManagement() {
         checkIn: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkIn,
         checkOut: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOut,
         status: formData.status,
+        isApproved: formData.isApproved,
         workingHours: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.workingHours,
         notes: formData.notes,
       }
@@ -355,6 +428,7 @@ export default function AttendanceManagement() {
         checkIn: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkIn,
         checkOut: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.checkOut,
         status: formData.status,
+        isApproved: formData.isApproved,
         workingHours: formData.status === "Absent" || formData.status === "OnLeave" ? undefined : formData.workingHours,
         notes: formData.notes,
       }
@@ -392,7 +466,7 @@ export default function AttendanceManagement() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{attendanceStaticData?.attendance}</div>
             <p className="text-xs text-muted-foreground">Hôm nay</p>
           </CardContent>
         </Card>
@@ -403,18 +477,7 @@ export default function AttendanceManagement() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.present}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Đến muộn</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.late}</div>
+            <div className="text-2xl font-bold text-green-600">{attendanceStaticData?.attend}</div>
             <p className="text-xs text-muted-foreground">Nhân viên</p>
           </CardContent>
         </Card>
@@ -425,7 +488,7 @@ export default function AttendanceManagement() {
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.absent}</div>
+            <div className="text-2xl font-bold text-red-600">{attendanceStaticData?.absentWithoutLeave}</div>
             <p className="text-xs text-muted-foreground">Nhân viên</p>
           </CardContent>
         </Card>
@@ -436,7 +499,7 @@ export default function AttendanceManagement() {
             <UserCheck className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.onLeave}</div>
+            <div className="text-2xl font-bold text-blue-600">{attendanceStaticData?.absentWithLeave}</div>
             <p className="text-xs text-muted-foreground">Nhân viên</p>
           </CardContent>
         </Card>
@@ -468,11 +531,9 @@ export default function AttendanceManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="Present">Có mặt</SelectItem>
-                  <SelectItem value="Absent">Vắng mặt</SelectItem>
-                  <SelectItem value="Late">Đến muộn</SelectItem>
-                  <SelectItem value="OnLeave">Nghỉ phép</SelectItem>
-                  <SelectItem value="HalfDay">Nửa ngày</SelectItem>
+                  <SelectItem value="Attended">Có mặt</SelectItem>
+                  <SelectItem value="AbsentWithoutLeave">Vắng mặt</SelectItem>
+                  <SelectItem value="AbsentWithLeave">Nghỉ phép</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -492,10 +553,10 @@ export default function AttendanceManagement() {
 
       {/* Attendance Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Danh sách chấm công ({filteredAttendances.length})</CardTitle>
+          <CardHeader>
+          <CardTitle>Danh sách chấm công ({pagedData?.totalCount ?? filteredAttendances.length})</CardTitle>
           <CardDescription>
-            {error || !apiData?.items || apiData.items.length === 0
+            {error || (!pagedData?.items && items.length === 0)
               ? "Đang sử dụng dữ liệu mẫu (mock data)"
               : "Dữ liệu từ API"}
           </CardDescription>
@@ -506,12 +567,14 @@ export default function AttendanceManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nhân viên</TableHead>
-                  <TableHead>Chức vụ</TableHead>
+                  {/* <TableHead>Chức vụ</TableHead> */}
                   <TableHead>Ngày</TableHead>
                   <TableHead>Giờ vào</TableHead>
                   <TableHead>Giờ ra</TableHead>
                   <TableHead>Giờ làm</TableHead>
+                  <TableHead>Giờ OT</TableHead>
                   <TableHead>Trạng thái</TableHead>
+                  <TableHead>Trạng thái phê duyệt</TableHead>
                   <TableHead>Ghi chú</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
@@ -548,13 +611,17 @@ export default function AttendanceManagement() {
                           <span className="font-medium">{attendance.employeeName}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{attendance.employeeRole}</TableCell>
-                      <TableCell>{attendance.workDate==null?"":format(new Date(attendance.workDate), "dd/MM/yyyy")}</TableCell>
+                      {/* <TableCell className="text-muted-foreground">{attendance.employeeRole}</TableCell> */}
+                      <TableCell>{attendance.workDate == null ? "" : format(new Date(attendance.workDate), "dd/MM/yyyy")}</TableCell>
                       <TableCell>{attendance.checkIn || "-"}</TableCell>
                       <TableCell>{attendance.checkOut || "-"}</TableCell>
-                      <TableCell>{attendance.workingHours ? `${attendance.workingHours.toFixed(1)}h` : "-"}</TableCell>
+                      <TableCell>{calcWorkingHours(attendance.checkIn, attendance.checkOut)}</TableCell>
+                      <TableCell>{attendance.overtimeHours}</TableCell>
                       <TableCell>
-                        {/* <StatusBadge status={attendance.status} /> */}
+                        <StatusBadge status={attendance.status} />
+                      </TableCell>
+                      <TableCell>
+                        <ApprovalBadge value={(attendance as any).isApproved ?? (attendance as any).IsApproved} />
                       </TableCell>
                       <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
                         {attendance.notes || "-"}
@@ -568,13 +635,13 @@ export default function AttendanceManagement() {
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
+                          {/* <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(attendance.attendanceId)}
                           >
                             <Trash2 className="h-4 w-4 text-red-600" />
-                          </Button>
+                          </Button> */}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -582,6 +649,33 @@ export default function AttendanceManagement() {
                 )}
               </TableBody>
             </Table>
+          </div>
+          {/* Load more */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Hiển thị {items.length === 0 ? 0 : 1} - {items.length} của {totalItems}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div>
+                {pageIndex < totalPages ? (
+                  <Button size="sm" onClick={() => setPageIndex((p) => p + 1)} disabled={isFetching}>
+                    {isFetching ? "Đang tải..." : "Xem thêm"}
+                  </Button>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Đã hết dữ liệu</div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">Hiển thị</label>
+                <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value))} className="border rounded p-1 text-sm">
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                </select>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -636,9 +730,26 @@ export default function AttendanceManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Có mặt</SelectItem>
-                  <SelectItem value="1">Vắng mặt</SelectItem>
-                  <SelectItem value="2">Đến muộn</SelectItem>
+                  <SelectItem value="Attended">Có mặt</SelectItem>
+                  <SelectItem value="AbsentWithoutLeave">Vắng mặt</SelectItem>
+                  <SelectItem value="AbsentWithLeave">Nghỉ phép</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="isApproved">Trạng thái phê duyệt</Label>
+              <Select
+                value={formData.isApproved?.toString()}
+                onValueChange={(value) => setFormData({ ...formData, isApproved: value })}
+              >
+                <SelectTrigger id="isApproved">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Approved">Phê duyệt</SelectItem>
+                  <SelectItem value="Pending">Đang chờ</SelectItem>
+                  <SelectItem value="Aborted">Hủy</SelectItem>
                 </SelectContent>
               </Select>
             </div>

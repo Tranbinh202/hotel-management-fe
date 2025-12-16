@@ -25,6 +25,14 @@ export function useAttendance(id: number) {
   })
 }
 
+//getStaticInfo
+export function useAttendanceStatic() {
+  return useQuery({
+    queryKey: ["attendanceStatic"],
+    queryFn: () => attendanceApi.getAttendancesStatic(),
+  })
+}
+
 // Create attendance
 export function useCreateAttendance() {
   const queryClient = useQueryClient()

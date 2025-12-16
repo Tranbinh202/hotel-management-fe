@@ -47,4 +47,11 @@ export const attendanceApi = {
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/Attendance/${id}`)
   },
+  // Upload attendances from a TXT file
+  uploadAttendancesTxt: async (formData: FormData): Promise<any> => {
+    const response = await apiClient.post<ApiResponse<any>>(`/Attendance/UploadAttendancesTxt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
 }

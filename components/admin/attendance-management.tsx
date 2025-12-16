@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useAttendances, useCreateAttendance, useUpdateAttendance, useDeleteAttendance, useAttendanceStatic } from "@/lib/hooks/use-attendance"
+import { toast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -301,6 +303,40 @@ export default function AttendanceManagement() {
   const createMutation = useCreateAttendance()
   const updateMutation = useUpdateAttendance()
   const deleteMutation = useDeleteAttendance()
+  const queryClient = useQueryClient()
+
+  // Upload file state
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null
+    setUploadFile(f)
+  }
+
+  const handleUpload = async () => {
+    if (!uploadFile) {
+      toast({ title: "Lỗi", description: "Vui lòng chọn file txt", variant: "destructive" })
+      return
+    }
+    try {
+      const form = new FormData()
+      form.append("file", uploadFile)
+      // import attendanceApi dynamically to avoid circular imports
+      const { attendanceApi } = await import("@/lib/api/attendance")
+      await attendanceApi.uploadAttendancesTxt(form)
+      toast({ title: "Thành công", description: "Đã upload file chấm công" })
+      // refresh list
+      queryClient.invalidateQueries({ queryKey: ["attendances"] })
+      setItems([])
+      setPageIndex(1)
+      setUploadFile(null)
+      setUploadDialogOpen(false)
+      // reset file input UI (if needed) — handled by value on input since uncontrolled here
+    } catch (err: any) {
+      toast({ title: "Lỗi", description: err?.message || "Không thể upload file", variant: "destructive" })
+    }
+  }
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -452,10 +488,15 @@ export default function AttendanceManagement() {
           <h1 className="text-3xl font-bold tracking-tight">Quản lý chấm công</h1>
           <p className="text-muted-foreground">Theo dõi và quản lý chấm công nhân viên</p>
         </div>
-        <Button onClick={() => handleOpenDialog()}>
-          <Plus className="mr-2 h-4 w-4" />
-          Thêm bản ghi
-        </Button>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={() => setUploadDialogOpen(true)}>
+                Upload TXT
+              </Button>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Thêm bản ghi
+              </Button>
+            </div>
       </div>
 
       {/* Statistics Cards */}
@@ -814,6 +855,40 @@ export default function AttendanceManagement() {
             <Button onClick={handleSubmit} disabled={formData.employeeId === 0}>
               {editingAttendance ? "Cập nhật" : "Tạo mới"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload TXT Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload file TXT chấm công</DialogTitle>
+            <DialogDescription>Thả file .txt vào ô bên dưới hoặc chọn file để upload.</DialogDescription>
+          </DialogHeader>
+
+          <div>
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                const f = e.dataTransfer?.files?.[0] ?? null
+                if (f) setUploadFile(f)
+              }}
+              className="border-dashed border-2 border-gray-300 rounded p-6 text-center cursor-pointer"
+            >
+              <p className="text-sm text-muted-foreground">Kéo thả file .txt vào đây</p>
+              <p className="text-xs text-muted-foreground mt-2">{uploadFile ? uploadFile.name : "Chưa có file"}</p>
+              <div className="mt-3">
+                <input id="upload-file-input" type="file" accept=".txt" onChange={handleFileChange} className="hidden" />
+                <label htmlFor="upload-file-input" className="underline text-sm cursor-pointer">Chọn file</label>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>Hủy</Button>
+            <Button onClick={handleUpload} disabled={!uploadFile}>{isFetching ? "Đang tải..." : "Gửi lên"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

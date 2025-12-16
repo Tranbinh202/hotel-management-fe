@@ -11,7 +11,6 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { BookingListItem } from "@/lib/types/api"
 import { BookingDetailModal } from "@/components/booking-detail-modal"
-import { CheckoutModal } from "@/components/features/checkout/checkout-modal"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -42,7 +41,6 @@ export default function ReceptionistBookingsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false)
   const [checkoutBookingId, setCheckoutBookingId] = useState<number | null>(null)
   const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
@@ -76,6 +74,23 @@ export default function ReceptionistBookingsPage() {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
+
+  // Listen for checkout success from child window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'CHECKOUT_SUCCESS') {
+        // Refresh bookings data
+        refetch()
+        toast({
+          title: "Checkout thành công",
+          description: `Booking #${event.data.bookingId} đã được checkout`,
+        })
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [refetch, toast])
 
   const getStatusColor = (statusName: string) => {
     const colors: Record<string, string> = {
@@ -176,31 +191,30 @@ export default function ReceptionistBookingsPage() {
     if (!confirm("Xác nhận khách đã check-in?")) return
 
     try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedIn", note: "Check-in tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-in",
-      })
+      const result = await bookingManagementApi.checkInBooking(bookingId)
+
+      if (result.isSuccess) {
+        refetch()
+        toast({
+          title: "Thành công",
+          description: result.data
+            ? `${result.message}\nPhòng: ${result.data.roomNumbers.join(", ")}`
+            : result.message,
+        })
+      } else {
+        toast({
+          title: "Lỗi",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể check-in",
+        description: error.response?.data?.message || error.message || "Không thể check-in",
         variant: "destructive",
       })
     }
-  }
-
-  const handleCheckOut = (bookingId: number) => {
-    setCheckoutBookingId(bookingId)
-    setCheckoutModalOpen(true)
-  }
-
-  const handleCheckoutSuccess = () => {
-    refetch()
-    setCheckoutBookingId(null)
-    setDetailModalOpen(false) // Close detail modal after checkout
-    setCurrentPage(1) // Reset to first page
   }
 
   const handleSubmitStatus = async () => {
@@ -448,7 +462,7 @@ export default function ReceptionistBookingsPage() {
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleCheckOut(booking.bookingId)
+                                      window.open(`/checkout/${booking.bookingId}`, '_blank')
                                     }}
                                     className="text-purple-600 focus:text-purple-600"
                                   >
@@ -457,10 +471,9 @@ export default function ReceptionistBookingsPage() {
                                   </DropdownMenuItem>
                                 )}
 
-                                {/* Cancel - only for bookings that haven't checked in yet */}
-                                {booking.paymentStatusName !== "CheckedIn" &&
-                                  booking.paymentStatusName !== "Confirmed" &&
-                                  booking.paymentStatusName !== "Paid" && (
+                                {/* Cancel - only for pending/confirmed bookings before check-in */}
+                                {(booking.paymentStatusName === "PendingConfirmation" ||
+                                  booking.paymentStatusName === "Confirmed") && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem
@@ -547,14 +560,6 @@ export default function ReceptionistBookingsPage() {
         onOpenChange={setDetailModalOpen}
         booking={bookingDetailData?.data || null}
         isLoading={isLoadingDetail}
-      />
-
-      {/* Checkout Modal */}
-      <CheckoutModal
-        bookingId={checkoutBookingId}
-        open={checkoutModalOpen}
-        onOpenChange={setCheckoutModalOpen}
-        onSuccess={handleCheckoutSuccess}
       />
 
       {/* Update Status Dialog */}

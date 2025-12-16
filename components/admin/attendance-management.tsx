@@ -325,11 +325,11 @@ export default function AttendanceManagement() {
       // import attendanceApi dynamically to avoid circular imports
       const { attendanceApi } = await import("@/lib/api/attendance")
       await attendanceApi.uploadAttendancesTxt(form)
-      toast({ title: "Thành công", description: "Đã upload file chấm công" })
-      // refresh list
+      toast({ title: "Thành công", description: "Đã upload file chấm công. Hệ thống đang xử lý, dữ liệu sẽ cập nhật sau." })
+      // refresh list (server may process file asynchronously)
       queryClient.invalidateQueries({ queryKey: ["attendances"] })
-      setItems([])
       setPageIndex(1)
+      // keep current items visible until server returns updated data
       setUploadFile(null)
       setUploadDialogOpen(false)
       // reset file input UI (if needed) — handled by value on input since uncontrolled here

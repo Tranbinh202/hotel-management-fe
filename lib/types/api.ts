@@ -1,7 +1,7 @@
 // Common API response types
 export interface ApiResponse<T> {
   isSuccess: boolean;
-  responseCode: number | null;
+  responseCode: string;
   statusCode: number;
   message: string;
   data: T;

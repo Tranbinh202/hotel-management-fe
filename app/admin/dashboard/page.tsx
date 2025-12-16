@@ -26,7 +26,7 @@ export default function AdminDashboardPage() {
         pageSize: 10,
     })
 
-    const { data: statsData, isLoading: isLoadingStats } = useDashboardStats()
+    const { data: statsData, isLoading: isLoadingStats, error: statsError } = useDashboardStats()
     const { data: roomStatusData, isLoading: isLoadingRoomStatus } = useRoomStatusSummary()
     const { data: bookingsData, isLoading: isLoadingBookings } = useBookingManagement(bookingParams)
 
@@ -40,29 +40,34 @@ export default function AdminDashboardPage() {
         )
     }
 
-    // Mock data nếu API chưa có
-    const stats = statsData || {
-        totalBookings: 95,
-        totalRevenue: 12500000,
-        totalCustomers: 28,
-        newCustomersThisMonth: 4,
-        totalRooms: 30,
-        availableRooms: 10,
-        occupiedRooms: 17,
-        maintenanceRooms: 3,
-        occupancyRate: 56.7,
-        averageRoomRate: 850000,
-        totalTransactions: 100,
-        pendingPayments: 7,
-        completedPayments: 93,
-        revenueThisMonth: 4800000,
-        revenueLastMonth: 4300000,
-        revenueGrowth: 11.6,
-        bookingsThisMonth: 22,
-        bookingsLastMonth: 19,
-        bookingsGrowth: 15.8,
-        customersGrowth: 6.5,
+    if (statsError) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Không thể tải dữ liệu dashboard</p>
+                    <p className="text-sm text-slate-500 mb-4">
+                        {statsError?.message || 'Lỗi không xác định'}
+                    </p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+                    >
+                        Tải lại
+                    </button>
+                </div>
+            </div>
+        )
     }
+
+    if (!statsData) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p className="text-slate-600">Không có dữ liệu</p>
+            </div>
+        )
+    }
+
+    const stats = statsData
 
     return (
         <div className="space-y-6">

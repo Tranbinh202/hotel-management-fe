@@ -12,10 +12,11 @@ interface StatCardProps {
     value: number
     isPositive: boolean
   }
+  description?: string
   color?: "primary" | "success" | "warning" | "info"
 }
 
-export function StatCard({ title, value, icon, trend, color = "primary" }: StatCardProps) {
+export function StatCard({ title, value, icon, trend, description, color = "primary" }: StatCardProps) {
   const colorClasses = {
     primary: "from-[#ff5e7e] to-[#ff4569]",
     success: "from-[#14b8a6] to-[#0d9488]",
@@ -51,6 +52,7 @@ export function StatCard({ title, value, icon, trend, color = "primary" }: StatC
         <div className="space-y-1">
           <p className="text-sm text-slate-600">{title}</p>
           <p className="text-3xl font-bold text-slate-900">{value}</p>
+          {description && <p className="text-xs text-slate-500">{description}</p>}
         </div>
       </CardContent>
     </Card>

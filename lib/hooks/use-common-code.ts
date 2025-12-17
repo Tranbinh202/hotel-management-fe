@@ -17,3 +17,11 @@ export function useRoomStatuses(isActive = true) {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+export function usePaymentMethods(isActive = true) {
+  return useQuery<CommonCode[]>({
+    queryKey: ["commonCodes", "PaymentMethod", isActive],
+    queryFn: () => commonCodeApi.getByType("PaymentMethod", isActive),
+    staleTime: 5 * 60 * 1000,
+  })
+}

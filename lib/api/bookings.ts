@@ -19,6 +19,7 @@ import type {
   PayOSPaymentLinkRequest,
   PayOSPaymentLinkResponse,
 } from "@/lib/types/api";
+import type { CheckInBookingResponse } from "@/lib/types/checkin";
 
 export const bookingsApi = {
   // Check room availability (public endpoint)
@@ -311,6 +312,20 @@ export const bookingManagementApi = {
     );
   },
 
+  // Check-in booking (for Receptionist/Manager/Admin)
+  checkInBooking: async (
+    id: number
+  ): Promise<CheckInBookingResponse> => {
+    if (!id || id <= 0) {
+      throw new Error("Mã booking không hợp lệ");
+    }
+
+    return apiClient.post<CheckInBookingResponse>(
+      `/BookingManagement/${id}/check-in`,
+      {}
+    );
+  },
+
   getPayOSPaymentLink: async (
     data: PayOSPaymentLinkRequest
   ): Promise<{
@@ -327,5 +342,27 @@ export const bookingManagementApi = {
       data: PayOSPaymentLinkResponse;
       message: string;
     }>("/Transaction/payment/payos/link", data);
+  },
+
+  // Generate QR code for payment (for Receptionist/Manager/Admin)
+  generateQRCode: async (data: {
+    amount: number;
+    description: string;
+    bookingId?: number;
+    orderCode?: string;
+  }): Promise<{
+    isSuccess: boolean;
+    data: { qrCodeUrl: string; qrCodeDataURL?: string };
+    message: string;
+  }> => {
+    if (!data.amount || data.amount <= 0) {
+      throw new Error("Số tiền không hợp lệ");
+    }
+
+    return apiClient.post<{
+      isSuccess: boolean;
+      data: { qrCodeUrl: string; qrCodeDataURL?: string };
+      message: string;
+    }>("/Transaction/payment/qr/generate", data);
   },
 };

@@ -13,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useSearchCustomer, useSearchAvailableRoomTypes, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
 import { toast } from "@/hooks/use-toast"
-import { Search, Loader2, User, Calendar, CreditCard, CheckCircle2, Copy, Printer } from "lucide-react"
+import { Search, Loader2, User, Calendar, CreditCard, CheckCircle2, Printer } from "lucide-react"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -219,7 +219,7 @@ export default function NewOfflineBookingPage() {
     // Calculate total
     const calculateTotal = () => {
         if (!formData.checkInDate || !formData.checkOutDate || selectedRooms.length === 0) {
-            return { nights: 0, totalAmount: 0, depositAmount: 0, totalRooms: 0 }
+            return { nights: 0, totalAmount: 0, totalRooms: 0 }
         }
 
         const checkIn = new Date(formData.checkInDate)
@@ -227,10 +227,9 @@ export default function NewOfflineBookingPage() {
         const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24))
 
         const totalAmount = selectedRooms.reduce((sum, room) => sum + (room.pricePerNight * nights), 0)
-        const depositAmount = Math.round(totalAmount * 0.3)
         const totalRooms = selectedRooms.length
 
-        return { nights, totalAmount, depositAmount, totalRooms }
+        return { nights, totalAmount, totalRooms }
     }
 
     // Submit booking
@@ -334,16 +333,7 @@ export default function NewOfflineBookingPage() {
         if (checkAvailabilityMutation.reset) checkAvailabilityMutation.reset()
     }
 
-    // Copy to clipboard
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text)
-        toast({
-            title: "Đã sao chép",
-            description: `Đã sao chép ${label}`,
-        })
-    }
-
-    const { nights, totalAmount, depositAmount, totalRooms } = calculateTotal()
+    const { nights, totalAmount, totalRooms } = calculateTotal()
 
     return (
         <div className="container mx-auto py-8 px-4 max-w-7xl">
@@ -746,12 +736,6 @@ export default function NewOfflineBookingPage() {
                                             {totalAmount.toLocaleString("vi-VN")} VNĐ
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Tiền cọc (30%):</span>
-                                        <span className="font-medium text-orange-600">
-                                            {depositAmount.toLocaleString("vi-VN")} VNĐ
-                                        </span>
-                                    </div>
                                 </div>
                             )}
                         </CardContent>
@@ -822,50 +806,6 @@ export default function NewOfflineBookingPage() {
                                 </div>
                             </div>
 
-                            {bookingResult.qrPayment && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="text-base">Thông tin chuyển khoản</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3">
-                                        <div className="flex justify-center">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={bookingResult.qrPayment.qrCodeUrl}
-                                                alt="QR Code"
-                                                className="w-48 h-48 border-2 border-slate-200 rounded"
-                                            />
-                                        </div>
-                                        <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-600">Ngân hàng:</span>
-                                                <span className="font-medium">{bookingResult.qrPayment.bankName}</span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-slate-600">Số tài khoản:</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium">{bookingResult.qrPayment.accountNumber}</span>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            copyToClipboard(bookingResult.qrPayment!.accountNumber, "số tài khoản")
-                                                        }
-                                                    >
-                                                        <Copy className="w-3 h-3" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-slate-600">Số tiền:</span>
-                                                <span className="font-bold text-blue-600">
-                                                    {bookingResult.qrPayment.amount.toLocaleString("vi-VN")} VNĐ
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
                         </div>
                     )}
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useBookingManagement, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
 import { bookingManagementApi } from "@/lib/api/bookings"
@@ -25,13 +25,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 export default function ReceptionistBookingsPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [checkoutBookingId, setCheckoutBookingId] = useState<number | null>(null)
   const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
@@ -45,8 +55,8 @@ export default function ReceptionistBookingsPage() {
     customerName: searchQuery.includes("@") ? "" : searchQuery,
     phoneNumber: searchQuery.match(/^\d+$/) ? searchQuery : "",
     email: searchQuery.includes("@") ? searchQuery : "",
-    pageNumber: 1,
-    pageSize: 50,
+    pageNumber: currentPage,
+    pageSize: 10,
     sortBy: "CheckInDate",
     isDescending: false,
   }
@@ -56,7 +66,31 @@ export default function ReceptionistBookingsPage() {
 
   const { data: bookingDetailData, isLoading: isLoadingDetail } = useBookingManagementDetail(selectedBookingId || 0)
 
-  const bookingsData = bookings?.pages?.flatMap((page) => page.data.items) || []
+  const bookingsData = (bookings?.pages?.[0] as any)?.data?.items || []
+  const totalPages = (bookings?.pages?.[0] as any)?.data?.totalPages || 1
+  const totalCount = (bookings?.pages?.[0] as any)?.data?.totalCount || 0
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  // Listen for checkout success from child window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'CHECKOUT_SUCCESS') {
+        // Refresh bookings data
+        refetch()
+        toast({
+          title: "Checkout thành công",
+          description: `Booking #${event.data.bookingId} đã được checkout`,
+        })
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [refetch, toast])
 
   const getStatusColor = (statusName: string) => {
     const colors: Record<string, string> = {
@@ -157,35 +191,27 @@ export default function ReceptionistBookingsPage() {
     if (!confirm("Xác nhận khách đã check-in?")) return
 
     try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedIn", note: "Check-in tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-in",
-      })
+      const result = await bookingManagementApi.checkInBooking(bookingId)
+
+      if (result.isSuccess) {
+        refetch()
+        toast({
+          title: "Thành công",
+          description: result.data
+            ? `${result.message}\nPhòng: ${result.data.roomNumbers.join(", ")}`
+            : result.message,
+        })
+      } else {
+        toast({
+          title: "Lỗi",
+          description: result.message,
+          variant: "destructive",
+        })
+      }
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể check-in",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleCheckOut = async (bookingId: number) => {
-    if (!confirm("Xác nhận khách đã check-out?")) return
-
-    try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedOut", note: "Check-out tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-out",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể check-out",
+        description: error.response?.data?.message || error.message || "Không thể check-in",
         variant: "destructive",
       })
     }
@@ -315,7 +341,7 @@ export default function ReceptionistBookingsPage() {
                     {/* Booking ID & Status */}
                     <div className="flex items-center gap-2 min-w-[100px]">
                       <span className="text-lg font-bold text-slate-900">#{booking.bookingId}</span>
-                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatusName)}`} />
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.paymentStatusName || "")}`} />
                     </div>
 
                     {/* Customer Info */}
@@ -399,7 +425,7 @@ export default function ReceptionistBookingsPage() {
 
                           {/* Only show actions for non-cancelled and non-checked-out bookings */}
                           {booking.paymentStatusName !== "Cancelled" &&
-                            !booking.depositStatus?.includes("CheckedOut") && (
+                            booking.paymentStatusName !== "CheckedOut" && (
                               <>
                                 <DropdownMenuSeparator />
 
@@ -417,27 +443,26 @@ export default function ReceptionistBookingsPage() {
                                   </DropdownMenuItem>
                                 )}
 
-                                {/* Check-in - for paid bookings */}
-                                {booking.paymentStatusName === "Confirmed" &&
-                                  !booking.depositStatus?.includes("CheckedIn") && (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleCheckIn(booking.bookingId)
-                                      }}
-                                      className="text-blue-600 focus:text-blue-600"
-                                    >
-                                      <LogIn className="mr-2 h-4 w-4" />
-                                      Check-in
-                                    </DropdownMenuItem>
-                                  )}
-
-                                {/* Check-out - for checked-in bookings */}
-                                {booking.depositStatus?.includes("CheckedIn") && (
+                                {/* Check-in - for confirmed bookings */}
+                                {booking.paymentStatusName === "Confirmed" && (
                                   <DropdownMenuItem
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      handleCheckOut(booking.bookingId)
+                                      handleCheckIn(booking.bookingId)
+                                    }}
+                                    className="text-blue-600 focus:text-blue-600"
+                                  >
+                                    <LogIn className="mr-2 h-4 w-4" />
+                                    Check-in
+                                  </DropdownMenuItem>
+                                )}
+
+                                {/* Check-out - for checked-in bookings */}
+                                {booking.paymentStatusName === "CheckedIn" && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      window.open(`/checkout/${booking.bookingId}`, '_blank')
                                     }}
                                     className="text-purple-600 focus:text-purple-600"
                                   >
@@ -446,22 +471,23 @@ export default function ReceptionistBookingsPage() {
                                   </DropdownMenuItem>
                                 )}
 
-                                {/* Cancel - only for bookings that haven't checked in yet */}
-                                {!booking.depositStatus?.includes("CheckedIn") && booking.paymentStatusName !== "Confirmed" && booking.paymentStatusName !== "Paid" && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleCancelBooking(booking)
-                                      }}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <XCircle className="mr-2 h-4 w-4" />
-                                      Hủy booking
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
+                                {/* Cancel - only for pending/confirmed bookings before check-in */}
+                                {(booking.paymentStatusName === "PendingConfirmation" ||
+                                  booking.paymentStatusName === "Confirmed") && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleCancelBooking(booking)
+                                        }}
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Hủy booking
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
                               </>
                             )}
                         </DropdownMenuContent>
@@ -474,6 +500,59 @@ export default function ReceptionistBookingsPage() {
           )}
         </div>
       </div>
+
+      {/* Pagination */}
+      {!isLoading && bookingsData.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between px-2 py-4">
+          <div className="text-sm text-slate-600">
+            Trang {currentPage} / {totalPages} · Tổng {totalCount} booking(s)
+          </div>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+
+              {(() => {
+                // Calculate page range to display
+                const maxPagesToShow = 5
+                let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2))
+                let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1)
+
+                // Adjust if we're near the end
+                if (endPage - startPage < maxPagesToShow - 1) {
+                  startPage = Math.max(1, endPage - maxPagesToShow + 1)
+                }
+
+                return Array.from({ length: endPage - startPage + 1 }, (_, i) => {
+                  const pageNum = startPage + i
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(pageNum)}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  )
+                })
+              })()}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
 
       {/* Booking Detail Modal */}
       <BookingDetailModal

@@ -1,7 +1,7 @@
 // Common API response types
 export interface ApiResponse<T> {
   isSuccess: boolean;
-  responseCode: number | null;
+  responseCode: string;
   statusCode: number;
   message: string;
   data: T;
@@ -485,9 +485,12 @@ export interface BookingDetails {
   totalAmount: number;
   depositAmount: number;
   paymentUrl: string | null;
-  paymentStatus: string;
-  depositStatus: string;
-  bookingType: string;
+  paymentStatus: string; // Display - Vietnamese (e.g., "Đã thanh toán", "Đã nhận phòng")
+  paymentStatusName?: string; // Logic - English code (e.g., "Paid", "CheckedIn", "CheckedOut")
+  depositStatus: string; // Display - Vietnamese (e.g., "Đã đặt cọc", "Đã nhận phòng")
+  depositStatusName?: string; // Logic - English code (e.g., "Deposited", "CheckedIn")
+  bookingType: string; // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string; // Logic - English code (e.g., "WalkIn", "Online")
   specialRequests?: string;
   createdAt: string;
   orderCode?: string | null;
@@ -989,13 +992,15 @@ export interface BookingListItem {
   checkOutDate: string;
   totalAmount: number;
   depositAmount: number;
-  paymentStatusId: number;
-  bookingTypeId: number;
-  paymentStatusName: string; // English code: PendingConfirmation, Confirmed, Paid, Cancelled
-  bookingStatusName: string; // English code: Online, Offline
-  paymentStatus: string; // Vietnamese label
+  paymentStatusId?: number;
+  bookingTypeId?: number;
+  paymentStatusName?: string; // English code: PendingConfirmation, Confirmed, Paid, Cancelled
+  bookingStatus?: string; // Display - Vietnamese (e.g., "Đã nhận phòng")
+  bookingStatusCode?: string; // Logic - English code (e.g., "CheckedIn", "CheckedOut")
+  paymentStatus?: string; // Vietnamese label
   depositStatus: string;
   bookingType: string; // Vietnamese label
+  bookingTypeCode?: string; // Logic - English code (e.g., "WalkIn", "Online")
   specialRequests?: string;
   createdAt: string;
   paymentUrl?: string | null;
@@ -1025,6 +1030,7 @@ export interface BookingManagementDetails extends BookingDetails {
   totalNights: number;
   status: string;
   bookingStatus: string;
+  bookingStatusCode?: string; // Logic - English code (e.g., "CheckedIn", "CheckedOut")
   note?: string;
   specialRequests?: string;
   customer?: {
@@ -1359,4 +1365,111 @@ export interface TopRoomType {
   totalBookings: number
   totalRevenue: number
   averagePrice: number
+}
+
+// Checkout types
+export interface CustomerCheckoutInfo {
+  customerId: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  identityCard?: string
+}
+
+export interface RoomChargeDetail {
+  bookingRoomId: number
+  roomId: number
+  roomName: string
+  roomTypeName: string // Display - Vietnamese (e.g., "Phòng Tiêu Chuẩn")
+  roomTypeCode?: string // Logic - English code (e.g., "Standard", "Deluxe")
+  pricePerNight: number
+  plannedNights: number
+  actualNights: number
+  subTotal: number
+  checkInDate: string
+  checkOutDate: string
+}
+
+export interface ServiceChargeDetail {
+  serviceId: number
+  serviceName: string // Display - Vietnamese (e.g., "Giặt ủi", "Massage")
+  serviceCode?: string // Logic - English code (e.g., "Laundry", "Massage")
+  pricePerUnit: number
+  quantity: number
+  subTotal: number
+  serviceDate: string
+  serviceType: "RoomService" | "BookingService"
+  roomName?: string
+}
+
+export interface PreviewCheckoutResponse {
+  bookingId: number
+  bookingType: string // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string // Logic - English code (e.g., "WalkIn", "Online")
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  totalNights: number
+  estimatedCheckOutDate?: string
+  estimatedNights?: number
+  roomCharges: RoomChargeDetail[]
+  totalRoomCharges: number
+  serviceCharges: ServiceChargeDetail[]
+  totalServiceCharges: number
+  subTotal: number
+  depositPaid: number
+  totalAmount: number
+  amountDue: number
+  message?: string
+}
+
+export interface CheckoutRequest {
+  bookingId: number
+  actualCheckOutDate: string
+  paymentMethodId: number
+  paymentNote?: string
+  transactionReference?: string
+}
+
+export interface CheckoutResponse {
+  bookingId: number
+  bookingType: string // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string // Logic - English code (e.g., "WalkIn", "Online")
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  actualCheckOutDate: string
+  totalNights: number
+  actualNights: number
+  roomCharges: RoomChargeDetail[]
+  totalRoomCharges: number
+  serviceCharges: ServiceChargeDetail[]
+  totalServiceCharges: number
+  subTotal: number
+  depositPaid: number
+  totalAmount: number
+  amountDue: number
+  paymentMethod: string
+  transactionId: number
+  checkoutProcessedAt: string
+  processedBy: string
+}
+
+export interface BookingCheckoutInfo {
+  bookingId: number
+  bookingType: string
+  status: string
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  rooms: Array<{
+    roomId: number
+    roomName: string
+    roomTypeName: string
+    pricePerNight: number
+  }>
+  totalAmount: number
+  depositPaid: number
+  canCheckout: boolean
+  message?: string
 }

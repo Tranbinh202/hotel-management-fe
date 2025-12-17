@@ -2,29 +2,54 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import type { BookingManagementDetails } from "@/lib/types/api"
+import type { BookingManagementDetails, CustomerSearchResult } from "@/lib/types/api"
 import { useEffect, useState } from "react"
 import { bookingManagementApi } from "@/lib/api/bookings"
 import { QRCodeSVG } from "qrcode.react"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, LogOut } from "lucide-react"
+import { offlineBookingsApi } from "@/lib/api/offline-bookings"
 
 interface BookingDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   booking: BookingManagementDetails | null
   isLoading?: boolean
+  onCheckoutSuccess?: () => void
 }
 
-export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: BookingDetailModalProps) {
+export function BookingDetailModal({ open, onOpenChange, booking, isLoading, onCheckoutSuccess }: BookingDetailModalProps) {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const [isLoadingPayment, setIsLoadingPayment] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [enrichedCustomer, setEnrichedCustomer] = useState<CustomerSearchResult | null>(null)
 
-  const hasRemainingAmount = booking && booking.remainingAmount > 0
+  const handleCheckoutClick = () => {
+    // Open checkout page in new tab instead of modal
+    if (booking?.bookingId) {
+      const checkoutUrl = `/checkout/${booking.bookingId}`
+      window.open(checkoutUrl, '_blank')
+    }
+  }
+
+  // Get paid amount - this is separate from deposit
+  // paidAmount is actual payments made (not including deposit)
+  const paidAmount = booking?.paidAmount ?? (booking as any)?.depositPaid ?? 0
+
+  // Deposit amount
+  const depositAmount = booking?.depositAmount ?? 0
+
+  // Prioritize amountDue from checkout preview, then remainingAmount, then calculate
+  // Remaining = Total - Deposit - Paid
+  const remainingAmount =
+    (booking as any)?.amountDue ??
+    booking?.remainingAmount ??
+    (booking ? Math.max(booking.totalAmount - depositAmount - paidAmount, 0) : 0)
+  const hasRemainingAmount = booking && remainingAmount > 0
 
   useEffect(() => {
     if (open && booking && hasRemainingAmount) {
@@ -53,6 +78,38 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
     }
   }, [open, booking, hasRemainingAmount])
 
+  useEffect(() => {
+    const searchKey =
+      booking?.customerPhone?.trim() ||
+      booking?.customerEmail?.trim() ||
+      booking?.customerName?.trim() ||
+      booking?.customer?.phoneNumber?.trim() ||
+      booking?.customer?.email?.trim() ||
+      booking?.customer?.fullName?.trim()
+
+    const hasMissingCustomerInfo =
+      booking &&
+      (!booking.customer?.email || !booking.customer?.address || !booking.customer?.identityCard || !booking.customer?.fullName)
+
+    if (!open || !booking || enrichedCustomer || !searchKey || searchKey.length < 3 || !hasMissingCustomerInfo) {
+      return
+    }
+
+    offlineBookingsApi
+      .searchCustomer(searchKey)
+      .then((result) => {
+        if (!result?.data?.length) return
+        const matched =
+          result.data.find((c) => c.customerId === booking.customerId) ||
+          result.data.find((c) => c.phoneNumber === booking.customerPhone) ||
+          result.data[0]
+        if (matched) setEnrichedCustomer(matched)
+      })
+      .catch((error) => {
+        console.error("Unable to enrich customer info:", error)
+      })
+  }, [open, booking, enrichedCustomer])
+
   if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -69,6 +126,48 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
   }
 
   if (!booking) return null
+
+  const customerInfo = {
+    fullName: booking.customer?.fullName ?? enrichedCustomer?.fullName ?? booking.customerName,
+    email: booking.customer?.email ?? enrichedCustomer?.email ?? booking.customerEmail ?? booking.email,
+    phoneNumber: booking.customer?.phoneNumber ?? enrichedCustomer?.phoneNumber ?? booking.customerPhone ?? booking.phoneNumber,
+    identityCard: booking.customer?.identityCard ?? enrichedCustomer?.identityCard ?? booking.identityCard,
+    address: booking.customer?.address ?? enrichedCustomer?.address ?? booking.address,
+  }
+
+  const nights =
+    booking.totalNights ??
+    Math.max(
+      1,
+      Math.ceil((new Date(booking.checkOutDate).getTime() - new Date(booking.checkInDate).getTime()) / (1000 * 60 * 60 * 24)),
+    )
+
+  const computedSubTotal = (() => {
+    if (typeof booking.subTotal === "number") return booking.subTotal
+    if (booking.roomTypeDetails?.length) {
+      return booking.roomTypeDetails.reduce(
+        (sum, roomType) =>
+          sum + (roomType.subTotal ?? (roomType.pricePerNight ?? 0) * (roomType.quantity ?? 1) * nights),
+        0,
+      )
+    }
+    if (booking.rooms?.length) {
+      return booking.rooms.reduce(
+        (sum, room) => sum + (room.subTotal ?? (room.pricePerNight || 0) * (room.numberOfNights ?? nights ?? 1)),
+        0,
+      )
+    }
+    if (booking.roomIds?.length && booking.roomNames?.length && booking.roomTypeDetails?.length) {
+      const nameList = booking.roomNames.join(", ")
+      const typeTotal = booking.roomTypeDetails.reduce(
+        (sum, roomType) =>
+          sum + (roomType.subTotal ?? (roomType.pricePerNight ?? 0) * (roomType.quantity ?? 1) * nights),
+        0,
+      )
+      return typeTotal || booking.totalAmount || 0
+    }
+    return booking.totalAmount ?? 0
+  })() || booking.totalAmount || 0
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { bg: string; text: string }> = {
@@ -92,6 +191,19 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
     )
   }
 
+  // Check both English codes and Vietnamese display text to determine if checked-in
+  // - bookingStatusCode (from preview/detail API): "CheckedIn"
+  // - paymentStatusName (from booking list API): "CheckedIn"  
+  // - bookingStatus (Vietnamese display): "Đã nhận phòng"
+  // - paymentStatus (Vietnamese display in modal): "Đã nhận phòng"
+  console.log("Booking Status Code:", booking)
+  const isCheckedIn = Boolean(
+    (booking?.bookingStatusCode && booking.bookingStatusCode.includes("CheckedIn")) ||
+    (booking?.paymentStatusName && booking.paymentStatusName === "CheckedIn") ||
+    (booking?.bookingStatus && booking.bookingStatus === "Đã nhận phòng") ||
+    (booking?.paymentStatus && booking.paymentStatus === "Đã nhận phòng")
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="min-w-5xl max-h-[90vh] p-0">
@@ -114,59 +226,33 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
           <div className="px-6 py-4">
             <div className="grid grid-cols-3 gap-6">
               <div className="col-span-2 space-y-6">
-                {booking.customer && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Thông tin khách hàng</h3>
-                    <div className="bg-slate-50 rounded-lg p-4">
-                      <div className="grid grid-cols-3 gap-4 mb-3">
-                        <div>
-                          <p className="text-xs text-slate-500">Họ tên</p>
-                          <p className="text-sm font-medium text-slate-900">{booking.customer.fullName}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Email</p>
-                          <p className="text-sm text-slate-700">{booking.customer.email || "Chưa có"}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Số điện thoại</p>
-                          <p className="text-sm text-slate-700">{booking.customer.phoneNumber}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500">CMND/CCCD</p>
-                          <p className="text-sm text-slate-700">{booking.customer.identityCard || "Chưa có"}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-xs text-slate-500">Địa chỉ</p>
-                          <p className="text-sm text-slate-700">{booking.customer.address || "Chưa có"}</p>
-                        </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 mb-3">Thông tin khách hàng</h3>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <div className="grid grid-cols-3 gap-4 mb-3">
+                      <div>
+                        <p className="text-xs text-slate-500">Họ tên</p>
+                        <p className="text-sm font-medium text-slate-900">{customerInfo.fullName || "Chưa cập nhật"}</p>
                       </div>
-                      <Separator className="my-3" />
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div className="bg-white rounded-md p-2">
-                          <p className="text-lg font-bold text-[#8C68E6]">{booking.customer.totalBookings}</p>
-                          <p className="text-xs text-slate-500">Tổng booking</p>
-                        </div>
-                        <div className="bg-white rounded-md p-2">
-                          <p className="text-lg font-bold text-[#8C68E6]">
-                            {new Intl.NumberFormat("vi-VN", { notation: "compact" }).format(
-                              booking.customer.totalSpent,
-                            )}
-                            đ
-                          </p>
-                          <p className="text-xs text-slate-500">Tổng chi tiêu</p>
-                        </div>
-                        <div className="bg-white rounded-md p-2">
-                          <p className="text-xs font-medium text-slate-700">
-                            {booking.customer.lastBookingDate
-                              ? format(new Date(booking.customer.lastBookingDate), "dd/MM/yyyy")
-                              : "N/A"}
-                          </p>
-                          <p className="text-xs text-slate-500">Booking cuối</p>
-                        </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Email</p>
+                        <p className="text-sm text-slate-700">{customerInfo.email || "Chưa có"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Số điện thoại</p>
+                        <p className="text-sm text-slate-700">{customerInfo.phoneNumber || "Chưa có"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">CMND/CCCD</p>
+                        <p className="text-sm text-slate-700">{customerInfo.identityCard || "Chưa có"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-xs text-slate-500">Địa chỉ</p>
+                        <p className="text-sm text-slate-700">{customerInfo.address || "Chưa có"}</p>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 mb-3">Thông tin đặt phòng</h3>
@@ -186,7 +272,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Số đêm</p>
-                        <p className="text-sm font-medium text-slate-900">{booking.totalNights} đêm</p>
+                        <p className="text-sm font-medium text-slate-900">{nights} đêm</p>
                       </div>
                       <div>
                         <p className="text-xs text-slate-500">Trạng thái thanh toán</p>
@@ -202,7 +288,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                   </div>
                 </div>
 
-                {booking.rooms && booking.rooms.length > 0 && (
+                {booking.rooms && booking.rooms.length > 0 ? (
                   <div>
                     <h3 className="text-sm font-semibold text-slate-900 mb-3">
                       Danh sách phòng ({booking.rooms.length})
@@ -235,7 +321,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                                 </div>
                                 <div>
                                   <p className="text-slate-500">Số đêm</p>
-                                  <p className="font-medium text-slate-900">{room.numberOfNights}</p>
+                                  <p className="font-medium text-slate-900">{room.numberOfNights ?? nights}</p>
                                 </div>
                                 <div>
                                   <p className="text-slate-500">Sức chứa</p>
@@ -254,7 +340,16 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                       ))}
                     </div>
                   </div>
-                )}
+                ) : booking.roomNames && booking.roomNames.length > 0 ? (
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">
+                      Danh sách phòng ({booking.roomNames.length})
+                    </h3>
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <p className="text-sm text-slate-700">{booking.roomNames.join(", ")}</p>
+                    </div>
+                  </div>
+                ) : null}
 
                 {booking.cancelledAt && (
                   <div>
@@ -289,9 +384,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-600">Tổng tiền phòng</span>
                         <span className="font-medium text-slate-900">
-                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                            booking.subTotal,
-                          )}
+                          {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(computedSubTotal)}
                         </span>
                       </div>
                       {booking.taxAmount > 0 && (
@@ -323,20 +416,35 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                           )}
                         </span>
                       </div>
+
+                      {/* Show deposit for online bookings */}
+                      {booking.depositAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-slate-600">Đã đặt cọc ({booking.bookingType})</span>
+                          <span className="font-medium text-blue-600">
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+                              booking.depositAmount,
+                            )}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Show total paid amount */}
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-600">Đã thanh toán</span>
                         <span className="font-medium text-green-600">
                           {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                            booking.paidAmount,
+                            paidAmount,
                           )}
                         </span>
                       </div>
-                      {booking.remainingAmount > 0 && (
+
+                      {remainingAmount > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-600">Còn lại</span>
                           <span className="font-medium text-red-600">
                             {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                              booking.remainingAmount,
+                              remainingAmount,
                             )}
                           </span>
                         </div>
@@ -344,55 +452,20 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
                     </div>
                   </div>
 
-                  {hasRemainingAmount ? (
+                  {/* Show checkout button when checked in - prefer `bookingStatusCode` logic field */}
+                  {isCheckedIn && (
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900 mb-3">Thanh toán</h3>
-                      <div className="bg-gradient-to-br from-[#8C68E6]/5 to-[#D4A574]/5 rounded-lg p-4 border border-[#8C68E6]/20">
-                        {isLoadingPayment ? (
-                          <div className="flex flex-col items-center justify-center py-8">
-                            <Loader2 className="w-8 h-8 text-[#8C68E6] animate-spin mb-2" />
-                            <p className="text-sm text-slate-600">Đang tạo mã QR...</p>
-                          </div>
-                        ) : paymentError ? (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-red-600">{paymentError}</p>
-                          </div>
-                        ) : paymentUrl ? (
-                          <div className="flex flex-col items-center">
-                            <div className="bg-white p-4 rounded-lg mb-3 shadow-sm">
-                              <QRCodeSVG value={paymentUrl} size={180} level="H" includeMargin />
-                            </div>
-                            <p className="text-xs text-slate-600 text-center mb-2">Quét mã QR để thanh toán</p>
-                            <p className="text-sm font-semibold text-[#8C68E6] text-center">
-                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-                                booking.remainingAmount,
-                              )}
-                            </p>
-                            <a
-                              href={paymentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-3 text-xs text-[#8C68E6] hover:text-[#7552cc] underline"
-                            >
-                              Hoặc nhấn để mở link thanh toán
-                            </a>
-                          </div>
-                        ) : null}
-                      </div>
+                      <Button
+                        onClick={handleCheckoutClick}
+                        className="w-full bg-gradient-to-r from-[#8C68E6] to-[#7552cc] hover:from-[#7552cc] hover:to-[#6444b8] text-white"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Checkout & Thanh toán
+                      </Button>
                     </div>
-                  ) : booking.remainingAmount === 0 && booking.paidAmount > 0 && !booking.cancelledAt ? (
-                    <div>
-                      {/* <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-4 border border-green-200">
-                        <div className="flex items-center gap-3 mb-2">
-                          <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-green-900">Đã thanh toán đầy đủ</p>
-                            <p className="text-xs text-green-700 mt-1">Booking này đã được thanh toán hoàn tất</p>
-                          </div>
-                        </div>
-                      </div> */}
-                    </div>
-                  ) : null}
+                  )}
+
+                  {/* Payment section removed - will be shown in checkout modal */}
 
                   {booking.paymentHistory && booking.paymentHistory.length > 0 && (
                     <div>
@@ -465,6 +538,7 @@ export function BookingDetailModal({ open, onOpenChange, booking, isLoading }: B
           </div>
         </ScrollArea>
       </DialogContent>
+
     </Dialog>
   )
 }

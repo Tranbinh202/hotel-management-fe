@@ -577,7 +577,7 @@ export interface AttendanceRecord {
   overtimeHours: number;
   lateMinutes: number;
   notes: string | null;
-  status: string| undefined;
+  status: string | undefined;
   IsApproved: string | undefined;
   createdAt: string;
   updatedAt: string | null;
@@ -1221,26 +1221,69 @@ export interface EmployeeSchedule {
   updatedAt?: string
 }
 
+// New Weekly Schedule API types
+export interface WeeklyScheduleEmployee {
+  scheduleId: number
+  employeeId: number
+  employeeName: string
+  employeeType: string
+  status: "Scheduled" | "Completed" | "Absent" | "Cancelled"
+  notes?: string | null
+}
+
+export interface DailySchedule {
+  shiftDate: string  // YYYY-MM-DD
+  dayOfWeek: string  // e.g., "Thứ 2", "Thứ 3"
+  employees: WeeklyScheduleEmployee[]
+}
+
+export interface ShiftSchedule {
+  shiftName: string  // e.g., "Ca Sáng", "Ca Chiều", "Ca Tối"
+  startTime: string  // HH:mm:ss
+  endTime: string    // HH:mm:ss
+  dailySchedules: DailySchedule[]
+}
+
+export interface WeeklyScheduleData {
+  shifts: ShiftSchedule[]
+}
+
+export interface AvailableEmployee {
+  employeeId: number
+  fullName: string
+  employeeType: string
+  employeeTypeId: number
+  phoneNumber?: string
+}
+
+export interface AvailableEmployeesRequest {
+  shiftDate: string    // YYYY-MM-DD
+  startTime: string    // HH:mm:ss
+  endTime: string      // HH:mm:ss
+  employeeTypeId?: number
+}
+
 export interface CreateScheduleDto {
   employeeId: number
-  date: string
-  shiftType: ShiftType
+  shiftDate: string    // YYYY-MM-DD (changed from 'date')
+  startTime: string    // HH:mm:ss
+  endTime: string      // HH:mm:ss
   notes?: string
 }
 
 export interface UpdateScheduleDto {
   scheduleId: number
   employeeId?: number
-  date?: string
-  shiftType?: ShiftType
-  status?: string
+  shiftDate?: string   // YYYY-MM-DD
+  startTime?: string   // HH:mm:ss
+  endTime?: string     // HH:mm:ss
   notes?: string
 }
 
 export interface ScheduleSearchParams {
   employeeId?: number
-  startDate?: string
-  endDate?: string
+  startDate?: string   // YYYY-MM-DD
+  endDate?: string     // YYYY-MM-DD
   shiftType?: ShiftType
   status?: string
   pageIndex?: number
@@ -1259,6 +1302,51 @@ export interface Employee {
   address?: string
   isActive: boolean
   createdAt: string
+}
+
+// Employee Search API types
+export interface EmployeeSearchRequest {
+  keyword?: string
+  employeeTypeId?: number
+  isActive?: boolean
+  isLocked?: boolean
+  pageIndex?: number
+  pageSize?: number
+}
+
+export interface EmployeeSearchItem {
+  employeeId: number
+  accountId: number
+  fullName: string
+  phoneNumber?: string
+  email?: string
+  dateOfBirth?: string
+  gender?: string
+  address?: string
+  identityCard?: string
+  employeeTypeName: string  // Changed from employeeType
+  employeeTypeId: number
+  employeeTypeCode?: string
+  salary?: number
+  baseSalary?: number
+  hireDate?: string
+  terminationDate?: string | null
+  isActive?: boolean
+  avatar?: string
+  username?: string
+  isLocked?: boolean
+  lastLoginAt?: string | null
+  createdAt: string
+  updatedAt?: string | null
+}
+
+// API returns PaginatedResponse structure
+export interface EmployeeSearchResponse {
+  items: EmployeeSearchItem[]
+  totalCount: number
+  pageIndex: number
+  pageSize: number
+  totalPages: number
 }
 
 // Attendance Management types

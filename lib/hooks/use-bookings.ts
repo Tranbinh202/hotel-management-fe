@@ -156,6 +156,15 @@ export function useBookingManagement(filters: BookingManagementFilter) {
   });
 }
 
+// Hook cho pagination thông thường (không phải infinite scroll)
+export function useBookingManagementPaginated(filters: BookingManagementFilter) {
+  return useQuery({
+    queryKey: ["booking-management-paginated", filters],
+    queryFn: () => bookingManagementApi.getBookings(filters),
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useBookingManagementDetail(id: number) {
   return useQuery({
     queryKey: ["booking-management", id, "detail"],

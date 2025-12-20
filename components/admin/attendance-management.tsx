@@ -293,7 +293,8 @@ export default function AttendanceManagement() {
   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null)
   const [searchName, setSearchName] = useState("")
   const [filterStatus, setFilterStatus] = useState<AttendanceStatus | "all">("all")
-  const [filterDate, setFilterDate] = useState("")
+  const [filterDay, setFilterDay] = useState("all")
+  const [filterMonthYear, setFilterMonthYear] = useState("")
   // Pagination (server-side load more)
   const [pageIndex, setPageIndex] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -342,7 +343,7 @@ export default function AttendanceManagement() {
   useEffect(() => {
     setPageIndex(1)
     setItems([])
-  }, [searchName, filterStatus, filterDate, pageSize])
+  }, [searchName, filterStatus, filterDay, filterMonthYear, pageSize])
 
   // Build API params
   const apiParams: any = {
@@ -350,16 +351,20 @@ export default function AttendanceManagement() {
     pageSize,
   }
   if (filterStatus && filterStatus !== "all") {
-    const statusMap: Record<string, AttendanceStatus> = {
-      "0": "Present",
-      "1": "Absent",
-      "2": "OnLeave",
-    }
-    apiParams.status = (statusMap as any)[filterStatus] ?? filterStatus
+    apiParams.status = filterStatus
   }
-  if (searchName && searchName.trim() !== "") apiParams.search = searchName.trim()
-  if (filterDate) {
-    apiParams.workDate = filterDate
+  if (searchName && searchName.trim() !== "") apiParams.EmployeeName = searchName.trim()
+  if (filterDay && filterDay !== "all") {
+    apiParams.day = parseInt(filterDay)
+  }
+  // If month-year picker selected, request startDate/endDate for that month
+  if (filterMonthYear) {
+    // filterMonthYear format: YYYY-MM
+    const [yStr, mStr] = filterMonthYear.split("-")
+    const y = parseInt(yStr)
+    const m = parseInt(mStr)
+    apiParams.year = y
+    apiParams.month = m
   }
 
   // Fetch one page from server
@@ -383,14 +388,11 @@ export default function AttendanceManagement() {
   const totalItems = pagedData?.totalCount ?? items.length
   const totalPages = pagedData?.totalPages ?? Math.max(1, Math.ceil(items.length / pageSize))
 
-  // Client-side filtering for searchName only (server filters applied for status/date)
+  // Client-side filtering for searchName and day-of-month (server filters applied for month/year)
   const filteredAttendances = useMemo(() => {
     const source = items.length > 0 ? items : ((error || !pagedData) ? MOCK_ATTENDANCES : [])
-    return source.filter((attendance) => {
-      const nameMatch = searchName === "" || attendance.employeeName.toLowerCase().includes(searchName.toLowerCase())
-      return nameMatch
-    })
-  }, [items, searchName, error, pagedData])
+    return source
+  }, [items, searchName, filterDay, error, pagedData])
 
   
 
@@ -553,7 +555,7 @@ export default function AttendanceManagement() {
           <CardDescription>Tìm kiếm và lọc bản ghi chấm công</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="searchName">Tên nhân viên</Label>
               <Input
@@ -580,12 +582,26 @@ export default function AttendanceManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="filterDate">Ngày</Label>
+              <Label htmlFor="filterDay">Ngày (1-31)</Label>
+              <Select value={filterDay} onValueChange={(value) => setFilterDay(value)}>
+                <SelectTrigger id="filterDay">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filterMonthYear">Tháng & Năm</Label>
               <Input
-                id="filterDate"
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
+                id="filterMonthYear"
+                type="month"
+                value={filterMonthYear}
+                onChange={(e) => setFilterMonthYear(e.target.value)}
               />
             </div>
           </div>

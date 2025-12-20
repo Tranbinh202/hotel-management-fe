@@ -301,8 +301,19 @@ function BookingPageContent() {
       }
     } catch (error: any) {
       console.error("Booking error:", error)
-      const reason = error?.status === 409 ? "not_available" : "unknown"
-      router.push(`/booking/failure?reason=${reason}`)
+      // Extract error message from API response or use generic reason
+      let errorMessage = ""
+
+      if (error?.status === 409) {
+        errorMessage = "not_available"
+      } else if (error?.message) {
+        // Use the actual error message from the API
+        errorMessage = encodeURIComponent(error.message)
+      } else {
+        errorMessage = "unknown"
+      }
+
+      router.push(`/booking/failure?reason=${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }

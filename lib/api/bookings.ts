@@ -19,6 +19,7 @@ import type {
   PayOSPaymentLinkRequest,
   PayOSPaymentLinkResponse,
 } from "@/lib/types/api";
+import type { CheckInBookingResponse } from "@/lib/types/checkin";
 
 export const bookingsApi = {
   // Check room availability (public endpoint)
@@ -169,14 +170,14 @@ export const bookingManagementApi = {
         ? filters.pageSize
         : 20;
 
-    params.append("pageNumber", String(pageNumber));
-    params.append("pageSize", String(pageSize));
+    params.append("PageIndex", String(pageNumber));
+    params.append("PageSize", String(pageSize));
 
-    if (filters.fromDate) params.append("fromDate", filters.fromDate);
-    if (filters.toDate) params.append("toDate", filters.toDate);
+    if (filters.fromDate) params.append("FromDate", filters.fromDate);
+    if (filters.toDate) params.append("ToDate", filters.toDate);
     if (filters.paymentStatus)
-      params.append("paymentStatus", filters.paymentStatus);
-    if (filters.bookingType) params.append("bookingType", filters.bookingType);
+      params.append("BookingStatus", filters.paymentStatus);
+    if (filters.bookingType) params.append("BookingType", filters.bookingType);
     if (filters.customerName)
       params.append("customerName", filters.customerName.trim());
     if (filters.phoneNumber)
@@ -184,9 +185,9 @@ export const bookingManagementApi = {
     if (filters.email) params.append("email", filters.email.trim());
     if (filters.depositStatus)
       params.append("depositStatus", filters.depositStatus);
-    if (filters.sortBy) params.append("sortBy", filters.sortBy);
+    if (filters.sortBy) params.append("SortBy", filters.sortBy);
     if (filters.isDescending !== undefined)
-      params.append("isDescending", String(filters.isDescending));
+      params.append("SortDesc", String(filters.isDescending));
 
     const response = await apiClient.get<{
       isSuccess: boolean;
@@ -311,6 +312,20 @@ export const bookingManagementApi = {
     );
   },
 
+  // Check-in booking (for Receptionist/Manager/Admin)
+  checkInBooking: async (
+    id: number
+  ): Promise<CheckInBookingResponse> => {
+    if (!id || id <= 0) {
+      throw new Error("Mã booking không hợp lệ");
+    }
+
+    return apiClient.post<CheckInBookingResponse>(
+      `/BookingManagement/${id}/check-in`,
+      {}
+    );
+  },
+
   getPayOSPaymentLink: async (
     data: PayOSPaymentLinkRequest
   ): Promise<{
@@ -327,5 +342,27 @@ export const bookingManagementApi = {
       data: PayOSPaymentLinkResponse;
       message: string;
     }>("/Transaction/payment/payos/link", data);
+  },
+
+  // Generate QR code for payment (for Receptionist/Manager/Admin)
+  generateQRCode: async (data: {
+    amount: number;
+    description: string;
+    bookingId?: number;
+    orderCode?: string;
+  }): Promise<{
+    isSuccess: boolean;
+    data: { qrCodeUrl: string; qrCodeDataURL?: string };
+    message: string;
+  }> => {
+    if (!data.amount || data.amount <= 0) {
+      throw new Error("Số tiền không hợp lệ");
+    }
+
+    return apiClient.post<{
+      isSuccess: boolean;
+      data: { qrCodeUrl: string; qrCodeDataURL?: string };
+      message: string;
+    }>("/Transaction/payment/qr/generate", data);
   },
 };

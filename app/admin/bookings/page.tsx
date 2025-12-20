@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useBookingManagement, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
+import { useBookingManagementPaginated, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
 import { bookingManagementApi } from "@/lib/api/bookings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 import type { BookingListItem } from "@/lib/types/api"
 import { BookingDetailModal } from "@/components/booking-detail-modal"
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -32,6 +33,7 @@ export default function AdminBookingsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+
   const [statusDialog, setStatusDialog] = useState(false)
   const [cancelDialog, setCancelDialog] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
@@ -41,22 +43,55 @@ export default function AdminBookingsPage() {
     note: "",
   })
 
+  // Pagination state - index bắt đầu từ 0
+  const [pageNumber, setPageNumber] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+
   const filters = {
     customerName: searchQuery.includes("@") ? "" : searchQuery,
     phoneNumber: searchQuery.match(/^\d+$/) ? searchQuery : "",
     email: searchQuery.includes("@") ? searchQuery : "",
-    pageNumber: 1,
-    pageSize: 50,
+    pageNumber: pageNumber + 1, // API uses 1-indexed, UI uses 0-indexed
+    pageSize: pageSize,
     sortBy: "CheckInDate",
     isDescending: false,
   }
 
-  const { data: bookings, isLoading, refetch } = useBookingManagement(filters)
+  const { data: bookings, isLoading, refetch } = useBookingManagementPaginated(filters)
   const updateStatusMutation = useUpdateBookingStatus()
 
   const { data: bookingDetailData, isLoading: isLoadingDetail } = useBookingManagementDetail(selectedBookingId || 0)
 
-  const bookingsData = bookings?.pages?.flatMap((page) => page.data.items) || []
+  const bookingsData = bookings?.data?.items || []
+  const totalItems = bookings?.data?.totalCount || 0
+  const totalPages = Math.ceil(totalItems / pageSize)
+
+  // Reset về trang 0 khi thay đổi tìm kiếm
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value)
+    setPageNumber(0)
+  }
+
+  // Reset về trang 0 khi thay đổi page size
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value))
+    setPageNumber(0)
+  }
+
+  // Listen for checkout success from child window
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'CHECKOUT_SUCCESS') {
+        refetch()
+        toast({
+          title: "Checkout thành công",
+          description: `Booking #${event.data.bookingId} đã được checkout`,
+        })
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [refetch, toast])
 
   const getStatusColor = (statusName: string) => {
     const colors: Record<string, string> = {
@@ -172,23 +207,8 @@ export default function AdminBookingsPage() {
     }
   }
 
-  const handleCheckOut = async (bookingId: number) => {
-    if (!confirm("Xác nhận khách đã check-out?")) return
-
-    try {
-      await bookingManagementApi.updateBookingStatus(bookingId, { status: "CheckedOut", note: "Check-out tại quầy" })
-      refetch()
-      toast({
-        title: "Thành công",
-        description: "Đã xác nhận check-out",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể check-out",
-        variant: "destructive",
-      })
-    }
+  const handleCheckOut = (bookingId: number) => {
+    window.open(`/checkout/${bookingId}`, '_blank')
   }
 
   const handleSubmitStatus = async () => {
@@ -248,13 +268,16 @@ export default function AdminBookingsPage() {
             <Input
               placeholder="Tìm theo tên, số điện thoại, hoặc email..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10 h-12 text-base border-slate-300"
             />
           </div>
           <Button
             variant="outline"
-            onClick={() => setSearchQuery("")}
+            onClick={() => {
+              setSearchQuery("")
+              setPageNumber(0)
+            }}
             className="h-12 px-6 border-slate-300 hover:bg-slate-50"
           >
             Xóa
@@ -420,18 +443,21 @@ export default function AdminBookingsPage() {
                                     </DropdownMenuItem>
                                   )}
 
-                                {booking.depositStatus?.includes("CheckedIn") && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleCheckOut(booking.bookingId)
-                                    }}
-                                    className="text-purple-600 focus:text-purple-600"
-                                  >
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    Check-out
-                                  </DropdownMenuItem>
-                                )}
+                                {(booking.bookingStatusCode?.includes("CheckedIn") ||
+                                  booking.depositStatus?.includes("CheckedIn") ||
+                                  booking.paymentStatus === "Đã nhận phòng" ||
+                                  booking.paymentStatusName?.includes("CheckedIn")) && (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleCheckOut(booking.bookingId)
+                                      }}
+                                      className="text-purple-600 focus:text-purple-600"
+                                    >
+                                      <LogOut className="mr-2 h-4 w-4" />
+                                      Check-out
+                                    </DropdownMenuItem>
+                                  )}
 
                                 {!booking.depositStatus?.includes("CheckedIn") && booking.paymentStatusName !== "Confirmed" && booking.paymentStatusName !== "Paid" && (
                                   <>
@@ -460,6 +486,87 @@ export default function AdminBookingsPage() {
           )}
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      {!isLoading && bookingsData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Page Size Selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-600">Hiển thị</span>
+              <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="w-20 h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-slate-600">
+                phần tử/trang
+              </span>
+            </div>
+
+            {/* Page Info & Navigation */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-600">
+                Hiển thị {pageNumber * pageSize + 1} - {Math.min((pageNumber + 1) * pageSize, totalItems)} trong tổng số {totalItems}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageNumber(0)}
+                  disabled={pageNumber === 0}
+                  className="h-8 w-8 p-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageNumber(pageNumber - 1)}
+                  disabled={pageNumber === 0}
+                  className="h-8 px-3"
+                >
+                  Trước
+                </Button>
+
+                <span className="text-sm font-medium text-slate-700 px-2">
+                  Trang {pageNumber + 1} / {totalPages || 1}
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageNumber(pageNumber + 1)}
+                  disabled={pageNumber >= totalPages - 1}
+                  className="h-8 px-3"
+                >
+                  Sau
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPageNumber(totalPages - 1)}
+                  disabled={pageNumber >= totalPages - 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Booking Detail Modal */}
       <BookingDetailModal

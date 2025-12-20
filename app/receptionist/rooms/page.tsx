@@ -8,13 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  useRoomManagement,
-  useRoomStats,
-  useRoomDetails,
-  useAvailableStatus,
-  useChangeRoomStatus,
-} from "@/lib/hooks/use-rooms"
+import { useRoomManagement, useRoomDetails, useAvailableStatus, useChangeRoomStatus } from "@/lib/hooks/use-rooms"
 import { useRoomStatuses } from "@/lib/hooks/use-common-code"
 import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
 
@@ -39,7 +33,6 @@ export default function ReceptionistRoomsPage() {
     pageSize: 100,
   })
 
-  const { data: statsData } = useRoomStats()
   const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
   const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
   const { data: roomStatuses } = useRoomStatuses()
@@ -78,17 +71,6 @@ export default function ReceptionistRoomsPage() {
       newStatus: statusId ? undefined : newStatus,
     })
     setDetailDialogOpen(false)
-  }
-
-  const getStatusCount = (statusCode: RoomStatusCode) => {
-    return statsData?.statusSummary?.find((s) => s.statusCode === statusCode)?.count || 0
-  }
-
-  const calculateOccupancyRate = () => {
-    if (!statsData) return 0
-    const occupied = getStatusCount("Occupied")
-    const booked = getStatusCount("Booked")
-    return statsData.totalRooms > 0 ? ((occupied + booked) / statsData.totalRooms) * 100 : 0
   }
 
   const formatCurrency = (amount: number) => {
@@ -206,70 +188,6 @@ export default function ReceptionistRoomsPage() {
           </div>
         </div>
       </div>
-
-      {statsData && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Tổng phòng</p>
-                  <p className="text-xl font-bold text-slate-900">{statsData.totalRooms}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Phòng trống</p>
-                  <p className="text-xl font-bold text-emerald-600">{getStatusCount("Available")}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Đang sử dụng</p>
-                  <p className="text-xl font-bold text-blue-600">{getStatusCount("Occupied")}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-amber-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Tỷ lệ lấp đầy</p>
-                  <p className="text-xl font-bold text-amber-600">{calculateOccupancyRate().toFixed(1)}%</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Rooms Grid */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

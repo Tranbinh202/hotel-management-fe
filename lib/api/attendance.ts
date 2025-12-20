@@ -1,54 +1,57 @@
+import { apiClient } from "./client"
 import type {
   ApiResponse,
-  AttendanceRecord,
-  AttendanceSummary,
-  CreateAttendanceDto,
-  IPaginationParams,
   PaginatedResponse,
+  Attendance,
+  CreateAttendanceDto,
   UpdateAttendanceDto,
-} from "../types/api"
-import { apiClient } from "./client"
-
-export interface GetAttendanceParams extends IPaginationParams {
-  EmployeeId?: number
-  Month?: number
-  Year?: number
-}
+  AttendanceSearchParams,
+  AttendanceStatic,
+} from "@/lib/types/api"
 
 export const attendanceApi = {
-  getAll: async (params: GetAttendanceParams): Promise<PaginatedResponse<AttendanceRecord>> => {
-    const response = await apiClient.post<ApiResponse<PaginatedResponse<AttendanceRecord>>>(`/Attendance/GetAttendance`, { ...params })
+  // Get attendance records with filters
+  getAttendances: async (params: AttendanceSearchParams = {}): Promise<PaginatedResponse<Attendance>> => {
+    const response = await apiClient.get<ApiResponse<PaginatedResponse<Attendance>>>("/Attendance", { params })
+    console.log("Fetched attendances:", response.data)
     return response.data
   },
 
-  getById: async (id: number): Promise<AttendanceRecord> => {
-    const response = await apiClient.get<ApiResponse<AttendanceRecord>>(`/Attendance/${id}`)
+  //get static info
+  getAttendancesStatic: async (params: AttendanceSearchParams = {}): Promise<AttendanceStatic> => {
+    const response = await apiClient.get<ApiResponse<AttendanceStatic>>("/Attendance/static-info", { params })
+    console.log("Fetched attendances:", response.data)
     return response.data
   },
 
-  getSummary: async (employeeId: number, month: number, year: number): Promise<AttendanceSummary> => {
-    const response = await apiClient.get<ApiResponse<AttendanceSummary>>(`/Attendance/summary`, {
-      params: { employeeId, month, year },
-    })
+  // Get attendance by ID
+  getById: async (id: number): Promise<Attendance> => {
+    const response = await apiClient.get<ApiResponse<Attendance>>(`/Attendance/${id}`)
     return response.data
   },
 
-  create: async (data: CreateAttendanceDto): Promise<AttendanceRecord> => {
-    const response = await apiClient.post<ApiResponse<AttendanceRecord>>("/Attendance", data)
+  // Create new attendance
+  create: async (data: CreateAttendanceDto): Promise<Attendance> => {
+    const response = await apiClient.post<ApiResponse<Attendance>>("/Attendance", data)
     return response.data
   },
 
-  update: async ({ data }: { data: AttendanceRecord }): Promise<AttendanceRecord> => {
-    const response = await apiClient.post<ApiResponse<AttendanceRecord>>(`/Attendance/UpsertAttendance`, data)
+  // Update attendance
+  update: async (data: UpdateAttendanceDto): Promise<Attendance> => {
+    const { attendanceId, ...updateData } = data
+    const response = await apiClient.put<ApiResponse<Attendance>>(`/Attendance/${attendanceId}`, updateData)
     return response.data
   },
 
+  // Delete attendance
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/Attendance/${id}`)
   },
-
-  syncFromDevice: async (): Promise<{ count: number; message: string }> => {
-    const response = await apiClient.post<ApiResponse<{ count: number; message: string }>>("/Attendance/sync")
+  // Upload attendances from a TXT file
+  uploadAttendancesTxt: async (formData: FormData): Promise<any> => {
+    const response = await apiClient.post<ApiResponse<any>>(`/Attendance/UploadAttendancesTxt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     return response.data
   },
 }

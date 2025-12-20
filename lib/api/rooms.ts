@@ -4,6 +4,7 @@ import type {
   IPaginationParams,
   RoomSearchParams,
   RoomSearchResponse,
+  RoomSearchItem,
   CreateRoomDto,
   UpdateRoomDto,
   FloorMap,
@@ -96,11 +97,24 @@ export const roomsApi = {
     queryParams.append("pageNumber", (params.pageNumber || 1).toString());
     queryParams.append("pageSize", (params.pageSize || 10).toString());
 
-    const client = isPublic ? publicApiClient : apiClient;
-    const res = await client.get<ApiResponse<RoomSearchResponse>>(
-      `/RoomManagement/search?${queryParams.toString()}`
-    );
-    return (res.data as any)?.data ?? (res.data as any);
+    const client = isPublic ? publicApiClient : apiClient
+    const res = await client.get<ApiResponse<RoomSearchResponse>>(`/RoomManagement/search?${queryParams.toString()}`)
+    const raw = (res.data as any)?.data ?? (res.data as any)
+    const normalizeImages = (images: any) =>
+      Array.isArray(images) ? images.map((img: any) => img?.filePath || img).filter(Boolean) : []
+
+    const normalizeRoom = (room: any): RoomSearchItem => ({
+      ...room,
+      images: normalizeImages(room.images),
+      statusCode: room.statusCode || room.roomStatus || room.status,
+      roomName: room.roomName || room.roomNumber,
+      basePriceNight: room.basePriceNight ?? room.pricePerNight ?? 0,
+    })
+
+    return {
+      ...raw,
+      rooms: Array.isArray(raw?.rooms) ? raw.rooms.map(normalizeRoom) : [],
+    }
   },
 
   // Get room type details by ID
@@ -224,10 +238,18 @@ export const roomManagementApi = {
 
   // Get room details
   getDetails: async (roomId: number): Promise<RoomDetails> => {
-    const res = await apiClient.get<ApiResponse<RoomDetails>>(
-      `/rooms/${roomId}`
-    );
-    return res.data;
+    const res = await apiClient.get<ApiResponse<RoomDetails>>(`/rooms/${roomId}`)
+    const raw = res.data as any
+    const normalizeImages = (images: any) =>
+      Array.isArray(images) ? images.map((img: any) => img?.filePath || img).filter(Boolean) : []
+    return {
+      ...(raw?.data ?? raw),
+      images: normalizeImages(raw?.data?.images ?? raw?.images),
+      statusCode: raw?.data?.statusCode ?? raw?.statusCode ?? raw?.status,
+      roomName: raw?.data?.roomName ?? raw?.roomName ?? raw?.roomNumber,
+      basePriceNight:
+        raw?.data?.basePriceNight ?? raw?.basePriceNight ?? raw?.pricePerNight ?? raw?.roomType?.basePriceNight ?? 0,
+    } as RoomDetails
   },
 
   // Get room statistics

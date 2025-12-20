@@ -1,9 +1,7 @@
-import { number } from "zod";
-
 // Common API response types
 export interface ApiResponse<T> {
   isSuccess: boolean;
-  responseCode: number | null;
+  responseCode: string;
   statusCode: number;
   message: string;
   data: T;
@@ -379,6 +377,22 @@ export interface RoomTypeAvailability {
   isAvailable: boolean;
   basePriceNight: number;
   message: string;
+  availableRooms: Array<{
+    roomId: number;
+    roomName: string;
+    roomTypeId: number;
+    roomTypeName: string;
+    pricePerNight: number;
+    maxOccupancy: number;
+    roomSize: number;
+    numberOfBeds: number;
+    bedType: string;
+    description: string;
+    status: string;
+    floor: number;
+    amenities: string[];
+    images: string[];
+  }>;
 }
 
 export interface CheckAvailabilityResponse {
@@ -474,9 +488,12 @@ export interface BookingDetails {
   totalAmount: number;
   depositAmount: number;
   paymentUrl: string | null;
-  paymentStatus: string;
-  depositStatus: string;
-  bookingType: string;
+  paymentStatus: string; // Display - Vietnamese (e.g., "Đã thanh toán", "Đã nhận phòng")
+  paymentStatusName?: string; // Logic - English code (e.g., "Paid", "CheckedIn", "CheckedOut")
+  depositStatus: string; // Display - Vietnamese (e.g., "Đã đặt cọc", "Đã nhận phòng")
+  depositStatusName?: string; // Logic - English code (e.g., "Deposited", "CheckedIn")
+  bookingType: string; // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string; // Logic - English code (e.g., "WalkIn", "Online")
   specialRequests?: string;
   createdAt: string;
   orderCode?: string | null;
@@ -554,6 +571,7 @@ export interface AttendanceRecord {
   employeeId: number;
   employeeName: string;
   deviceEmployeeId: string | undefined;
+  workDate: string;
   checkIn: string;
   checkOut: string | undefined;
   shiftDate: string;
@@ -590,6 +608,7 @@ export interface AttendanceSummary {
 export interface CreateAttendanceDto {
   employeeId: number;
   deviceEmployeeId?: string;
+  workDate: string
   checkIn: string;
   checkOut?: string;
   shiftDate: string;
@@ -844,12 +863,40 @@ export interface CreateOfflineBookingDto {
   phoneNumber: string;
   identityCard?: string;
   address?: string;
-  roomIds: number[]; // Changed from roomTypes to roomIds array
+  roomIds: number[]; // Array of specific room IDs
   checkInDate: string;
   checkOutDate: string;
   specialRequests?: string;
   paymentMethod: "Cash" | "Card" | "Transfer";
   paymentNote?: string;
+}
+
+// For availability check before selecting rooms
+export interface CheckAvailabilityRequest {
+  roomTypes: BookingRoomType[];
+  checkInDate: string;
+  checkOutDate: string;
+}
+
+// Response for room search
+export interface AvailableRoomDto {
+  roomId: number;
+  roomName: string;
+  roomTypeId: number;
+  roomTypeName: string;
+  pricePerNight: number;
+  maxOccupancy: number;
+  roomSize: number;
+  numberOfBeds: number;
+  bedType: string;
+  floor: number;
+  status: string;
+  amenities: any[];
+  images: Array<{
+    mediaId: number;
+    filePath: string;
+    description: string;
+  }>;
 }
 
 export interface QRPaymentInfo {
@@ -948,13 +995,15 @@ export interface BookingListItem {
   checkOutDate: string;
   totalAmount: number;
   depositAmount: number;
-  paymentStatusId: number;
-  bookingTypeId: number;
-  paymentStatusName: string; // English code: PendingConfirmation, Confirmed, Paid, Cancelled
-  bookingStatusName: string; // English code: Online, Offline
-  paymentStatus: string; // Vietnamese label
+  paymentStatusId?: number;
+  bookingTypeId?: number;
+  paymentStatusName?: string; // English code: PendingConfirmation, Confirmed, Paid, Cancelled
+  bookingStatus?: string; // Display - Vietnamese (e.g., "Đã nhận phòng")
+  bookingStatusCode?: string; // Logic - English code (e.g., "CheckedIn", "CheckedOut")
+  paymentStatus?: string; // Vietnamese label
   depositStatus: string;
   bookingType: string; // Vietnamese label
+  bookingTypeCode?: string; // Logic - English code (e.g., "WalkIn", "Online")
   specialRequests?: string;
   createdAt: string;
   paymentUrl?: string | null;
@@ -984,6 +1033,7 @@ export interface BookingManagementDetails extends BookingDetails {
   totalNights: number;
   status: string;
   bookingStatus: string;
+  bookingStatusCode?: string; // Logic - English code (e.g., "CheckedIn", "CheckedOut")
   note?: string;
   specialRequests?: string;
   customer?: {
@@ -1144,4 +1194,373 @@ export interface SalaryInfo {
   allowance?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+// Employee Schedule Management types
+export type ShiftType = "morning" | "afternoon" | "night"
+
+export interface ShiftDefinition {
+  shiftType: ShiftType
+  name: string
+  startTime: string // HH:mm format
+  endTime: string // HH:mm format
+  color: string // for UI display
+}
+
+export interface EmployeeSchedule {
+  scheduleId: number
+  employeeId: number
+  employeeName: string
+  employeeRole?: string
+  employeeAvatar?: string
+  date: string // ISO date format
+  shiftType: ShiftType
+  shiftName: string
+  startTime: string
+  endTime: string
+  status: "Scheduled" | "Completed" | "Absent" | "Cancelled"
+  notes?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+// New Weekly Schedule API types
+export interface WeeklyScheduleEmployee {
+  scheduleId: number
+  employeeId: number
+  employeeName: string
+  employeeType: string
+  status: "Scheduled" | "Completed" | "Absent" | "Cancelled"
+  notes?: string | null
+}
+
+export interface DailySchedule {
+  shiftDate: string  // YYYY-MM-DD
+  dayOfWeek: string  // e.g., "Thứ 2", "Thứ 3"
+  employees: WeeklyScheduleEmployee[]
+}
+
+export interface ShiftSchedule {
+  shiftName: string  // e.g., "Ca Sáng", "Ca Chiều", "Ca Tối"
+  startTime: string  // HH:mm:ss
+  endTime: string    // HH:mm:ss
+  dailySchedules: DailySchedule[]
+}
+
+export interface WeeklyScheduleData {
+  shifts: ShiftSchedule[]
+}
+
+export interface AvailableEmployee {
+  employeeId: number
+  fullName: string
+  employeeType: string
+  employeeTypeId: number
+  phoneNumber?: string
+}
+
+export interface AvailableEmployeesRequest {
+  shiftDate: string    // YYYY-MM-DD
+  startTime: string    // HH:mm:ss
+  endTime: string      // HH:mm:ss
+  employeeTypeId?: number
+}
+
+export interface CreateScheduleDto {
+  employeeId: number
+  shiftDate: string    // YYYY-MM-DD (changed from 'date')
+  startTime: string    // HH:mm:ss
+  endTime: string      // HH:mm:ss
+  notes?: string
+}
+
+export interface UpdateScheduleDto {
+  scheduleId: number
+  employeeId?: number
+  shiftDate?: string   // YYYY-MM-DD
+  startTime?: string   // HH:mm:ss
+  endTime?: string     // HH:mm:ss
+  notes?: string
+}
+
+export interface ScheduleSearchParams {
+  employeeId?: number
+  startDate?: string   // YYYY-MM-DD
+  endDate?: string     // YYYY-MM-DD
+  shiftType?: ShiftType
+  status?: string
+  pageIndex?: number
+  pageSize?: number
+}
+
+export interface Employee {
+  employeeId: number
+  accountId: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: string
+  avatarUrl?: string
+  identityCard?: string
+  address?: string
+  isActive: boolean
+  createdAt: string
+}
+
+// Employee Search API types
+export interface EmployeeSearchRequest {
+  keyword?: string
+  employeeTypeId?: number
+  isActive?: boolean
+  isLocked?: boolean
+  pageIndex?: number
+  pageSize?: number
+}
+
+export interface EmployeeSearchItem {
+  employeeId: number
+  accountId: number
+  fullName: string
+  phoneNumber?: string
+  email?: string
+  dateOfBirth?: string
+  gender?: string
+  address?: string
+  identityCard?: string
+  employeeTypeName: string  // Changed from employeeType
+  employeeTypeId: number
+  employeeTypeCode?: string
+  salary?: number
+  baseSalary?: number
+  hireDate?: string
+  terminationDate?: string | null
+  isActive?: boolean
+  avatar?: string
+  username?: string
+  isLocked?: boolean
+  lastLoginAt?: string | null
+  createdAt: string
+  updatedAt?: string | null
+}
+
+// API returns PaginatedResponse structure
+export interface EmployeeSearchResponse {
+  items: EmployeeSearchItem[]
+  totalCount: number
+  pageIndex: number
+  pageSize: number
+  totalPages: number
+}
+
+// Attendance Management types
+export type AttendanceStatus = "Present" | "Absent" | "Late" | "OnLeave" | "HalfDay"
+
+export interface Attendance {
+  attendanceId: number
+  employeeId: number
+  employeeName: string
+  employeeRole?: string
+  employeeAvatar?: string
+  workDate: string // ISO date format
+  checkIn?: string // HH:mm:ss format
+  checkOut?: string // HH:mm:ss format
+  status: AttendanceStatus
+  // Approval state: can be numeric code ("0"|"1"|"2") or string label
+  isApproved?: string | number
+  workingHours?: number
+  overtimeHours?: number
+  notes?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface AttendanceStatic {
+  attendance: number
+  attend: number
+  absentWithLeave: number
+  absentWithoutLeave: number
+}
+
+
+
+export interface CreateAttendanceDto {
+  employeeId: number
+  date: string
+  checkInTime?: string
+  checkOutTime?: string
+  status: AttendanceStatus
+  isApproved?: string | number
+  notes?: string
+}
+
+export interface UpdateAttendanceDto {
+  attendanceId: number
+  employeeId?: number
+  date?: string
+  checkInTime?: string
+  checkOutTime?: string
+  status?: AttendanceStatus
+  isApproved?: string | number
+  notes?: string
+}
+
+export interface AttendanceSearchParams {
+  employeeId?: number
+  startDate?: string
+  endDate?: string
+  status?: AttendanceStatus
+  pageIndex?: number
+  pageSize?: number
+}
+
+// Dashboard Statistics types
+export interface DashboardStats {
+  totalBookings: number
+  totalRevenue: number
+  totalCustomers: number
+  newCustomersThisMonth: number
+  totalRooms: number
+  availableRooms: number
+  occupiedRooms: number
+  maintenanceRooms: number
+  occupancyRate: number
+  averageRoomRate: number
+  totalTransactions: number
+  pendingPayments: number
+  completedPayments: number
+  revenueThisMonth: number
+  revenueLastMonth: number
+  revenueGrowth: number
+  bookingsThisMonth: number
+  bookingsLastMonth: number
+  bookingsGrowth: number
+  customersGrowth: number
+}
+
+export interface RevenueByMonth {
+  month: string
+  year: number
+  revenue: number
+  bookings: number
+}
+
+export interface RoomStatusSummary {
+  status: string
+  count: number
+  percentage: number
+}
+
+export interface TopRoomType {
+  roomTypeId: number
+  typeName: string
+  totalBookings: number
+  totalRevenue: number
+  averagePrice: number
+}
+
+// Checkout types
+export interface CustomerCheckoutInfo {
+  customerId: number
+  fullName: string
+  email: string
+  phoneNumber: string
+  identityCard?: string
+}
+
+export interface RoomChargeDetail {
+  bookingRoomId: number
+  roomId: number
+  roomName: string
+  roomTypeName: string // Display - Vietnamese (e.g., "Phòng Tiêu Chuẩn")
+  roomTypeCode?: string // Logic - English code (e.g., "Standard", "Deluxe")
+  pricePerNight: number
+  plannedNights: number
+  actualNights: number
+  subTotal: number
+  checkInDate: string
+  checkOutDate: string
+}
+
+export interface ServiceChargeDetail {
+  serviceId: number
+  serviceName: string // Display - Vietnamese (e.g., "Giặt ủi", "Massage")
+  serviceCode?: string // Logic - English code (e.g., "Laundry", "Massage")
+  pricePerUnit: number
+  quantity: number
+  subTotal: number
+  serviceDate: string
+  serviceType: "RoomService" | "BookingService"
+  roomName?: string
+}
+
+export interface PreviewCheckoutResponse {
+  bookingId: number
+  bookingType: string // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string // Logic - English code (e.g., "WalkIn", "Online")
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  totalNights: number
+  estimatedCheckOutDate?: string
+  estimatedNights?: number
+  roomCharges: RoomChargeDetail[]
+  totalRoomCharges: number
+  serviceCharges: ServiceChargeDetail[]
+  totalServiceCharges: number
+  subTotal: number
+  depositPaid: number
+  totalAmount: number
+  amountDue: number
+  message?: string
+}
+
+export interface CheckoutRequest {
+  bookingId: number
+  actualCheckOutDate: string
+  paymentMethodId: number
+  paymentNote?: string
+  transactionReference?: string
+}
+
+export interface CheckoutResponse {
+  bookingId: number
+  bookingType: string // Display - Vietnamese (e.g., "Đặt tại quầy", "Đặt trực tuyến")
+  bookingTypeCode?: string // Logic - English code (e.g., "WalkIn", "Online")
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  actualCheckOutDate: string
+  totalNights: number
+  actualNights: number
+  roomCharges: RoomChargeDetail[]
+  totalRoomCharges: number
+  serviceCharges: ServiceChargeDetail[]
+  totalServiceCharges: number
+  subTotal: number
+  depositPaid: number
+  totalAmount: number
+  amountDue: number
+  paymentMethod: string
+  transactionId: number
+  checkoutProcessedAt: string
+  processedBy: string
+}
+
+export interface BookingCheckoutInfo {
+  bookingId: number
+  bookingType: string
+  status: string
+  customer: CustomerCheckoutInfo
+  checkInDate: string
+  checkOutDate: string
+  rooms: Array<{
+    roomId: number
+    roomName: string
+    roomTypeName: string
+    pricePerNight: number
+  }>
+  totalAmount: number
+  depositPaid: number
+  canCheckout: boolean
+  message?: string
 }

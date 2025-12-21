@@ -41,7 +41,11 @@ export const offlineBookingsApi = {
     const checkOut = new Date(data.checkOutDate)
     const now = new Date()
 
-    if (checkIn < now) {
+    // Reset time to compare only dates (allow booking for today)
+    const checkInDate = new Date(checkIn.getFullYear(), checkIn.getMonth(), checkIn.getDate())
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    if (checkInDate < today) {
       throw new Error("Ngày nhận phòng không thể là ngày trong quá khứ")
     }
 

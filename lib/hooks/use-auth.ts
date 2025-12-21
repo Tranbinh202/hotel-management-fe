@@ -240,6 +240,8 @@ export function useGoogleCallback() {
             console.log("Account is locked, redirecting to locked page")
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
+            localStorage.removeItem("resumeSession")
+            localStorage.removeItem("resume_session")
             router.push("/account-locked")
             return
           }
@@ -353,6 +355,8 @@ export function useGoogleExchange() {
           if (userData.data.isLocked) {
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
+            localStorage.removeItem("resumeSession")
+            localStorage.removeItem("resume_session")
             router.push("/account-locked")
             return
           }

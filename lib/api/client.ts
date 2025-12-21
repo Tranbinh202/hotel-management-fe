@@ -119,6 +119,8 @@ class ApiClient {
                 localStorage.removeItem("refresh_token");
                 localStorage.removeItem("account_id");
                 localStorage.removeItem("user");
+                localStorage.removeItem("resumeSession");
+                localStorage.removeItem("resume_session");
                 window.location.href = "/login";
               }
               return Promise.reject(this.handleError(error));
@@ -230,7 +232,15 @@ class ApiClient {
       // The backend will validate if it's still valid
 
       // Use POST endpoint with accountId and refreshToken
-      const payload = { accountId, refreshToken };
+      const resumeSession =
+        typeof window !== "undefined"
+          ? localStorage.getItem("resumeSession") ||
+            localStorage.getItem("resume_session")
+          : null;
+      const payload: Record<string, unknown> = { accountId, refreshToken };
+      if (resumeSession) {
+        payload.resumeSession = resumeSession;
+      }
       console.log(
         "Refreshing token with POST endpoint. Payload:",
         JSON.stringify({ accountId, refreshToken: "***" })
@@ -249,6 +259,9 @@ class ApiClient {
       const newRefreshToken = apiResponse.isSuccess
         ? apiResponse.data?.refreshToken
         : null;
+      const newResumeSession = apiResponse.isSuccess
+        ? apiResponse.data?.resumeSession
+        : null;
 
       console.log("New access token received:", !!newAccessToken);
       console.log("New refresh token received:", !!newRefreshToken);
@@ -264,6 +277,10 @@ class ApiClient {
         localStorage.setItem("access_token", newAccessToken);
         if (newRefreshToken) {
           localStorage.setItem("refresh_token", newRefreshToken);
+        }
+        if (newResumeSession) {
+          localStorage.setItem("resumeSession", newResumeSession);
+          localStorage.setItem("resume_session", newResumeSession);
         }
         // Cache accountId for future refresh attempts
         localStorage.setItem("account_id", accountId.toString());
@@ -289,6 +306,8 @@ class ApiClient {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("account_id");
+      localStorage.removeItem("resumeSession");
+      localStorage.removeItem("resume_session");
 
       // Only redirect if not already on login page
       if (!window.location.pathname.includes("/login")) {

@@ -20,18 +20,25 @@ const bookingDatesBase = z.object({
 })
 
 export const bookingDatesSchema = bookingDatesBase
-  .refine((d) => d.checkInDate >= new Date(new Date().setHours(0, 0, 0, 0)), {
-    message: "Ngày nhận phòng phải từ hôm nay trở đi",
-    path: ["checkInDate"],
-  })
-  .refine((d) => !d.checkInDate || !d.checkOutDate || d.checkOutDate > d.checkInDate, {
+  .refine((d) => {
+    if (!d.checkInDate || !d.checkOutDate) return true
+    const checkInDay = new Date(d.checkInDate)
+    checkInDay.setHours(0, 0, 0, 0)
+    const checkOutDay = new Date(d.checkOutDate)
+    checkOutDay.setHours(0, 0, 0, 0)
+    return checkOutDay > checkInDay
+  }, {
     message: "Ngày trả phòng phải sau ngày nhận phòng",
     path: ["checkOutDate"],
   })
   .refine(
     (d) => {
       if (!d.checkInDate || !d.checkOutDate) return true
-      const diffDays = (d.checkOutDate.getTime() - d.checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+      const checkInDay = new Date(d.checkInDate)
+      checkInDay.setHours(0, 0, 0, 0)
+      const checkOutDay = new Date(d.checkOutDate)
+      checkOutDay.setHours(0, 0, 0, 0)
+      const diffDays = (checkOutDay.getTime() - checkInDay.getTime()) / (1000 * 60 * 60 * 24)
       return diffDays >= 1
     },
     {
@@ -64,23 +71,25 @@ export const guestInfoSchema = z.object({
 
 export const completeBookingSchema = bookingDatesBase.merge(guestInfoSchema).superRefine((d, ctx) => {
   // Copy validation rules from bookingDatesSchema
-  const today0 = new Date(new Date().setHours(0, 0, 0, 0))
-  if (d.checkInDate < today0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Ngày nhận phòng phải từ hôm nay trở đi",
-      path: ["checkInDate"],
-    })
-  }
-  if (d.checkOutDate && d.checkInDate && d.checkOutDate <= d.checkInDate) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Ngày trả phòng phải sau ngày nhận phòng",
-      path: ["checkOutDate"],
-    })
+  if (d.checkOutDate && d.checkInDate) {
+    const checkInDay = new Date(d.checkInDate)
+    checkInDay.setHours(0, 0, 0, 0)
+    const checkOutDay = new Date(d.checkOutDate)
+    checkOutDay.setHours(0, 0, 0, 0)
+    if (checkOutDay <= checkInDay) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Ngày trả phòng phải sau ngày nhận phòng",
+        path: ["checkOutDate"],
+      })
+    }
   }
   if (d.checkOutDate && d.checkInDate) {
-    const diffDays = (d.checkOutDate.getTime() - d.checkInDate.getTime()) / (1000 * 60 * 60 * 24)
+    const checkInDay = new Date(d.checkInDate)
+    checkInDay.setHours(0, 0, 0, 0)
+    const checkOutDay = new Date(d.checkOutDate)
+    checkOutDay.setHours(0, 0, 0, 0)
+    const diffDays = (checkOutDay.getTime() - checkInDay.getTime()) / (1000 * 60 * 60 * 24)
     if (diffDays < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

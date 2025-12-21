@@ -62,6 +62,7 @@ export interface RegisterDto {
 export interface AuthResponse {
   token: string;
   refreshToken: string;
+  resumeSession?: string;
   roles: string[];
   email?: string;
   username?: string;
@@ -227,6 +228,9 @@ export interface RoomSearchParams {
   floor?: number;
   minPrice?: number;
   maxPrice?: number;
+  checkInDate?: string;
+  checkOutDate?: string;
+  numberOfGuests?: number;
   pageNumber?: number;
   pageSize?: number;
 }
@@ -864,7 +868,7 @@ export interface CreateOfflineBookingDto {
   checkInDate: string;
   checkOutDate: string;
   specialRequests?: string;
-  paymentMethod: "Cash" | "Card" | "Transfer";
+  paymentMethod: "Cash" | "Card" | "Transfer" | "BankTransfer" | "EWallet" | "PayOS";
   paymentNote?: string;
 }
 
@@ -1164,33 +1168,33 @@ export interface BookingByTokenResponse {
 // </CHANGE>
 
 export interface CommmentRecord {
-  commentId: number
-  roomId: number
-  replyId?: number
-  accountId?: number
-  content: string
-  rating?: number
+  commentId: number;
+  roomId: number;
+  replyId?: number;
+  accountId?: number;
+  content: string;
+  rating?: number;
 
-  createdDate: Date
+  createdDate: Date;
 
-  createdTime?: Date
+  createdTime?: Date;
 
-  updatedAt?: Date
+  updatedAt?: Date;
 
-  status: string
+  status: string;
 }
 
 // SalaryInfo & SalaryRecord types
 export interface SalaryInfo {
-  salaryInfoId?: number
-  employeeId: number
-  employeeName?: string
-  year: number
-  baseSalary: number
-  yearBonus?: number | null
-  allowance?: number | null
-  createdAt?: string | null
-  updatedAt?: string | null
+  salaryInfoId?: number;
+  employeeId: number;
+  employeeName?: string;
+  year: number;
+  baseSalary: number;
+  yearBonus?: number | null;
+  allowance?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 // Employee Schedule Management types

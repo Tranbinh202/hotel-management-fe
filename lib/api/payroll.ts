@@ -7,6 +7,7 @@ import type {
   PaginatedResponse,
   PayrollCalculation,
   PayrollDisbursement,
+  SalaryInfo,
 } from "../types/api"
 import { apiClient } from "./client"
 
@@ -33,15 +34,21 @@ export const payrollApi = {
     return response.data
   },
 
-  calculate: async (params: CalculatePayrollParams): Promise<PayrollCalculation[]> => {
-    const response = await apiClient.post<ApiResponse<PayrollCalculation[]>>("/Payroll/calculate", params)
-    return response.data
+  calculate: async (params: CalculatePayrollParams): Promise<any> => {
+    const response = await apiClient.post<ApiResponse<any>>("/SalaryInfo/calculate", params, { responseType: "blob" })
+    return response
   },
 
   createDisbursement: async (data: CreatePayrollDisbursementDto): Promise<PayrollDisbursement> => {
     const response = await apiClient.post<ApiResponse<PayrollDisbursement>>("/Payroll/disbursement", data)
     return response.data
   },
+
+  updateSalary: async (data: SalaryInfo): Promise<SalaryInfo> => {
+    const response = await apiClient.put<ApiResponse<SalaryInfo>>(`/SalaryInfo/${data.salaryInfoId}`, data)
+    return response.data
+  },
+
 
   approve: async (data: ApprovePayrollDto): Promise<PayrollDisbursement> => {
     const response = await apiClient.post<ApiResponse<PayrollDisbursement>>(

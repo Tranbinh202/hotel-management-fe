@@ -17,11 +17,13 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { usePayroll, useCalculatePayroll, useApprovePayroll, useDisbursePayroll } from "@/lib/hooks/use-payroll"
+import { usePayroll, useApprovePayroll, useDisbursePayroll, useUpdateSalaryInfo, useCaculateSalary } from "@/lib/hooks/use-payroll"
 import { useEmployees } from "@/lib/hooks/use-employees"
 import { LoadingSpinner } from "@/components/shared/loading-spinner"
 import type { PayrollDisbursement, SalaryInfo } from "@/lib/types/api"
 import { useSalaryInfos } from "@/lib/hooks/use-salary-info"
+import { Download, Pencil } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 export default function PayrollPage() {
   const currentDate = new Date()
@@ -29,8 +31,24 @@ export default function PayrollPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<number | undefined>(undefined)
   const [pageIndex, setPageIndex] = useState(0)
   const [isCalculateDialogOpen, setIsCalculateDialogOpen] = useState(false)
-  const [selectedPayroll, setSelectedPayroll] = useState<PayrollDisbursement | null>(null)
-
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [editingSalaryInfo, setEditingSalaryInfo] = useState<SalaryInfo | null>(null)
+  const [formData, setFormData] = useState<{
+    employeeId: number
+    salaryInfoId: number
+    baseSalary: number
+    yearBonus: number
+    allowance: number
+    employeeName: string
+  }>({
+    employeeId: 0,
+    salaryInfoId: 0,
+    baseSalary: 0,
+    yearBonus: 0,
+    allowance: 0,
+    employeeName: "",
+  })
+  const [dowloadSalaryInfo, setDowloadSalaryInfo] = useState<SalaryInfo | null>()
 
   const { data: payrollData, isLoading: isLoadingPayroll, refetch: refetchPayroll } = useSalaryInfos({
     PageIndex: pageIndex,
@@ -41,10 +59,39 @@ export default function PayrollPage() {
     SortDesc: true,
   })
 
-  const { data: calculationData, isLoading: isCalculating, refetch: refetchCalculation } = useCalculatePayroll({
-    employeeId: selectedEmployee,
+  const { data: fileExel, isLoading: isLoadingFile, refetch: refetchFile } = useCaculateSalary({
+    employeeId: dowloadSalaryInfo?.employeeId,
     year: selectedYear,
   })
+
+  useEffect(() => {
+    try {
+      refetchFile?.()
+    } catch (e) {
+      // ignore
+    }
+
+  }, [dowloadSalaryInfo])
+
+  useEffect(() => {
+
+    console.log("fileExel", fileExel)
+    console.log("dowloadSalaryInfo", dowloadSalaryInfo)
+    if (fileExel && dowloadSalaryInfo) {
+      console.log("fileExel", fileExel)
+      const blob = new Blob([fileExel])
+      const url = window.URL.createObjectURL(blob)
+
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "payroll.xlsx" // hoặc lấy từ header
+      document.body.appendChild(link)
+      link.click()
+
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    }
+  }, [fileExel])
 
   useEffect(() => {
     // reset to first page when filters change and refetch data
@@ -54,11 +101,7 @@ export default function PayrollPage() {
     } catch (e) {
       // ignore
     }
-    try {
-      refetchCalculation?.()
-    } catch (e) {
-      // ignore
-    }
+
   }, [selectedEmployee, selectedYear])
 
   const { data: employeesData } = useEmployees({
@@ -69,6 +112,8 @@ export default function PayrollPage() {
     SortDesc: false,
   })
 
+  const updateMutation = useUpdateSalaryInfo()
+
 
 
   const formatCurrency = (amount: number) => {
@@ -78,6 +123,52 @@ export default function PayrollPage() {
     }).format(amount)
   }
 
+  const handleOpenDialog = (salaryInfo?: SalaryInfo) => {
+    if (salaryInfo) {
+      console.log("editing salaryInfo:", salaryInfo)
+      setEditingSalaryInfo(salaryInfo)
+      setFormData({
+        employeeId: salaryInfo.employeeId,
+        salaryInfoId: salaryInfo.salaryInfoId,
+        baseSalary: (salaryInfo as any).baseSalary ?? (salaryInfo as any).BaseSalary ?? 0,
+        yearBonus: (salaryInfo as any).yearBonus ?? (salaryInfo as any).YearBonus ?? 0,
+        allowance: (salaryInfo as any).allowance ?? (salaryInfo as any).Allowance ?? 0,
+        employeeName: salaryInfo.employeeName,
+      })
+    } else {
+      setEditingSalaryInfo(null)
+      setFormData({
+        employeeId: 0,
+        salaryInfoId: 0,
+        baseSalary: 0,
+        yearBonus: 0,
+        allowance: 0,
+        employeeName: "",
+      })
+    }
+    setIsDialogOpen(true)
+  }
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false)
+    setEditingSalaryInfo(null)
+  }
+
+  const handleSubmit = () => {
+    if (editingSalaryInfo) {
+      const updateData: SalaryInfo = {
+        salaryInfoId: editingSalaryInfo.salaryInfoId,
+        ...editingSalaryInfo,
+        baseSalary: formData.baseSalary,
+        yearBonus: formData.yearBonus,
+        allowance: formData.allowance,
+      }
+      updateMutation.mutate(updateData, {
+        onSuccess: () => handleCloseDialog(),
+      })
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -85,7 +176,7 @@ export default function PayrollPage() {
           <h1 className="text-3xl font-bold text-slate-900">Quản lý lương</h1>
           <p className="text-slate-600 mt-1">Tính toán và quản lý lương nhân viên</p>
         </div>
-        <Button
+        {/* <Button
           onClick={() => setIsCalculateDialogOpen(true)}
           className="bg-gradient-to-r from-[#00008b] to-[#ffd700] hover:from-[#00006b] hover:to-[#e6c200]"
         >
@@ -98,7 +189,7 @@ export default function PayrollPage() {
             />
           </svg>
           Tính lương
-        </Button>
+        </Button> */}
       </div>
 
       {/* Filters */}
@@ -123,7 +214,7 @@ export default function PayrollPage() {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div>
             <Label>Năm</Label>
             <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(Number(value))}>
@@ -159,6 +250,8 @@ export default function PayrollPage() {
                   <TableHead className="text-right">Thưởng năm</TableHead>
                   <TableHead className="text-right">Phụ cấp</TableHead>
                   <TableHead>Ngày tạo</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+
                 </TableRow>
               </TableHeader>
 
@@ -171,6 +264,27 @@ export default function PayrollPage() {
                     <TableCell className="text-right text-green-600">{formatCurrency((payroll as any).yearBonus ?? (payroll as any).YearBonus ?? 0)}</TableCell>
                     <TableCell className="text-right text-blue-600">{formatCurrency((payroll as any).allowance ?? (payroll as any).Allowance ?? 0)}</TableCell>
                     <TableCell>{format(new Date((payroll as any).createdAt ?? (payroll as any).CreatedAt ?? ""), "dd/MM/yyyy", { locale: vi })}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDowloadSalaryInfo(payroll)
+                          }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDialog(payroll)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -206,60 +320,72 @@ export default function PayrollPage() {
         )}
       </div>
 
-      {/* Calculate Dialog */}
-      <Dialog open={isCalculateDialogOpen} onOpenChange={setIsCalculateDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              Tính lương tháng 
-            </DialogTitle>
-            <DialogDescription>Xem trước bảng lương trước khi tạo phiếu lương</DialogDescription>
+            <DialogTitle>Chỉnh sửa bảng lương</DialogTitle>
+            <DialogDescription>
+              Cập nhật thông tin bảng lương nhân viên
+            </DialogDescription>
           </DialogHeader>
 
-          {isCalculating ? (
-            <div className="flex items-center justify-center py-12">
-              <LoadingSpinner size="lg" />
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="employee">Nhân viên {formData.employeeName}</Label>
+              {/* <Select
+                value={formData.employeeId.toString()}
+                onValueChange={(value) => setFormData({ ...formData, employeeId: parseInt(value) })}
+              >
+                <SelectTrigger id="employee">
+                  <SelectValue placeholder="Chọn nhân viên" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem key={formData.employeeId} value={formData.employeeId.toString()}>
+                      {formData.employeeName}
+                    </SelectItem>
+                </SelectContent>
+              </Select> */}
             </div>
-          ) : calculationData && calculationData.length > 0 ? (
-            <div className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nhân viên</TableHead>
-                    <TableHead className="text-right">Giờ làm</TableHead>
-                    <TableHead className="text-right">Lương cơ bản</TableHead>
-                    <TableHead className="text-right">Lương OT</TableHead>
-                    <TableHead className="text-right">Khấu trừ</TableHead>
-                    <TableHead className="text-right">Thực lĩnh</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {calculationData.map((calc) => (
-                    <TableRow key={calc.employeeId}>
-                      <TableCell className="font-medium">{calc.employeeName}</TableCell>
-                      <TableCell className="text-right">
-                        {calc.totalNormalHours.toFixed(1)}h + {calc.totalOvertimeHours.toFixed(1)}h OT
-                      </TableCell>
-                      <TableCell className="text-right">{formatCurrency(calc.normalPay)}</TableCell>
-                      <TableCell className="text-right text-orange-600">{formatCurrency(calc.overtimePay)}</TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {formatCurrency(calc.taxDeduction + calc.insuranceDeduction)}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">
-                        {formatCurrency(calc.netPay)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+
+            <div className="space-y-2">
+              <Label>Lương cơ bản</Label>
+              <Input
+                type="number"
+                value={formData.baseSalary}
+                onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) })}
+              />
             </div>
-          ) : (
-            <div className="text-center py-12 text-slate-600">Không có dữ liệu chấm công cho tháng này</div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="date">Thưởng năm</Label>
+              <Input
+                type="number"
+                value={formData.yearBonus}
+                onChange={(e) => setFormData({ ...formData, yearBonus: parseFloat(e.target.value) })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date">Phụ cấp</Label>
+              <Input
+                type="number"
+                value={formData.allowance}
+                onChange={(e) => setFormData({ ...formData, allowance: parseFloat(e.target.value) })}
+              />
+            </div>
+
+
+          </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCalculateDialogOpen(false)}>
-              Đóng
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Hủy
+            </Button>
+            <Button onClick={handleSubmit} disabled={formData.employeeId === 0}>
+              Cập nhật
             </Button>
           </DialogFooter>
         </DialogContent>

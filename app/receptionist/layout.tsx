@@ -221,10 +221,10 @@ export default function ReceptionistLayout({ children }: { children: React.React
             </button>
 
             <div className="flex items-center gap-4">
-              <div className="text-right">
+              {/* <div className="text-right">
                 <p className="text-sm font-medium text-slate-900">{user?.profileDetails?.fullName || user?.username}</p>
                 <p className="text-xs text-slate-500">Lễ tân</p>
-              </div>
+              </div> */}
             </div>
           </div>
         </header>

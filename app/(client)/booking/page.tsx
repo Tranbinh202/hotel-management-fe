@@ -60,6 +60,18 @@ const amenityIcons: Record<string, any> = {
   minibar: Coffee,
 }
 
+const MAX_CHECK_IN_TIME = "12:00"
+
+const isAfterMaxCheckInTime = (timeValue: string) => timeValue > MAX_CHECK_IN_TIME
+
+const clampCheckInTime = (date: Date) => {
+  const next = new Date(date)
+  if (next.getHours() > 12 || (next.getHours() === 12 && next.getMinutes() > 0)) {
+    next.setHours(12, 0, 0, 0)
+  }
+  return next
+}
+
 function BookingPageContent() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
@@ -68,8 +80,9 @@ function BookingPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [room, setRoom] = useState<Room | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
+  const [checkInTimeWarning, setCheckInTimeWarning] = useState("")
   const [defaultDates] = useState(() => {
-    const now = new Date()
+    const now = clampCheckInTime(new Date())
     const checkOut = new Date(now)
     checkOut.setDate(now.getDate() + 1)
     return { checkIn: now, checkOut }
@@ -545,10 +558,11 @@ function BookingPageContent() {
                                         field.onChange(undefined)
                                         return
                                       }
-                                      const base = field.value ?? defaultDates.checkIn
+                                      const base = clampCheckInTime(field.value ?? defaultDates.checkIn)
                                       const next = new Date(date)
                                       next.setHours(base.getHours(), base.getMinutes(), 0, 0)
                                       field.onChange(next)
+                                      setCheckInTimeWarning("")
                                     }}
                                     initialFocus
                                   />
@@ -557,13 +571,19 @@ function BookingPageContent() {
                               <Input
                                 type="time"
                                 value={toTimeInputValue(field.value)}
+                                max={MAX_CHECK_IN_TIME}
                                 onChange={(e) => {
                                   const timeValue = e.target.value
                                   if (!timeValue) {
                                     return
                                   }
+                                  if (isAfterMaxCheckInTime(timeValue)) {
+                                    setCheckInTimeWarning("Giờ nhận phòng tối đa là 12:00 trưa.")
+                                    return
+                                  }
                                   const base = field.value ?? new Date()
                                   field.onChange(applyTimeToDate(new Date(base), timeValue))
+                                  setCheckInTimeWarning("")
                                 }}
                                 className={cn("h-12", datesErrors.checkInDate && "border-red-500")}
                               />
@@ -574,6 +594,12 @@ function BookingPageContent() {
                           <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
                             <AlertCircle className="w-4 h-4" />
                             {datesErrors.checkInDate.message}
+                          </p>
+                        )}
+                        {checkInTimeWarning && (
+                          <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
+                            <AlertCircle className="w-4 h-4" />
+                            {checkInTimeWarning}
                           </p>
                         )}
                       </div>

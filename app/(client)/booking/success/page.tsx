@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { bookingsApi } from "@/lib/api/bookings"
-import { CheckCircle2, Copy, Loader2, Hotel, AlertTriangle, XCircle, Banknote } from "lucide-react"
+import { CheckCircle2, Copy, Loader2, Hotel, AlertTriangle, XCircle, Banknote, Clock } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -166,7 +167,11 @@ export default function BookingSuccessPage() {
     <div className="min-h-screen bg-slate-50 py-8 px-4">
       <div className="container mx-auto max-w-2xl">
         <Card className="shadow-lg animate-fade-in-up">
-          <CardHeader className="text-center border-b bg-linear-to-r from-[#00008b] to-[#ffd700] text-white rounded-t-lg">
+          <CardHeader className="relative text-center border-b bg-linear-to-r from-[#00008b] to-[#ffd700] text-white rounded-t-lg">
+            <Badge className="absolute right-4 top-4 bg-amber-400/30 text-amber-950 border-amber-400/70 px-4 py-2 text-base font-semibold shadow-md ring-2 ring-amber-300/70">
+              <Clock className="h-5 w-5 mr-2" />
+              Chờ xác nhận
+            </Badge>
             <div className="mx-auto bg-white/20 p-3 rounded-full mb-3 w-fit">
               <Banknote className="w-8 h-8 text-white" />
             </div>

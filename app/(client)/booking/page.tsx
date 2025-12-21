@@ -60,18 +60,6 @@ const amenityIcons: Record<string, any> = {
   minibar: Coffee,
 }
 
-const MAX_CHECK_IN_TIME = "12:00"
-
-const isAfterMaxCheckInTime = (timeValue: string) => timeValue > MAX_CHECK_IN_TIME
-
-const clampCheckInTime = (date: Date) => {
-  const next = new Date(date)
-  if (next.getHours() > 12 || (next.getHours() === 12 && next.getMinutes() > 0)) {
-    next.setHours(12, 0, 0, 0)
-  }
-  return next
-}
-
 function BookingPageContent() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
@@ -80,12 +68,18 @@ function BookingPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [room, setRoom] = useState<Room | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
-  const [checkInTimeWarning, setCheckInTimeWarning] = useState("")
-  const [defaultDates] = useState(() => {
-    const now = clampCheckInTime(new Date())
-    const checkOut = new Date(now)
-    checkOut.setDate(now.getDate() + 1)
-    return { checkIn: now, checkOut }
+  const [datePolicy] = useState(() => {
+    const now = new Date()
+    const isAfterNoon = now.getHours() > 12 || (now.getHours() === 12 && now.getMinutes() > 0)
+    const minCheckInDate = new Date(now)
+    minCheckInDate.setHours(0, 0, 0, 0)
+    if (isAfterNoon) {
+      minCheckInDate.setDate(minCheckInDate.getDate() + 1)
+    }
+    const checkIn = new Date(minCheckInDate)
+    const checkOut = new Date(minCheckInDate)
+    checkOut.setDate(checkOut.getDate() + 1)
+    return { isAfterNoon, minCheckInDate, defaultDates: { checkIn, checkOut } }
   })
 
   const [bookingData, setBookingData] = useState<{
@@ -127,8 +121,8 @@ function BookingPageContent() {
   } = useForm<BookingDatesFormData>({
     resolver: zodResolver(bookingDatesSchema),
     defaultValues: {
-      checkInDate: defaultDates.checkIn,
-      checkOutDate: defaultDates.checkOut,
+      checkInDate: datePolicy.defaultDates.checkIn,
+      checkOutDate: datePolicy.defaultDates.checkOut,
       quantity: 1,
     },
   })
@@ -155,21 +149,14 @@ function BookingPageContent() {
   const checkOutDate = watchDates("checkOutDate")
   const quantity = watchDates("quantity")
 
-  const toTimeInputValue = (date?: Date) => (date ? format(date, "HH:mm") : "")
-
-  const applyTimeToDate = (base: Date, timeValue: string) => {
-    const [hours, minutes] = timeValue.split(":").map((part) => Number.parseInt(part, 10))
-    base.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0)
-    return base
-  }
-
+  const toDateOnly = (date?: Date) => (date ? format(date, "yyyy-MM-dd") : "")
 
   // Fetch available specific rooms
   const { data: availableRoomsData } = useRooms(
     {
       roomTypeId: roomId,
-      checkInDate: checkInDate?.toISOString(),
-      checkOutDate: checkOutDate?.toISOString(),
+      checkInDate: toDateOnly(checkInDate),
+      checkOutDate: toDateOnly(checkOutDate),
       // Status "Available" is implied if we want only available?
       // roomsApi.search supports 'status'.
       // If I want to list ONLY available rooms for the dates, I should pass status="Available"?
@@ -261,8 +248,8 @@ function BookingPageContent() {
               quantity,
             },
           ],
-          checkInDate: checkInDate.toISOString(),
-          checkOutDate: checkOutDate.toISOString(),
+          checkInDate: toDateOnly(checkInDate),
+          checkOutDate: toDateOnly(checkOutDate),
           specialRequests: [
             guestData.specialRequests,
             selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
@@ -304,8 +291,8 @@ function BookingPageContent() {
               quantity,
             },
           ],
-          checkInDate: checkInDate.toISOString(),
-          checkOutDate: checkOutDate.toISOString(),
+          checkInDate: toDateOnly(checkInDate),
+          checkOutDate: toDateOnly(checkOutDate),
           specialRequests: [
             guestData.specialRequests,
             selectedSpecificRoomName ? `Yêu cầu phòng cụ thể: ${selectedSpecificRoomName}` : null,
@@ -532,7 +519,7 @@ function BookingPageContent() {
                           name="checkInDate"
                           control={datesControl}
                           render={({ field }) => (
-                            <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                            <div>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button
@@ -558,35 +545,15 @@ function BookingPageContent() {
                                         field.onChange(undefined)
                                         return
                                       }
-                                      const base = clampCheckInTime(field.value ?? defaultDates.checkIn)
                                       const next = new Date(date)
-                                      next.setHours(base.getHours(), base.getMinutes(), 0, 0)
+                                      next.setHours(0, 0, 0, 0)
                                       field.onChange(next)
-                                      setCheckInTimeWarning("")
                                     }}
+                                  disabled={(date) => date < datePolicy.minCheckInDate}
                                     initialFocus
                                   />
                                 </PopoverContent>
                               </Popover>
-                              <Input
-                                type="time"
-                                value={toTimeInputValue(field.value)}
-                                max={MAX_CHECK_IN_TIME}
-                                onChange={(e) => {
-                                  const timeValue = e.target.value
-                                  if (!timeValue) {
-                                    return
-                                  }
-                                  if (isAfterMaxCheckInTime(timeValue)) {
-                                    setCheckInTimeWarning("Giờ nhận phòng tối đa là 12:00 trưa.")
-                                    return
-                                  }
-                                  const base = field.value ?? new Date()
-                                  field.onChange(applyTimeToDate(new Date(base), timeValue))
-                                  setCheckInTimeWarning("")
-                                }}
-                                className={cn("h-12", datesErrors.checkInDate && "border-red-500")}
-                              />
                             </div>
                           )}
                         />
@@ -596,12 +563,7 @@ function BookingPageContent() {
                             {datesErrors.checkInDate.message}
                           </p>
                         )}
-                        {checkInTimeWarning && (
-                          <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
-                            <AlertCircle className="w-4 h-4" />
-                            {checkInTimeWarning}
-                          </p>
-                        )}
+                       
                       </div>
 
                       <div className="space-y-2">
@@ -610,7 +572,7 @@ function BookingPageContent() {
                           name="checkOutDate"
                           control={datesControl}
                           render={({ field }) => (
-                            <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                            <div>
                               <Popover>
                                 <PopoverTrigger asChild>
                                   <Button
@@ -636,9 +598,8 @@ function BookingPageContent() {
                                         field.onChange(undefined)
                                         return
                                       }
-                                      const base = field.value ?? defaultDates.checkOut
                                       const next = new Date(date)
-                                      next.setHours(base.getHours(), base.getMinutes(), 0, 0)
+                                      next.setHours(0, 0, 0, 0)
                                       field.onChange(next)
                                     }}
                                     disabled={(date) => {
@@ -655,19 +616,6 @@ function BookingPageContent() {
                                   />
                                 </PopoverContent>
                               </Popover>
-                              <Input
-                                type="time"
-                                value={toTimeInputValue(field.value)}
-                                onChange={(e) => {
-                                  const timeValue = e.target.value
-                                  if (!timeValue) {
-                                    return
-                                  }
-                                  const base = field.value ?? new Date()
-                                  field.onChange(applyTimeToDate(new Date(base), timeValue))
-                                }}
-                                className={cn("h-12", datesErrors.checkOutDate && "border-red-500")}
-                              />
                             </div>
                           )}
                         />
@@ -879,13 +827,13 @@ function BookingPageContent() {
                         <div className="flex justify-between">
                           <span className="opacity-90">Nhận phòng:</span>
                           <span className="font-medium">
-                            {checkInDate && format(checkInDate, "dd/MM/yyyy HH:mm", { locale: vi })}
+                            {checkInDate && format(checkInDate, "dd/MM/yyyy", { locale: vi })}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="opacity-90">Trả phòng:</span>
                           <span className="font-medium">
-                            {checkOutDate && format(checkOutDate, "dd/MM/yyyy HH:mm", { locale: vi })}
+                            {checkOutDate && format(checkOutDate, "dd/MM/yyyy", { locale: vi })}
                           </span>
                         </div>
                         <div className="flex justify-between">

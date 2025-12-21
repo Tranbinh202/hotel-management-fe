@@ -60,7 +60,23 @@ export default function BookingDetailsPage() {
   const booking = data.data
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+    const normalizedStatus = status.toLowerCase()
+    const isPendingConfirmation =
+      normalizedStatus === "pendingconfirmation" ||
+      normalizedStatus === "pending confirmation" ||
+      normalizedStatus === "chờ xác nhận" ||
+      normalizedStatus === "cho xac nhan"
+
+    if (isPendingConfirmation) {
+      return (
+        <Badge className="bg-amber-400/30 text-white border-amber-400/70 hover:bg-amber-400/40 px-6 py-2.5 text-lg font-semibold shadow-md ring-2 ring-amber-300/70 tracking-wide">
+          <Clock className="h-5 w-5 mr-2" />
+          Chờ xác nhận
+        </Badge>
+      )
+    }
+
+    switch (normalizedStatus) {
       case "paid":
         return (
           <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 hover:bg-emerald-500/20 px-4 py-1.5">
@@ -70,7 +86,7 @@ export default function BookingDetailsPage() {
         )
       case "pending":
         return (
-          <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/20 hover:bg-amber-500/20 px-4 py-1.5">
+          <Badge className="bg-amber-500/15 text-amber-800 border-amber-500/30 hover:bg-amber-500/25 px-4 py-1.5 font-medium">
             <Clock className="h-4 w-4 mr-2" />
             Chờ thanh toán
           </Badge>

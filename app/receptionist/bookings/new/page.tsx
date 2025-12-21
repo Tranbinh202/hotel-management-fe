@@ -887,8 +887,8 @@ export default function NewOfflineBookingPage() {
                                         <Card
                                           key={room.roomId}
                                           className={`cursor-pointer transition-all ${isSelected
-                                              ? "border-blue-500 bg-blue-50"
-                                              : "hover:bg-slate-50"
+                                            ? "border-blue-500 bg-blue-50"
+                                            : "hover:bg-slate-50"
                                             }`}
                                           onClick={() =>
                                             toggleRoomSelection(
@@ -1002,7 +1002,7 @@ export default function NewOfflineBookingPage() {
                         <div className="flex-1">
                           <p className="font-medium">{room.roomName}</p>
                           <p className="text-slate-600 text-xs">
-                            {room.roomTypeName} - Tầng {room.floor}
+                            {room.roomTypeName}
                           </p>
                           <p className="text-slate-600 text-xs">
                             {room.pricePerNight.toLocaleString("vi-VN")} VNĐ/đêm

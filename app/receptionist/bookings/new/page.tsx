@@ -499,8 +499,8 @@ export default function NewOfflineBookingPage() {
                                 {customer.matchedBy === "Name"
                                   ? "Tên"
                                   : customer.matchedBy === "Phone"
-                                  ? "SĐT"
-                                  : "Email"}
+                                    ? "SĐT"
+                                    : "Email"}
                               </Badge>
                             </div>
                             <div className="space-y-1 text-sm text-slate-600">
@@ -629,117 +629,117 @@ export default function NewOfflineBookingPage() {
 
           {/* Booking Dates */}
           <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5" />
                 Thông tin đặt phòng
               </CardTitle>
             </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Ngày nhận phòng *</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal h-12",
-                              !checkInDateValue && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {checkInDateValue
-                              ? format(checkInDateValue, "dd/MM/yyyy", { locale: vi })
-                              : "Chọn ngày"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={checkInDateValue}
-                            onSelect={(date) => {
-                              if (!date) {
-                                setFormData({ ...formData, checkInDate: "" });
-                                return;
-                              }
-                              const base = checkInDateValue ?? new Date();
-                              const next = new Date(date);
-                              next.setHours(base.getHours(), base.getMinutes(), 0, 0);
-                              setFormData((prev) => {
-                                const nextValue = toDateTimeValue(next);
-                                const nextState = { ...prev, checkInDate: nextValue };
-                                if (prev.checkOutDate) {
-                                  const checkOut = parseLocalDateTime(prev.checkOutDate);
-                                  if (checkOut && checkOut <= next) {
-                                    nextState.checkOutDate = "";
-                                  }
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Ngày nhận phòng *</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-12",
+                            !checkInDateValue && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {checkInDateValue
+                            ? format(checkInDateValue, "dd/MM/yyyy", { locale: vi })
+                            : "Chọn ngày"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={checkInDateValue}
+                          onSelect={(date) => {
+                            if (!date) {
+                              setFormData({ ...formData, checkInDate: "" });
+                              return;
+                            }
+                            const base = checkInDateValue ?? new Date();
+                            const next = new Date(date);
+                            next.setHours(base.getHours(), base.getMinutes(), 0, 0);
+                            setFormData((prev) => {
+                              const nextValue = toDateTimeValue(next);
+                              const nextState = { ...prev, checkInDate: nextValue };
+                              if (prev.checkOutDate) {
+                                const checkOut = parseLocalDateTime(prev.checkOutDate);
+                                if (checkOut && checkOut <= next) {
+                                  nextState.checkOutDate = "";
                                 }
-                                return nextState;
-                              });
-                            }}
-                            disabled={(date) => {
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              return date < today;
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ngày trả phòng *</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal h-12",
-                              !checkOutDateValue && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {checkOutDateValue
-                              ? format(checkOutDateValue, "dd/MM/yyyy", { locale: vi })
-                              : "Chọn ngày"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={checkOutDateValue}
-                            onSelect={(date) => {
-                              if (!date) {
-                                setFormData({ ...formData, checkOutDate: "" });
-                                return;
                               }
-                              const next = new Date(date);
-                              next.setHours(12, 0, 0, 0);
-                              setFormData({ ...formData, checkOutDate: toDateTimeValue(next) });
-                            }}
-                            disabled={(date) => {
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              if (checkInDateValue) {
-                                const checkInDay = new Date(checkInDateValue);
-                                checkInDay.setHours(0, 0, 0, 0);
-                                return date <= checkInDay;
-                              }
-                              return date < today;
-                            }}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      
-                    </div>
+                              return nextState;
+                            });
+                          }}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Ngày trả phòng *</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-12",
+                            !checkOutDateValue && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {checkOutDateValue
+                            ? format(checkOutDateValue, "dd/MM/yyyy", { locale: vi })
+                            : "Chọn ngày"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={checkOutDateValue}
+                          onSelect={(date) => {
+                            if (!date) {
+                              setFormData({ ...formData, checkOutDate: "" });
+                              return;
+                            }
+                            const next = new Date(date);
+                            next.setHours(12, 0, 0, 0);
+                            setFormData({ ...formData, checkOutDate: toDateTimeValue(next) });
+                          }}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (checkInDateValue) {
+                              const checkInDay = new Date(checkInDateValue);
+                              checkInDay.setHours(0, 0, 0, 0);
+                              return date < checkInDay;
+                            }
+                            return date < today;
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+
+                  </div>
+                </div>
+              </div>
 
               <Button
                 onClick={handleSearchRooms}
@@ -752,7 +752,7 @@ export default function NewOfflineBookingPage() {
                 className="w-full"
               >
                 {searchRoomTypesMutation.isPending ||
-                checkAvailabilityMutation.isPending ? (
+                  checkAvailabilityMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Đang kiểm tra phòng...
@@ -886,11 +886,10 @@ export default function NewOfflineBookingPage() {
                                       return (
                                         <Card
                                           key={room.roomId}
-                                          className={`cursor-pointer transition-all ${
-                                            isSelected
+                                          className={`cursor-pointer transition-all ${isSelected
                                               ? "border-blue-500 bg-blue-50"
                                               : "hover:bg-slate-50"
-                                          }`}
+                                            }`}
                                           onClick={() =>
                                             toggleRoomSelection(
                                               room,

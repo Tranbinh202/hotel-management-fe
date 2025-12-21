@@ -49,8 +49,8 @@ export const offlineBookingsApi = {
       throw new Error("Ngày nhận phòng không thể là ngày trong quá khứ")
     }
 
-    if (checkOut <= checkIn) {
-      throw new Error("Ngày trả phòng phải sau ngày nhận phòng")
+    if (checkOut < checkIn) {
+      throw new Error("Ngày trả phòng không thể trước ngày nhận phòng")
     }
 
     if (!data.roomTypes || data.roomTypes.length === 0) {
@@ -143,8 +143,8 @@ export const offlineBookingsApi = {
     if (data.checkInDate && data.checkOutDate) {
       const checkIn = new Date(data.checkInDate)
       const checkOut = new Date(data.checkOutDate)
-      if (checkOut <= checkIn) {
-        throw new Error("Ngày trả phòng phải sau ngày nhận phòng")
+      if (checkOut < checkIn) {
+        throw new Error("Ngày trả phòng không thể trước ngày nhận phòng")
       }
     }
 

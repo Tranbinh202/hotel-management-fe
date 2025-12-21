@@ -103,13 +103,21 @@ export const roomsApi = {
     const normalizeImages = (images: any) =>
       Array.isArray(images) ? images.map((img: any) => img?.filePath || img).filter(Boolean) : []
 
-    const normalizeRoom = (room: any): RoomSearchItem => ({
-      ...room,
-      images: normalizeImages(room.images),
-      statusCode: room.statusCode || room.roomStatus || room.status,
-      roomName: room.roomName || room.roomNumber,
-      basePriceNight: room.basePriceNight ?? room.pricePerNight ?? 0,
-    })
+    const normalizeRoom = (room: any): RoomSearchItem => {
+      const roomType = room?.roomType ?? {}
+      return {
+        ...room,
+        roomId: room.roomId ?? room.roomID ?? room.id,
+        roomName: room.roomName || room.roomNumber,
+        roomTypeId: room.roomTypeId ?? roomType.roomTypeId ?? roomType.id,
+        roomTypeName: room.roomTypeName ?? roomType.typeName ?? roomType.roomTypeName,
+        roomTypeCode: room.roomTypeCode ?? roomType.typeCode ?? roomType.roomTypeCode,
+        basePriceNight: room.basePriceNight ?? room.pricePerNight ?? roomType.basePriceNight ?? 0,
+        maxOccupancy: room.maxOccupancy ?? roomType.maxOccupancy ?? 0,
+        images: normalizeImages(room.images ?? roomType.images),
+        statusCode: room.statusCode || room.roomStatus || room.status,
+      }
+    }
 
     return {
       ...raw,
@@ -238,18 +246,50 @@ export const roomManagementApi = {
 
   // Get room details
   getDetails: async (roomId: number): Promise<RoomDetails> => {
-    const res = await apiClient.get<ApiResponse<RoomDetails>>(`/rooms/${roomId}`)
-    const raw = res.data as any
     const normalizeImages = (images: any) =>
-      Array.isArray(images) ? images.map((img: any) => img?.filePath || img).filter(Boolean) : []
-    return {
-      ...(raw?.data ?? raw),
-      images: normalizeImages(raw?.data?.images ?? raw?.images),
-      statusCode: raw?.data?.statusCode ?? raw?.statusCode ?? raw?.status,
-      roomName: raw?.data?.roomName ?? raw?.roomName ?? raw?.roomNumber,
-      basePriceNight:
-        raw?.data?.basePriceNight ?? raw?.basePriceNight ?? raw?.pricePerNight ?? raw?.roomType?.basePriceNight ?? 0,
-    } as RoomDetails
+      Array.isArray(images)
+        ? images
+            .map((img: any) => (typeof img === "string" ? img : img?.filePath ?? img?.url ?? ""))
+            .filter(Boolean)
+        : []
+
+    const normalizeRoomDetails = (payload: any): RoomDetails => {
+      const data = (payload as any)?.data ?? payload
+      const roomType = data?.roomType ?? {}
+      return {
+        ...data,
+        roomId: data?.roomId ?? data?.id ?? roomId,
+        roomName: data?.roomName ?? data?.roomNumber ?? data?.roomName,
+        roomNumber: data?.roomNumber ?? data?.roomName,
+        roomTypeId: data?.roomTypeId ?? roomType?.roomTypeId,
+        roomTypeName: data?.roomTypeName ?? roomType?.typeName ?? roomType?.roomTypeName,
+        roomTypeCode: data?.roomTypeCode ?? roomType?.typeCode ?? roomType?.roomTypeCode,
+        basePriceNight:
+          data?.basePriceNight ?? data?.pricePerNight ?? roomType?.basePriceNight ?? 0,
+        statusId: data?.statusId ?? data?.roomStatusId,
+        status: data?.status ?? data?.roomStatus ?? data?.statusName ?? data?.roomStatusName,
+        statusCode: data?.statusCode ?? data?.roomStatus ?? data?.status,
+        description: data?.description ?? roomType?.description ?? data?.notes ?? "",
+        maxOccupancy: data?.maxOccupancy ?? roomType?.maxOccupancy ?? 0,
+        roomSize: data?.roomSize ?? roomType?.roomSize ?? 0,
+        numberOfBeds: data?.numberOfBeds ?? roomType?.numberOfBeds ?? 0,
+        bedType: data?.bedType ?? roomType?.bedType ?? "",
+        images: normalizeImages(data?.images ?? roomType?.images),
+      } as RoomDetails
+    }
+
+    try {
+      const res = await apiClient.get<ApiResponse<RoomDetails>>(`/rooms/${roomId}`)
+      const normalized = normalizeRoomDetails(res)
+      if (!normalized.roomId) {
+        const fallback = await apiClient.get<ApiResponse<RoomDetails>>(`/Room/rooms/${roomId}`)
+        return normalizeRoomDetails(fallback)
+      }
+      return normalized
+    } catch (error) {
+      const fallback = await apiClient.get<ApiResponse<RoomDetails>>(`/Room/rooms/${roomId}`)
+      return normalizeRoomDetails(fallback)
+    }
   },
 
   // Get room statistics

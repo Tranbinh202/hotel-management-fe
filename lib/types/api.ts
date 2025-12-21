@@ -62,6 +62,7 @@ export interface RegisterDto {
 export interface AuthResponse {
   token: string;
   refreshToken: string;
+  resumeSession?: string;
   roles: string[];
   email?: string;
   username?: string;
@@ -867,7 +868,7 @@ export interface CreateOfflineBookingDto {
   checkInDate: string;
   checkOutDate: string;
   specialRequests?: string;
-  paymentMethod: "Cash" | "Card" | "Transfer";
+  paymentMethod: "Cash" | "Card" | "Transfer" | "BankTransfer" | "EWallet" | "PayOS";
   paymentNote?: string;
 }
 

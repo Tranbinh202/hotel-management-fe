@@ -7,6 +7,23 @@ import type {
 } from "@/lib/types/api";
 import { getAccountIdFromToken } from "@/lib/utils/token";
 
+const getResumeSession = () => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("resumeSession") || localStorage.getItem("resume_session");
+};
+
+const saveResumeSession = (resumeSession?: string | null) => {
+  if (typeof window === "undefined" || !resumeSession) return;
+  localStorage.setItem("resumeSession", resumeSession);
+  localStorage.setItem("resume_session", resumeSession);
+};
+
+const clearResumeSession = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("resumeSession");
+  localStorage.removeItem("resume_session");
+};
+
 export const authApi = {
   login: async (data: LoginDto): Promise<ApiResponse<AuthResponse>> => {
     const response = await apiClient.post<ApiResponse<AuthResponse>>(
@@ -19,6 +36,7 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data.token) {
       localStorage.setItem("access_token", response.data.token);
       localStorage.setItem("refresh_token", response.data.refreshToken);
+      saveResumeSession(response.data.resumeSession);
 
       // Cache accountId for token refresh
       const accountId = getAccountIdFromToken(response.data.token);
@@ -51,6 +69,7 @@ export const authApi = {
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("account_id");
         localStorage.removeItem("user");
+        clearResumeSession();
       }
     }
   },
@@ -60,12 +79,14 @@ export const authApi = {
     refreshToken: string
   ): Promise<ApiResponse<AuthResponse>> => {
     console.log("authApi.refreshToken called with accountId:", accountId);
+    const resumeSession = getResumeSession();
 
     const response = await apiClient.post<ApiResponse<AuthResponse>>(
       "/Authentication/refresh-token",
       {
         accountId,
         refreshToken,
+        ...(resumeSession ? { resumeSession } : {}),
       }
     );
 
@@ -82,6 +103,7 @@ export const authApi = {
         localStorage.setItem("refresh_token", response.data.refreshToken);
         console.log("New refresh token saved");
       }
+      saveResumeSession(response.data.resumeSession);
       // Cache accountId for future refresh attempts
       localStorage.setItem("account_id", accountId.toString());
     }
@@ -103,6 +125,7 @@ export const authApi = {
       if (response.data.refreshToken) {
         localStorage.setItem("refresh_token", response.data.refreshToken);
       }
+      saveResumeSession(response.data.resumeSession);
     }
 
     return response;
@@ -119,6 +142,7 @@ export const authApi = {
     if (typeof window !== "undefined" && response.data?.token) {
       localStorage.setItem("access_token", response.data.token);
       localStorage.setItem("refresh_token", response.data.refreshToken);
+      saveResumeSession(response.data.resumeSession);
 
       // Cache accountId for token refresh
       const accountId = getAccountIdFromToken(response.data.token);
@@ -227,6 +251,7 @@ export const authApi = {
     ) {
       localStorage.setItem("access_token", response.data.token);
       localStorage.setItem("refresh_token", response.data.refreshToken);
+      saveResumeSession(response.data.resumeSession);
 
       // Cache accountId for token refresh
       const accountId = getAccountIdFromToken(response.data.token);
@@ -253,6 +278,7 @@ export const authApi = {
       console.log("Saving tokens to localStorage");
       localStorage.setItem("access_token", response.data.token);
       localStorage.setItem("refresh_token", response.data.refreshToken);
+      saveResumeSession(response.data.resumeSession);
 
       // Cache accountId for token refresh
       const accountId = getAccountIdFromToken(response.data.token);

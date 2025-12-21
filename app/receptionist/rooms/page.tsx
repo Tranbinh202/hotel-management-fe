@@ -8,15 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useRoomManagement, useRoomDetails, useAvailableStatus, useChangeRoomStatus } from "@/lib/hooks/use-rooms"
+import { useRoomManagement, useAvailableStatus, useChangeRoomStatus } from "@/lib/hooks/use-rooms"
+import { useRoomType } from "@/lib/hooks/use-room-type"
 import { useRoomStatuses } from "@/lib/hooks/use-common-code"
-import type { RoomSearchItem, RoomStatusCode } from "@/lib/types/api"
+import type { RoomSearchItem, RoomStatusCode, RoomType } from "@/lib/types/api"
 
 export default function ReceptionistRoomsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFloor, setSelectedFloor] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
+  const [selectedRoomTypeId, setSelectedRoomTypeId] = useState<number | null>(null)
+  const [selectedRoomSummary, setSelectedRoomSummary] = useState<RoomSearchItem | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [checkInDate, setCheckInDate] = useState<string>("")
   const [checkOutDate, setCheckOutDate] = useState<string>("")
@@ -33,12 +36,24 @@ export default function ReceptionistRoomsPage() {
     pageSize: 100,
   })
 
-  const { data: selectedRoom } = useRoomDetails(selectedRoomId || 0)
+  const { data: roomTypeData, isLoading: isRoomTypeLoading } = useRoomType(selectedRoomTypeId || 0)
   const { data: availableStatusData } = useAvailableStatus(selectedRoomId || 0)
   const { data: roomStatuses } = useRoomStatuses()
   const changeStatusMutation = useChangeRoomStatus()
 
   const rooms = searchData?.rooms || []
+  const roomType = (roomTypeData?.pages?.[0] as RoomType | undefined) || undefined
+  const roomTypeImages = roomType?.images?.map((image) => image.filePath) || []
+  const fallbackImages = selectedRoomSummary?.images || []
+  const detailImages = roomTypeImages.length > 0 ? roomTypeImages : fallbackImages
+  const roomTypeName = roomType?.typeName || selectedRoomSummary?.roomTypeName || ""
+  const roomTypeCode = roomType?.typeCode || selectedRoomSummary?.roomTypeCode || ""
+  const roomDescription = roomType?.description || selectedRoomSummary?.notes || ""
+  const maxOccupancy = roomType?.maxOccupancy ?? selectedRoomSummary?.maxOccupancy ?? 0
+  const roomSize = roomType?.roomSize ?? 0
+  const numberOfBeds = roomType?.numberOfBeds ?? 0
+  const bedType = roomType?.bedType || ""
+  const basePriceNight = roomType?.basePriceNight ?? selectedRoomSummary?.basePriceNight ?? 0
 
   const getRoomStatusColor = (statusCode: RoomStatusCode) => {
     const colors: Record<RoomStatusCode, string> = {
@@ -55,6 +70,8 @@ export default function ReceptionistRoomsPage() {
 
   const handleViewDetail = (room: RoomSearchItem) => {
     setSelectedRoomId(room.roomId)
+    setSelectedRoomTypeId(room.roomTypeId)
+    setSelectedRoomSummary(room)
     setDetailDialogOpen(true)
   }
 
@@ -300,93 +317,118 @@ export default function ReceptionistRoomsPage() {
 
       {/* Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="min-w-[40vw] max-w-none h-[94vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Chi tiết phòng {selectedRoom?.roomName}</DialogTitle>
+            <DialogTitle className="text-2xl">
+              Chi tiết phòng {selectedRoomSummary?.roomName || selectedRoomSummary?.roomNumber}
+            </DialogTitle>
           </DialogHeader>
 
-          {selectedRoom && (
-            <div className="space-y-6 py-4">
-              {selectedRoom.images && selectedRoom.images.length > 0 && (
-                <div className="grid grid-cols-2 gap-4">
-                  {selectedRoom.images.slice(0, 4).map((image, index) => (
-                    <div key={index} className="rounded-lg overflow-hidden h-48 bg-slate-100">
-                      <img
-                        src={image || "/placeholder.svg"}
-                        alt={`${selectedRoom.roomName} - ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className={`w-3 h-3 rounded-full ${getRoomStatusColor(selectedRoom.statusCode)}`} />
-                  <span className="font-medium">{selectedRoom.status}</span>
-                </div>
-                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                  {selectedRoom.roomTypeName}
-                </Badge>
-                <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
-                  {selectedRoom.roomTypeCode}
-                </Badge>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-slate-900 mb-2">Mô tả</h4>
-                <p className="text-slate-600">{selectedRoom.description}</p>
-              </div>
-
+          {isRoomTypeLoading ? (
+            <div className="space-y-4 py-4">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-full" />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-500 mb-1">Sức chứa</p>
-                  <p className="text-lg font-bold text-slate-900">{selectedRoom.maxOccupancy} người</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-500 mb-1">Diện tích</p>
-                  <p className="text-lg font-bold text-slate-900">{selectedRoom.roomSize}m²</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-500 mb-1">Số giường</p>
-                  <p className="text-lg font-bold text-slate-900">{selectedRoom.numberOfBeds}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-xs text-slate-500 mb-1">Loại giường</p>
-                  <p className="text-sm font-medium text-slate-900">{selectedRoom.bedType}</p>
-                </div>
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
               </div>
-
-              <div className="bg-gradient-to-r from-[#00008b]/5 to-[#ffd700]/10 rounded-lg p-6">
-                <p className="text-sm text-slate-600 mb-2">Giá mỗi đêm</p>
-                <p className="text-3xl font-bold text-[#00008b]">{formatCurrency(selectedRoom.basePriceNight)}</p>
-              </div>
-
-              {availableStatusData && availableStatusData.availableTransitions.length > 0 && (
-                <div className="border-t border-slate-200 pt-6">
-                  <h4 className="font-semibold text-slate-900 mb-3">Cập nhật trạng thái phòng</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {availableStatusData.availableTransitions.map((transition) => (
-                      <Button
-                        key={transition.statusCode}
-                        variant="outline"
-                        className="justify-start h-auto py-3 px-4 hover:bg-[#00008b]/5 hover:border-[#00008b] bg-transparent"
-                        onClick={() => handleStatusChange(transition.statusCode)}
-                        disabled={changeStatusMutation.isPending}
-                      >
-                        <div className="text-left">
-                          <div className="font-medium text-slate-900">{transition.statusName}</div>
-                          {transition.description && (
-                            <div className="text-xs text-slate-500 mt-1">{transition.description}</div>
-                          )}
-                        </div>
-                      </Button>
+            </div>
+          ) : selectedRoomSummary ? (
+            <div className="py-3 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[1.2fr,1fr] lg:gap-6">
+              <div className="space-y-4">
+                {detailImages.length > 0 && (
+                  <div className="grid grid-cols-2 gap-4">
+                    {detailImages.slice(0, 4).map((image, index) => (
+                      <div key={index} className="rounded-lg overflow-hidden h-48 bg-slate-100">
+                        <img
+                          src={image || "/placeholder.svg"}
+                          alt={`${selectedRoomSummary.roomName} - ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${getRoomStatusColor(
+                        selectedRoomSummary.statusCode as RoomStatusCode,
+                      )}`}
+                    />
+                    <span className="font-medium">{selectedRoomSummary.status}</span>
+                  </div>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                    {roomTypeName}
+                  </Badge>
+                  <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200">
+                    {roomTypeCode}
+                  </Badge>
                 </div>
-              )}
+
+                <div>
+                  <h4 className="font-semibold text-slate-900 mb-2">Mô tả</h4>
+                  <p className="text-slate-600">{roomDescription}</p>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-xs text-slate-500 mb-1">Sức chứa</p>
+                    <p className="text-lg font-bold text-slate-900">{maxOccupancy} người</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-xs text-slate-500 mb-1">Diện tích</p>
+                    <p className="text-lg font-bold text-slate-900">{roomSize}m²</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-xs text-slate-500 mb-1">Số giường</p>
+                    <p className="text-lg font-bold text-slate-900">{numberOfBeds}</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-4">
+                    <p className="text-xs text-slate-500 mb-1">Loại giường</p>
+                    <p className="text-sm font-medium text-slate-900">{bedType}</p>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-[#00008b]/5 to-[#ffd700]/10 rounded-lg p-6">
+                  <p className="text-sm text-slate-600 mb-2">Giá mỗi đêm</p>
+                  <p className="text-3xl font-bold text-[#00008b]">
+                    {formatCurrency(basePriceNight)}
+                  </p>
+                </div>
+
+                {availableStatusData && availableStatusData.availableTransitions.length > 0 && (
+                  <div className="border-t border-slate-200 pt-6">
+                    <h4 className="font-semibold text-slate-900 mb-3">Cập nhật trạng thái phòng</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {availableStatusData.availableTransitions.map((transition) => (
+                        <Button
+                          key={transition.statusCode}
+                          variant="outline"
+                          className="justify-start h-auto py-3 px-4 hover:bg-[#00008b]/5 hover:border-[#00008b] bg-transparent"
+                          onClick={() => handleStatusChange(transition.statusCode)}
+                          disabled={changeStatusMutation.isPending}
+                        >
+                          <div className="text-left">
+                            <div className="font-medium text-slate-900">{transition.statusName}</div>
+                            {transition.description && (
+                              <div className="text-xs text-slate-500 mt-1">{transition.description}</div>
+                            )}
+                          </div>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+          ) : (
+            <div className="py-8 text-center text-slate-500">Không thể tải chi tiết phòng.</div>
           )}
         </DialogContent>
       </Dialog>

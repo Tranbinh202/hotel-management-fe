@@ -106,24 +106,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   localStorage.removeItem("access_token")
                   localStorage.removeItem("refresh_token")
                   localStorage.removeItem("user")
+                  localStorage.removeItem("resumeSession")
+                  localStorage.removeItem("resume_session")
                 }
               } else {
                 console.log("Could not extract accountId, clearing auth data")
                 localStorage.removeItem("access_token")
                 localStorage.removeItem("refresh_token")
                 localStorage.removeItem("user")
+                localStorage.removeItem("resumeSession")
+                localStorage.removeItem("resume_session")
               }
             } catch (error) {
               console.error("Error refreshing token on load:", error)
               localStorage.removeItem("access_token")
               localStorage.removeItem("refresh_token")
               localStorage.removeItem("user")
+              localStorage.removeItem("resumeSession")
+              localStorage.removeItem("resume_session")
             }
           } else {
             console.log("No refresh token available, clearing auth data")
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
             localStorage.removeItem("user")
+            localStorage.removeItem("resumeSession")
+            localStorage.removeItem("resume_session")
           }
         } else {
           // Token is still valid
@@ -203,10 +211,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorMessage)
       }
 
-      const { token: authToken, refreshToken, roles } = loginData.data
+      const { token: authToken, refreshToken, roles, resumeSession } = loginData.data
 
       localStorage.setItem("access_token", authToken)
       localStorage.setItem("refresh_token", refreshToken)
+      if (resumeSession) {
+        localStorage.setItem("resumeSession", resumeSession)
+        localStorage.setItem("resume_session", resumeSession)
+      }
 
       setToken(authToken)
 
@@ -220,6 +232,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("access_token")
         localStorage.removeItem("refresh_token")
         localStorage.removeItem("user")
+        localStorage.removeItem("resumeSession")
+        localStorage.removeItem("resume_session")
         setToken(null)
         setUser(null)
         router.push("/account-locked")
@@ -257,6 +271,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("access_token")
     localStorage.removeItem("refresh_token")
     localStorage.removeItem("user")
+    localStorage.removeItem("resumeSession")
+    localStorage.removeItem("resume_session")
 
     authApi.logout()
     setToken(null)

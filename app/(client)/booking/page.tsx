@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { bookingsApi } from "@/lib/api/bookings"
 import { roomsApi, type Room } from "@/lib/api/rooms"
 import { useRooms } from "@/lib/hooks"
+import { usePaymentMethods } from "@/lib/hooks/use-common-code"
 import { useAuth } from "@/contexts/auth-context"
 import {
   CalendarIcon,
@@ -62,10 +63,17 @@ const amenityIcons: Record<string, any> = {
 function BookingPageContent() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
+  const { data: paymentMethods = [] } = usePaymentMethods()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [room, setRoom] = useState<Room | null>(null)
   const [isLoadingRoom, setIsLoadingRoom] = useState(true)
+  const [defaultDates] = useState(() => {
+    const now = new Date()
+    const checkOut = new Date(now)
+    checkOut.setDate(now.getDate() + 1)
+    return { checkIn: now, checkOut }
+  })
 
   const [bookingData, setBookingData] = useState<{
     roomId: number
@@ -106,8 +114,8 @@ function BookingPageContent() {
   } = useForm<BookingDatesFormData>({
     resolver: zodResolver(bookingDatesSchema),
     defaultValues: {
-      checkInDate: undefined,
-      checkOutDate: undefined,
+      checkInDate: defaultDates.checkIn,
+      checkOutDate: defaultDates.checkOut,
       quantity: 1,
     },
   })
@@ -133,6 +141,15 @@ function BookingPageContent() {
   const checkInDate = watchDates("checkInDate")
   const checkOutDate = watchDates("checkOutDate")
   const quantity = watchDates("quantity")
+
+  const toTimeInputValue = (date?: Date) => (date ? format(date, "HH:mm") : "")
+
+  const applyTimeToDate = (base: Date, timeValue: string) => {
+    const [hours, minutes] = timeValue.split(":").map((part) => Number.parseInt(part, 10))
+    base.setHours(Number.isFinite(hours) ? hours : 0, Number.isFinite(minutes) ? minutes : 0, 0, 0)
+    return base
+  }
+
 
   // Fetch available specific rooms
   const { data: availableRoomsData } = useRooms(
@@ -183,9 +200,12 @@ function BookingPageContent() {
 
   const calculateNights = () => {
     if (!checkInDate || !checkOutDate) return 0
-    const diffTime = Math.abs(checkOutDate.getTime() - checkInDate.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays
+    const checkInDay = new Date(checkInDate)
+    checkInDay.setHours(0, 0, 0, 0)
+    const checkOutDay = new Date(checkOutDate)
+    checkOutDay.setHours(0, 0, 0, 0)
+    const diffDays = (checkOutDay.getTime() - checkInDay.getTime()) / (1000 * 60 * 60 * 24)
+    return Math.max(0, Math.round(diffDays))
   }
 
   const calculateTotal = () => {
@@ -196,6 +216,8 @@ function BookingPageContent() {
   const calculateDeposit = () => {
     return Math.round(calculateTotal() * 0.3)
   }
+
+  const paymentMethodLabels = paymentMethods.map((method) => method.codeValue)
 
   const onDatesSubmit = (data: BookingDatesFormData) => {
     setStep(2)
@@ -497,34 +519,55 @@ function BookingPageContent() {
                           name="checkInDate"
                           control={datesControl}
                           render={({ field }) => (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal h-12",
-                                    !field.value && "text-muted-foreground",
-                                    datesErrors.checkInDate && "border-red-500",
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value ? format(field.value, "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                            <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal h-12",
+                                      !field.value && "text-muted-foreground",
+                                      datesErrors.checkInDate && "border-red-500",
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value
+                                      ? format(field.value, "dd/MM/yyyy", { locale: vi })
+                                      : "Chọn ngày"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) => {
-                                    const today = new Date()
-                                    today.setHours(0, 0, 0, 0)
-                                    return date < today
-                                  }}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                                  onSelect={(date) => {
+                                      if (!date) {
+                                        field.onChange(undefined)
+                                        return
+                                      }
+                                      const base = field.value ?? defaultDates.checkIn
+                                      const next = new Date(date)
+                                      next.setHours(base.getHours(), base.getMinutes(), 0, 0)
+                                      field.onChange(next)
+                                    }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <Input
+                                type="time"
+                                value={toTimeInputValue(field.value)}
+                                onChange={(e) => {
+                                  const timeValue = e.target.value
+                                  if (!timeValue) {
+                                    return
+                                  }
+                                  const base = field.value ?? new Date()
+                                  field.onChange(applyTimeToDate(new Date(base), timeValue))
+                                }}
+                                className={cn("h-12", datesErrors.checkInDate && "border-red-500")}
+                              />
+                            </div>
                           )}
                         />
                         {datesErrors.checkInDate && (
@@ -541,37 +584,65 @@ function BookingPageContent() {
                           name="checkOutDate"
                           control={datesControl}
                           render={({ field }) => (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal h-12",
-                                    !field.value && "text-muted-foreground",
-                                    datesErrors.checkOutDate && "border-red-500",
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value ? format(field.value, "dd/MM/yyyy", { locale: vi }) : "Chọn ngày"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) => {
-                                    const today = new Date()
-                                    today.setHours(0, 0, 0, 0)
-                                    if (checkInDate) {
-                                      return date <= checkInDate
-                                    }
-                                    return date < today
-                                  }}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
+                            <div className="grid grid-cols-1 sm:grid-cols-[1fr,140px] gap-3">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "w-full justify-start text-left font-normal h-12",
+                                      !field.value && "text-muted-foreground",
+                                      datesErrors.checkOutDate && "border-red-500",
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {field.value
+                                      ? format(field.value, "dd/MM/yyyy", { locale: vi })
+                                      : "Chọn ngày"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={(date) => {
+                                      if (!date) {
+                                        field.onChange(undefined)
+                                        return
+                                      }
+                                      const base = field.value ?? defaultDates.checkOut
+                                      const next = new Date(date)
+                                      next.setHours(base.getHours(), base.getMinutes(), 0, 0)
+                                      field.onChange(next)
+                                    }}
+                                    disabled={(date) => {
+                                      const today = new Date()
+                                      today.setHours(0, 0, 0, 0)
+                                      if (checkInDate) {
+                                        const checkInDay = new Date(checkInDate)
+                                        checkInDay.setHours(0, 0, 0, 0)
+                                        return date <= checkInDay
+                                      }
+                                      return date < today
+                                    }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              <Input
+                                type="time"
+                                value={toTimeInputValue(field.value)}
+                                onChange={(e) => {
+                                  const timeValue = e.target.value
+                                  if (!timeValue) {
+                                    return
+                                  }
+                                  const base = field.value ?? new Date()
+                                  field.onChange(applyTimeToDate(new Date(base), timeValue))
+                                }}
+                                className={cn("h-12", datesErrors.checkOutDate && "border-red-500")}
+                              />
+                            </div>
                           )}
                         />
                         {datesErrors.checkOutDate && (
@@ -782,13 +853,13 @@ function BookingPageContent() {
                         <div className="flex justify-between">
                           <span className="opacity-90">Nhận phòng:</span>
                           <span className="font-medium">
-                            {checkInDate && format(checkInDate, "dd/MM/yyyy", { locale: vi })}
+                            {checkInDate && format(checkInDate, "dd/MM/yyyy HH:mm", { locale: vi })}
                           </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="opacity-90">Trả phòng:</span>
                           <span className="font-medium">
-                            {checkOutDate && format(checkOutDate, "dd/MM/yyyy", { locale: vi })}
+                            {checkOutDate && format(checkOutDate, "dd/MM/yyyy HH:mm", { locale: vi })}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -798,6 +869,12 @@ function BookingPageContent() {
                         <div className="flex justify-between">
                           <span className="opacity-90">Số phòng:</span>
                           <span className="font-medium">{quantity}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="opacity-90">Thanh toán:</span>
+                          <span className="font-medium text-right max-w-[60%]">
+                            {paymentMethodLabels.length > 0 ? paymentMethodLabels.join(", ") : "-"}
+                          </span>
                         </div>
                         {selectedSpecificRoomName && (
                           <div className="flex justify-between">

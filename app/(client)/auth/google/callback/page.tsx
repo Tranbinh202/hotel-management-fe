@@ -40,11 +40,16 @@ function CallbackContent() {
 
       const token = searchParams.get("token")
       const refreshToken = searchParams.get("refreshToken")
+      const resumeSession = searchParams.get("resumeSession") || searchParams.get("resume_session")
 
       if (token && refreshToken) {
         hasProcessedRef.current = true
         localStorage.setItem("access_token", token)
         localStorage.setItem("refresh_token", refreshToken)
+        if (resumeSession) {
+          localStorage.setItem("resumeSession", resumeSession)
+          localStorage.setItem("resume_session", resumeSession)
+        }
 
         try {
           const { accountApi } = await import("@/lib/api/account")
@@ -59,6 +64,8 @@ function CallbackContent() {
           if (userData.isLocked) {
             localStorage.removeItem("access_token")
             localStorage.removeItem("refresh_token")
+            localStorage.removeItem("resumeSession")
+            localStorage.removeItem("resume_session")
             setTimeout(() => {
               router.push("/account-locked")
             }, 2000)

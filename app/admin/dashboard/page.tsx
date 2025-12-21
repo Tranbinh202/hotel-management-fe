@@ -264,7 +264,10 @@ export default function AdminDashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">
-                            {(stats.averageRoomRate / 1000).toLocaleString("vi-VN")}K VNĐ
+                            {(stats.averageRoomRate / 1000).toLocaleString("vi-VN", {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0
+                            })}K VNĐ
                         </div>
                         <p className="text-xs text-muted-foreground">Giá trung bình mỗi đêm</p>
                     </CardContent>

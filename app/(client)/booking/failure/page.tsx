@@ -20,25 +20,16 @@ export default function BookingFailurePage() {
         return "Phiên đặt phòng đã hết hạn. Vui lòng thử lại."
       case "invalid_data":
         return "Thông tin đặt phòng không hợp lệ. Vui lòng kiểm tra lại thông tin và thử lại."
-      default:
+      case "unknown":
         return "Đã có lỗi xảy ra trong quá trình xử lý đặt phòng của bạn. Vui lòng thử lại hoặc liên hệ với chúng tôi."
+      default:
+        // Decode the custom error message from the API
+        try {
+          return decodeURIComponent(reason)
+        } catch {
+          return reason
+        }
     }
-  }
-
-  const getReasons = () => {
-    if (reason === "not_available") {
-      return [
-        "Phòng đã được đặt bởi khách hàng khác trong lúc bạn đang đặt",
-        "Số lượng phòng yêu cầu vượt quá số phòng còn trống",
-        "Ngày đặt trùng với thời gian bảo trì hoặc sự kiện đặc biệt",
-      ]
-    }
-    return [
-      "Phòng đã hết trong khoảng thời gian bạn chọn",
-      "Thông tin đặt phòng không hợp lệ",
-      "Lỗi kết nối mạng hoặc hệ thống tạm thời gián đoạn",
-      "Phiên làm việc đã hết hạn",
-    ]
   }
 
   return (
@@ -85,18 +76,6 @@ export default function BookingFailurePage() {
             </div>
           )}
 
-          {/* Possible Reasons */}
-          <div
-            className="bg-muted/50 rounded-2xl p-6 mb-8 text-left animate-fade-in-up"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <h3 className="font-serif text-lg font-semibold mb-4">Nguyên nhân có thể</h3>
-            <ul className="space-y-3 text-sm text-muted-foreground leading-loose list-disc list-inside">
-              {getReasons().map((r, idx) => (
-                <li key={idx}>{r}</li>
-              ))}
-            </ul>
-          </div>
 
           {/* Contact Support */}
           <div className="bg-muted/50 rounded-2xl p-6 mb-8 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>

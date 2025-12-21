@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useSearchCustomer, useSearchAvailableRoomTypes, useCheckAvailableRooms, useCreateOfflineBooking } from "@/lib/hooks/use-offline-bookings"
+import { usePaymentMethods } from "@/lib/hooks/use-common-code"
 import { toast } from "@/hooks/use-toast"
 import { Search, Loader2, User, Calendar, CreditCard, CheckCircle2, Printer } from "lucide-react"
 import { format } from "date-fns"
@@ -72,10 +73,19 @@ export default function NewOfflineBookingPage() {
 
     // React Query hooks
     const { data: customerSearchData, isLoading: isSearching } = useSearchCustomer(debouncedSearchKey)
+    const { data: paymentMethods = [] } = usePaymentMethods()
 
     const searchRoomTypesMutation = useSearchAvailableRoomTypes()
     const checkAvailabilityMutation = useCheckAvailableRooms()
     const createBookingMutation = useCreateOfflineBooking()
+
+    const fallbackPaymentMethods = [
+        { codeName: "Cash", codeValue: "Tiền mặt" },
+        { codeName: "Card", codeValue: "Thẻ" },
+        { codeName: "Transfer", codeValue: "Chuyển khoản" },
+    ]
+    const paymentMethodOptions = paymentMethods.length > 0 ? paymentMethods : fallbackPaymentMethods
+    const defaultPaymentMethod = paymentMethodOptions[0]?.codeName ?? "Cash"
 
     // Handle customer search results
     useEffect(() => {
@@ -101,6 +111,15 @@ export default function NewOfflineBookingPage() {
             }
         }
     }, [customerSearchData, debouncedSearchKey])
+
+    useEffect(() => {
+        if (paymentMethodOptions.length === 0) return
+        setFormData((prev) => {
+            const exists = paymentMethodOptions.some((method) => method.codeName === prev.paymentMethod)
+            if (exists) return prev
+            return { ...prev, paymentMethod: defaultPaymentMethod }
+        })
+    }, [paymentMethodOptions, defaultPaymentMethod])
 
     // Select customer from search results
     const handleSelectCustomer = (customer: CustomerSearchResult) => {
@@ -321,7 +340,7 @@ export default function NewOfflineBookingPage() {
             checkInDate: "",
             checkOutDate: "",
             specialRequests: "",
-            paymentMethod: "Cash",
+            paymentMethod: defaultPaymentMethod,
             paymentNote: "",
         })
         setAvailableRoomTypes([])
@@ -644,22 +663,18 @@ export default function NewOfflineBookingPage() {
                                 <Label>Phương thức thanh toán *</Label>
                                 <RadioGroup
                                     value={formData.paymentMethod}
-                                    onValueChange={(value: "Cash" | "Card" | "Transfer") =>
-                                        setFormData({ ...formData, paymentMethod: value })
+                                    onValueChange={(value) =>
+                                        setFormData({ ...formData, paymentMethod: value as CreateOfflineBookingDto["paymentMethod"] })
                                     }
                                 >
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Cash" id="cash" />
-                                        <Label htmlFor="cash" className="cursor-pointer">💵 Tiền mặt</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Card" id="card" />
-                                        <Label htmlFor="card" className="cursor-pointer">💳 Thẻ</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Transfer" id="transfer" />
-                                        <Label htmlFor="transfer" className="cursor-pointer">🏦 Chuyển khoản</Label>
-                                    </div>
+                                    {paymentMethodOptions.map((method) => (
+                                        <div key={method.codeName} className="flex items-center space-x-2">
+                                            <RadioGroupItem value={method.codeName} id={`payment-${method.codeName}`} />
+                                            <Label htmlFor={`payment-${method.codeName}`} className="cursor-pointer">
+                                                {method.codeValue}
+                                            </Label>
+                                        </div>
+                                    ))}
                                 </RadioGroup>
                             </div>
 

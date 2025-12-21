@@ -170,14 +170,14 @@ export const bookingManagementApi = {
         ? filters.pageSize
         : 20;
 
-    params.append("pageNumber", String(pageNumber));
-    params.append("pageSize", String(pageSize));
+    params.append("PageIndex", String(pageNumber));
+    params.append("PageSize", String(pageSize));
 
-    if (filters.fromDate) params.append("fromDate", filters.fromDate);
-    if (filters.toDate) params.append("toDate", filters.toDate);
+    if (filters.fromDate) params.append("FromDate", filters.fromDate);
+    if (filters.toDate) params.append("ToDate", filters.toDate);
     if (filters.paymentStatus)
-      params.append("paymentStatus", filters.paymentStatus);
-    if (filters.bookingType) params.append("bookingType", filters.bookingType);
+      params.append("BookingStatus", filters.paymentStatus);
+    if (filters.bookingType) params.append("BookingType", filters.bookingType);
     if (filters.customerName)
       params.append("customerName", filters.customerName.trim());
     if (filters.phoneNumber)
@@ -185,9 +185,9 @@ export const bookingManagementApi = {
     if (filters.email) params.append("email", filters.email.trim());
     if (filters.depositStatus)
       params.append("depositStatus", filters.depositStatus);
-    if (filters.sortBy) params.append("sortBy", filters.sortBy);
+    if (filters.sortBy) params.append("SortBy", filters.sortBy);
     if (filters.isDescending !== undefined)
-      params.append("isDescending", String(filters.isDescending));
+      params.append("SortDesc", String(filters.isDescending));
 
     const response = await apiClient.get<{
       isSuccess: boolean;

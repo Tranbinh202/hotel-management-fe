@@ -1,6 +1,7 @@
 import { toast } from "@/hooks/use-toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { employeesApi, GetEmployeesParams } from "../api/employees"
+import type { EmployeeSearchRequest } from "../types/api"
 
 
 export function useEmployees(params: GetEmployeesParams) {
@@ -15,6 +16,16 @@ export function useEmployee(id: number) {
     queryKey: ["employees", id],
     queryFn: () => employeesApi.getById(id),
     enabled: !!id,
+  })
+}
+
+// Search employees with filters
+export function useEmployeeSearch(params: EmployeeSearchRequest) {
+  return useQuery({
+    queryKey: ["employees", "search", params],
+    queryFn: () => employeesApi.search(params),
+    // Enable when we have filters set (active status, locked status always passed)
+    enabled: true,
   })
 }
 
@@ -84,3 +95,4 @@ export function useToggleEmployeeBan() {
     },
   })
 }
+

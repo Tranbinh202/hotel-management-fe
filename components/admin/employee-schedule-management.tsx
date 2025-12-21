@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -13,6 +15,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -25,190 +40,21 @@ import {
   ChevronRight,
   User,
   Loader2,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
-  useSchedules,
-  useEmployees,
+  useWeeklySchedule,
   useCreateSchedule,
   useUpdateSchedule,
   useDeleteSchedule,
 } from "@/lib/hooks/use-schedule"
+import { useEmployeeSearch } from "@/lib/hooks/use-employees"
+import { useCommonCodes } from "@/lib/hooks/use-common-code"
 import { SHIFT_DEFINITIONS } from "@/lib/api/schedule"
+import { convertWeeklyScheduleToEmployeeSchedules, getShiftTimesByType } from "@/lib/utils/schedule-adapter"
 import type { ShiftType, EmployeeSchedule, CreateScheduleDto, Employee } from "@/lib/types/api"
-
-// Mock data for testing
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    employeeId: 1,
-    accountId: 101,
-    fullName: "Nguyễn Văn An",
-    email: "nva@hotel.com",
-    phoneNumber: "0901234567",
-    role: "Receptionist",
-    avatarUrl: "https://i.pravatar.cc/150?img=1",
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    employeeId: 2,
-    accountId: 102,
-    fullName: "Trần Thị Bình",
-    email: "ttb@hotel.com",
-    phoneNumber: "0901234568",
-    role: "Housekeeper",
-    avatarUrl: "https://i.pravatar.cc/150?img=5",
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    employeeId: 3,
-    accountId: 103,
-    fullName: "Lê Minh Châu",
-    email: "lmc@hotel.com",
-    phoneNumber: "0901234569",
-    role: "Chef",
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    employeeId: 4,
-    accountId: 104,
-    fullName: "Phạm Thị Dung",
-    email: "ptd@hotel.com",
-    phoneNumber: "0901234570",
-    role: "Housekeeper",
-    avatarUrl: "https://i.pravatar.cc/150?img=9",
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    employeeId: 5,
-    accountId: 105,
-    fullName: "Hoàng Văn Em",
-    email: "hve@hotel.com",
-    phoneNumber: "0901234571",
-    role: "Security",
-    avatarUrl: "https://i.pravatar.cc/150?img=12",
-    isActive: true,
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-]
-
-const generateMockSchedules = (weekDates: Date[]): EmployeeSchedule[] => {
-  const schedules: EmployeeSchedule[] = []
-  let scheduleId = 1
-
-  // Generate some schedules for this week
-  weekDates.forEach((date, dayIndex) => {
-    const dateStr = date.toISOString().split("T")[0]
-
-    // Ca sáng - 2 người mỗi ngày
-    if (dayIndex < 5) {
-      // Thứ 2-6
-      schedules.push({
-        scheduleId: scheduleId++,
-        employeeId: 1,
-        employeeName: "Nguyễn Văn An",
-        employeeRole: "Receptionist",
-        employeeAvatar: "https://i.pravatar.cc/150?img=1",
-        date: dateStr,
-        shiftType: "morning",
-        shiftName: "Ca Sáng",
-        startTime: "06:00",
-        endTime: "14:00",
-        status: dayIndex < new Date().getDay() - 1 ? "Completed" : "Scheduled",
-        notes: dayIndex === 0 ? "Ca đầu tuần" : undefined,
-        createdAt: new Date().toISOString(),
-      })
-
-      schedules.push({
-        scheduleId: scheduleId++,
-        employeeId: 2,
-        employeeName: "Trần Thị Bình",
-        employeeRole: "Housekeeper",
-        employeeAvatar: "https://i.pravatar.cc/150?img=5",
-        date: dateStr,
-        shiftType: "morning",
-        shiftName: "Ca Sáng",
-        startTime: "06:00",
-        endTime: "14:00",
-        status: "Scheduled",
-        createdAt: new Date().toISOString(),
-      })
-    }
-
-    // Ca chiều - 2-3 người
-    if (dayIndex < 6) {
-      schedules.push({
-        scheduleId: scheduleId++,
-        employeeId: 3,
-        employeeName: "Lê Minh Châu",
-        employeeRole: "Chef",
-        date: dateStr,
-        shiftType: "afternoon",
-        shiftName: "Ca Chiều",
-        startTime: "14:00",
-        endTime: "22:00",
-        status: "Scheduled",
-        notes: "Chuẩn bị bữa tối",
-        createdAt: new Date().toISOString(),
-      })
-
-      schedules.push({
-        scheduleId: scheduleId++,
-        employeeId: 4,
-        employeeName: "Phạm Thị Dung",
-        employeeRole: "Housekeeper",
-        employeeAvatar: "https://i.pravatar.cc/150?img=9",
-        date: dateStr,
-        shiftType: "afternoon",
-        shiftName: "Ca Chiều",
-        startTime: "14:00",
-        endTime: "22:00",
-        status: "Scheduled",
-        createdAt: new Date().toISOString(),
-      })
-    }
-
-    // Ca đêm - 1-2 người
-    schedules.push({
-      scheduleId: scheduleId++,
-      employeeId: 5,
-      employeeName: "Hoàng Văn Em",
-      employeeRole: "Security",
-      employeeAvatar: "https://i.pravatar.cc/150?img=12",
-      date: dateStr,
-      shiftType: "night",
-      shiftName: "Ca Đêm",
-      startTime: "22:00",
-      endTime: "06:00",
-      status: dayIndex === 0 && new Date().getDay() > 1 ? "Absent" : "Scheduled",
-      notes: "Bảo vệ đêm",
-      createdAt: new Date().toISOString(),
-    })
-
-    if (dayIndex === 5 || dayIndex === 6) {
-      // Cuối tuần thêm ca đêm
-      schedules.push({
-        scheduleId: scheduleId++,
-        employeeId: 1,
-        employeeName: "Nguyễn Văn An",
-        employeeRole: "Receptionist",
-        employeeAvatar: "https://i.pravatar.cc/150?img=1",
-        date: dateStr,
-        shiftType: "night",
-        shiftName: "Ca Đêm",
-        startTime: "22:00",
-        endTime: "06:00",
-        status: "Scheduled",
-        notes: "Trực đêm cuối tuần",
-        createdAt: new Date().toISOString(),
-      })
-    }
-  })
-
-  return schedules
-}
 
 export default function EmployeeScheduleManagement() {
   const [currentWeekStart, setCurrentWeekStart] = useState(() => {
@@ -228,6 +74,9 @@ export default function EmployeeScheduleManagement() {
     shiftType: "morning" as ShiftType,
     notes: "",
   })
+  const [employeeSearchOpen, setEmployeeSearchOpen] = useState(false)
+  const [employeeSearchKeyword, setEmployeeSearchKeyword] = useState("")
+  const [selectedEmployeeTypeId, setSelectedEmployeeTypeId] = useState<number | undefined>(undefined)
 
   // Calculate week range
   const weekDates = useMemo(() => {
@@ -243,22 +92,50 @@ export default function EmployeeScheduleManagement() {
   const startDate = weekDates[0].toISOString().split("T")[0]
   const endDate = weekDates[6].toISOString().split("T")[0]
 
-  // Fetch data
-  const { data: schedulesData, isLoading: isLoadingSchedules } = useSchedules({
+  console.log("📅 Schedule Dates:", { startDate, endDate, employeeTypeId: selectedEmployeeTypeId })
+
+  // Fetch employee types from CommonCode
+  const { data: employeeTypes = [] } = useQuery({
+    queryKey: ["commonCodes", "EmployeeType"],
+    queryFn: async () => {
+      const { commonCodeApi } = await import("@/lib/api/common-code")
+      return commonCodeApi.getByType("EmployeeType", true)
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Fetch data from NEW API with optional filter
+  const { data: weeklyScheduleData, isLoading: isLoadingSchedules, error: scheduleError } = useWeeklySchedule(
     startDate,
     endDate,
-    pageSize: 500,
+    selectedEmployeeTypeId
+  )
+
+  console.log("📊 Weekly Schedule Data:", {
+    data: weeklyScheduleData,
+    isLoading: isLoadingSchedules,
+    error: scheduleError
   })
-  const { data: employees, isLoading: isLoadingEmployees } = useEmployees()
+
+  // Search employees
+  const { data: employeeSearchData, isLoading: isSearchingEmployees } = useEmployeeSearch({
+    keyword: employeeSearchKeyword,
+    isActive: true,
+    isLocked: false,
+    pageSize: 20,
+  })
 
   const createMutation = useCreateSchedule()
   const updateMutation = useUpdateSchedule()
   const deleteMutation = useDeleteSchedule()
 
-  // Use mock data if API data is not available
-  const mockSchedules = useMemo(() => generateMockSchedules(weekDates), [weekDates])
-  const schedules = schedulesData?.items || mockSchedules
-  const employeeList = employees || MOCK_EMPLOYEES
+  // Convert weekly schedule data to old format using adapter
+  const schedules = useMemo(() => {
+    if (!weeklyScheduleData) return []
+    return convertWeeklyScheduleToEmployeeSchedules(weeklyScheduleData)
+  }, [weeklyScheduleData])
+
+  const employeeList = employeeSearchData?.items || []
 
   // Group schedules by date and shift
   const scheduleMatrix = useMemo(() => {
@@ -307,11 +184,12 @@ export default function EmployeeScheduleManagement() {
   const handleAddSchedule = (date: Date, shiftType: ShiftType) => {
     setEditingSchedule(null)
     setFormData({
-      employeeId: employeeList?.[0]?.employeeId || 0,
+      employeeId: 0,
       date: date.toISOString().split("T")[0],
       shiftType,
       notes: "",
     })
+    setEmployeeSearchKeyword("")
     setIsModalOpen(true)
   }
 
@@ -323,6 +201,7 @@ export default function EmployeeScheduleManagement() {
       shiftType: schedule.shiftType,
       notes: schedule.notes || "",
     })
+    setEmployeeSearchKeyword(schedule.employeeName)
     setIsModalOpen(true)
   }
 
@@ -341,33 +220,31 @@ export default function EmployeeScheduleManagement() {
     }
 
     try {
+      // Get start/end time based on shift type
+      const shiftTimes = getShiftTimesByType(formData.shiftType)
+
       if (editingSchedule) {
         await updateMutation.mutateAsync({
           scheduleId: editingSchedule.scheduleId,
-          ...formData,
+          employeeId: formData.employeeId,
+          shiftDate: formData.date,
+          startTime: shiftTimes.startTime,
+          endTime: shiftTimes.endTime,
+          notes: formData.notes || undefined,
         })
       } else {
-        await createMutation.mutateAsync(formData)
+        await createMutation.mutateAsync({
+          employeeId: formData.employeeId,
+          shiftDate: formData.date,
+          startTime: shiftTimes.startTime,
+          endTime: shiftTimes.endTime,
+          notes: formData.notes || undefined,
+        })
       }
       setIsModalOpen(false)
     } catch (error) {
       console.error("Failed to save schedule:", error)
     }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { variant: any; label: string }> = {
-      Scheduled: { variant: "default", label: "Đã lên lịch" },
-      Completed: { variant: "default", label: "Hoàn thành" },
-      Absent: { variant: "destructive", label: "Vắng mặt" },
-      Cancelled: { variant: "secondary", label: "Đã hủy" },
-    }
-    const config = statusMap[status] || { variant: "default", label: status }
-    return (
-      <Badge variant={config.variant} className="text-xs">
-        {config.label}
-      </Badge>
-    )
   }
 
   const formatDate = (date: Date) => {
@@ -376,6 +253,7 @@ export default function EmployeeScheduleManagement() {
       dayName: days[date.getDay()],
       date: date.getDate(),
       month: date.getMonth() + 1,
+      year: date.getFullYear(),
     }
   }
 
@@ -385,8 +263,19 @@ export default function EmployeeScheduleManagement() {
     return `${start.getDate()}/${start.getMonth() + 1} - ${end.getDate()}/${end.getMonth() + 1}/${end.getFullYear()}`
   }
 
-  // Show loading only if we don't have mock data as fallback
-  const showLoading = (isLoadingSchedules || isLoadingEmployees) && !mockSchedules.length
+  const getSelectedEmployee = () => {
+    return employeeList.find((emp: any) => emp.employeeId === formData.employeeId)
+  }
+
+  const formatDateDisplay = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const day = date.getDate()
+    const month = date.getMonth() + 1
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  const showLoading = isLoadingSchedules
 
   if (showLoading) {
     return (
@@ -403,6 +292,29 @@ export default function EmployeeScheduleManagement() {
         <div>
           <h1 className="text-3xl font-bold">Quản Lý Lịch Làm Việc</h1>
           <p className="text-muted-foreground mt-1">Lên lịch và quản lý ca làm việc của nhân viên</p>
+        </div>
+
+        {/* Filter by Employee Type */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium">Lọc theo loại nhân viên:</label>
+          <Select
+            value={selectedEmployeeTypeId?.toString() || "all"}
+            onValueChange={(value) => setSelectedEmployeeTypeId(value === "all" ? undefined : parseInt(value))}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả</SelectItem>
+              {employeeTypes
+                .filter((type: any) => type?.codeId) // Filter out invalid entries
+                .map((type: any) => (
+                  <SelectItem key={type.codeId} value={type.codeId.toString()}>
+                    {type.codeValue || 'N/A'}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -450,9 +362,8 @@ export default function EmployeeScheduleManagement() {
                     return (
                       <th
                         key={date.toISOString()}
-                        className={`border p-3 text-center min-w-[180px] ${
-                          isToday ? "bg-primary/10" : "bg-muted"
-                        }`}
+                        className={`border p-3 text-center min-w-[180px] ${isToday ? "bg-primary/10" : "bg-muted"
+                          }`}
                       >
                         <div className="font-semibold">{formatted.dayName}</div>
                         <div className="text-sm font-normal">
@@ -541,7 +452,6 @@ export default function EmployeeScheduleManagement() {
                                         {schedule.employeeRole}
                                       </div>
                                     )}
-                                    <div className="mt-1">{getStatusBadge(schedule.status)}</div>
                                     {schedule.notes && (
                                       <div className="text-xs text-muted-foreground mt-1 italic line-clamp-1">
                                         {schedule.notes}
@@ -574,32 +484,75 @@ export default function EmployeeScheduleManagement() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingSchedule ? "Sửa Lịch Làm Việc" : "Thêm Lịch Làm Việc"}</DialogTitle>
             <DialogDescription>
-              {editingSchedule ? "Cập nhật thông tin lịch làm việc" : "Tạo lịch làm việc mới cho nhân viên"}
+              {editingSchedule ? "Cập nhật thông tin lịch làm việc" : `Tạo lịch làm việc mới cho ngày ${formatDateDisplay(formData.date)}`}
+              <br />
+              <span className="text-sm font-medium">
+                {SHIFT_DEFINITIONS.find(s => s.shiftType === formData.shiftType)?.name} ({SHIFT_DEFINITIONS.find(s => s.shiftType === formData.shiftType)?.startTime} - {SHIFT_DEFINITIONS.find(s => s.shiftType === formData.shiftType)?.endTime})
+              </span>
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="employee">Nhân viên *</Label>
-              <Select
-                value={formData.employeeId.toString()}
-                onValueChange={(value) => setFormData({ ...formData, employeeId: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn nhân viên" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employeeList?.map((employee) => (
-                    <SelectItem key={employee.employeeId} value={employee.employeeId.toString()}>
-                      {employee.fullName} - {employee.role}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Nhân viên *</Label>
+              <Popover open={employeeSearchOpen} onOpenChange={setEmployeeSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={employeeSearchOpen}
+                    className="w-full justify-between"
+                  >
+                    {formData.employeeId
+                      ? employeeList.find((emp: any) => emp.employeeId === formData.employeeId)?.fullName
+                      : "Tìm kiếm nhân viên..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput
+                      placeholder="Tìm theo tên, số điện thoại..."
+                      value={employeeSearchKeyword}
+                      onValueChange={setEmployeeSearchKeyword}
+                    />
+                    <CommandEmpty>
+                      {isSearchingEmployees ? "Đang tìm kiếm..." : "Không tìm thấy nhân viên"}
+                    </CommandEmpty>
+                    <CommandGroup>
+                      <CommandList>
+                        {employeeList.map((employee: any) => (
+                          <CommandItem
+                            key={employee.employeeId}
+                            value={employee.fullName}
+                            onSelect={() => {
+                              setFormData({ ...formData, employeeId: employee.employeeId })
+                              setEmployeeSearchOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.employeeId === employee.employeeId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{employee.fullName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {employee.employeeTypeName} • {employee.phoneNumber || employee.email}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">

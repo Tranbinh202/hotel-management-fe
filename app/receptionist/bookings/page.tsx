@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useBookingManagement, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
+import { useBookingManagementPaginated, useUpdateBookingStatus } from "@/lib/hooks/use-bookings"
 import { bookingManagementApi } from "@/lib/api/bookings"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,14 +61,14 @@ export default function ReceptionistBookingsPage() {
     isDescending: false,
   }
 
-  const { data: bookings, isLoading, refetch } = useBookingManagement(filters)
+  const { data: bookings, isLoading, refetch } = useBookingManagementPaginated(filters)
   const updateStatusMutation = useUpdateBookingStatus()
 
   const { data: bookingDetailData, isLoading: isLoadingDetail } = useBookingManagementDetail(selectedBookingId || 0)
 
-  const bookingsData = (bookings?.pages?.[0] as any)?.data?.items || []
-  const totalPages = (bookings?.pages?.[0] as any)?.data?.totalPages || 1
-  const totalCount = (bookings?.pages?.[0] as any)?.data?.totalCount || 0
+  const bookingsData = bookings?.data?.items || []
+  const totalPages = bookings?.data?.totalPages || 1
+  const totalCount = bookings?.data?.totalCount || 0
 
   // Reset to page 1 when search query changes
   useEffect(() => {

@@ -5,9 +5,28 @@ import type {
   ScheduleSearchParams,
   CreateScheduleDto,
   UpdateScheduleDto,
+  AvailableEmployeesRequest,
 } from "@/lib/types/api"
 
-// Get schedules with filters
+// Get weekly schedule (NEW API)
+export function useWeeklySchedule(startDate: string, endDate: string, employeeTypeId?: number) {
+  return useQuery({
+    queryKey: ["weekly-schedule", startDate, endDate, employeeTypeId],
+    queryFn: () => scheduleApi.getWeeklySchedule(startDate, endDate, employeeTypeId),
+    enabled: !!startDate && !!endDate,
+  })
+}
+
+// Get available employees for a shift (NEW API)
+export function useAvailableEmployees(params: AvailableEmployeesRequest) {
+  return useQuery({
+    queryKey: ["available-employees", params],
+    queryFn: () => scheduleApi.getAvailableEmployees(params),
+    enabled: !!params.shiftDate && !!params.startTime && !!params.endTime,
+  })
+}
+
+// Get schedules with filters (legacy)
 export function useSchedules(params: ScheduleSearchParams = {}) {
   return useQuery({
     queryKey: ["schedules", params],
@@ -41,6 +60,7 @@ export function useCreateSchedule() {
     mutationFn: (data: CreateScheduleDto) => scheduleApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      queryClient.invalidateQueries({ queryKey: ["weekly-schedule"] })
       toast({
         title: "Thành công",
         description: "Đã thêm lịch làm việc",
@@ -64,6 +84,7 @@ export function useCreateBulkSchedule() {
     mutationFn: (schedules: CreateScheduleDto[]) => scheduleApi.createBulk(schedules),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      queryClient.invalidateQueries({ queryKey: ["weekly-schedule"] })
       toast({
         title: "Thành công",
         description: `Đã thêm ${data.length} lịch làm việc`,
@@ -87,6 +108,7 @@ export function useUpdateSchedule() {
     mutationFn: (data: UpdateScheduleDto) => scheduleApi.update(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      queryClient.invalidateQueries({ queryKey: ["weekly-schedule"] })
       toast({
         title: "Thành công",
         description: "Đã cập nhật lịch làm việc",
@@ -110,6 +132,7 @@ export function useDeleteSchedule() {
     mutationFn: (id: number) => scheduleApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedules"] })
+      queryClient.invalidateQueries({ queryKey: ["weekly-schedule"] })
       toast({
         title: "Thành công",
         description: "Đã xóa lịch làm việc",
@@ -124,3 +147,4 @@ export function useDeleteSchedule() {
     },
   })
 }
+

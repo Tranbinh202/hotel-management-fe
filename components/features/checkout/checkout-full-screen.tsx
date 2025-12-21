@@ -23,7 +23,6 @@ interface CheckoutFullScreenProps {
 
 export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenProps) {
     const router = useRouter()
-    const [actualCheckOutDate, setActualCheckOutDate] = useState("")
     const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null)
     const [paymentNote, setPaymentNote] = useState("")
     const [transactionReference, setTransactionReference] = useState("")
@@ -34,16 +33,12 @@ export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenP
         data: previewData,
         isLoading: isLoadingPreview,
         error: previewError,
-    } = usePreviewCheckout(bookingId || 0, actualCheckOutDate)
+    } = usePreviewCheckout(bookingId || 0)
 
     const { data: paymentMethods, isLoading: isLoadingPaymentMethods } = usePaymentMethods()
     const processCheckout = useProcessCheckout()
 
-    useEffect(() => {
-        if (!actualCheckOutDate) {
-            setActualCheckOutDate(new Date().toISOString())
-        }
-    }, [])
+
 
     // Generate QR code when preview data is available
     useEffect(() => {
@@ -72,13 +67,13 @@ export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenP
     }, [previewData, bookingId, qrCodeUrl])
 
     const handleSubmit = async () => {
-        if (!bookingId || !actualCheckOutDate || !paymentMethodId) {
+        if (!bookingId || !paymentMethodId) {
             return
         }
 
         const request: CheckoutRequest = {
             bookingId,
-            actualCheckOutDate,
+            actualCheckOutDate: new Date().toISOString(),
             paymentMethodId,
             paymentNote: paymentNote || undefined,
             transactionReference: transactionReference || undefined,
@@ -174,7 +169,7 @@ export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenP
 
                                 {/* Stay Info */}
                                 <div className="bg-white rounded-xl shadow-sm p-6">
-                                    <div className="grid grid-cols-2 gap-6 mb-6">
+                                    <div className="grid grid-cols-2 gap-6">
                                         <div>
                                             <Label>Ngày check-in</Label>
                                             <div className="flex items-center gap-2 mt-2">
@@ -195,16 +190,7 @@ export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenP
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <Label htmlFor="checkoutDate">Ngày checkout thực tế *</Label>
-                                        <Input
-                                            id="checkoutDate"
-                                            type="datetime-local"
-                                            value={actualCheckOutDate ? format(new Date(actualCheckOutDate), "yyyy-MM-dd'T'HH:mm") : ""}
-                                            onChange={(e) => setActualCheckOutDate(new Date(e.target.value).toISOString())}
-                                            className="mt-2"
-                                        />
-                                    </div>
+
                                 </div>
 
                                 {/* Room Charges */}
@@ -379,7 +365,7 @@ export function CheckoutFullScreen({ bookingId, onSuccess }: CheckoutFullScreenP
 
                                         <Button
                                             onClick={handleSubmit}
-                                            disabled={!paymentMethodId || !actualCheckOutDate || processCheckout.isPending}
+                                            disabled={!paymentMethodId || processCheckout.isPending}
                                             className="w-full"
                                             size="lg"
                                         >

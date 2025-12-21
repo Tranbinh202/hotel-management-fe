@@ -335,7 +335,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{attendanceStaticData?.attendance}</div>
-            <p className="text-xs text-muted-foreground">Hôm nay</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -346,7 +346,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{attendanceStaticData?.attend}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -357,7 +357,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{attendanceStaticData?.absentWithoutLeave}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -368,7 +368,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{attendanceStaticData?.absentWithLeave}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
       </div>

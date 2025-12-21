@@ -585,7 +585,7 @@ export default function AttendanceManagement() {
                 <SelectContent>
                   {employeesData?.items?.map((emp) => (
                     <SelectItem key={emp.employeeId} value={emp.employeeId.toString()}>
-                      {emp.fullName} - {emp.role}
+                      {emp.fullName}
                     </SelectItem>
                   ))}
                 </SelectContent>

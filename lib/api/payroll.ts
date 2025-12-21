@@ -19,7 +19,6 @@ export interface GetPayrollParams extends IPaginationParams {
 
 export interface CalculatePayrollParams {
   employeeId?: number
-  month: number
   year: number
 }
 

@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/api/client";
 import { GetSalaryInfoParams, salaryInfoApi } from "../api/salary";
-import { SalaryInfo } from "../api";
+import { CalculatePayrollParams, SalaryInfo } from "../api";
 
 export function useSalaryInfos(params: GetSalaryInfoParams) {
   return useQuery({
@@ -42,3 +42,4 @@ export function useDeleteSalaryInfo() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["salary-info"] }),
   });
 }
+

@@ -1,6 +1,7 @@
 import { toast } from "@/hooks/use-toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { type CalculatePayrollParams, type GetPayrollParams, payrollApi } from "../api/payroll"
+import { SalaryInfo } from "../api"
 
 export function usePayroll(params: GetPayrollParams) {
   return useQuery({
@@ -17,13 +18,35 @@ export function usePayrollRecord(id: number) {
   })
 }
 
-export function useCalculatePayroll(params: CalculatePayrollParams) {
-  return useQuery({
-    queryKey: ["payroll-calculation", params],
-    queryFn: () => payrollApi.calculate(params),
-    enabled: !!params.month && !!params.year,
+export function useUpdateSalaryInfo() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: SalaryInfo) => payrollApi.updateSalary(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["salary-info"] })
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật bản ghi lương",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể cập nhật bản ghi lương",
+        variant: "destructive",
+      })
+    },
   })
 }
+
+// export function useCalculatePayroll(params: CalculatePayrollParams) {
+//   return useQuery({
+//     queryKey: ["payroll-calculation", params],
+//     queryFn: () => payrollApi.calculate(params),
+//     enabled: !!params.month && !!params.year,
+//   })
+// }
 
 export function useCreatePayrollDisbursement() {
   const queryClient = useQueryClient()
@@ -113,4 +136,11 @@ export function useDeletePayroll() {
       })
     },
   })
+}
+
+export function useCaculateSalary(params: CalculatePayrollParams) {
+  return useQuery({
+    queryKey: ["salary-info", params],
+    queryFn: () => payrollApi.calculate(params),
+  });
 }

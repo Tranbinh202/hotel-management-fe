@@ -35,192 +35,9 @@ import { Pencil, Trash2, Plus, Calendar, Users, CheckCircle2, XCircle, Clock, Us
 import type { Attendance, AttendanceStatus, CreateAttendanceDto, UpdateAttendanceDto, Employee, AttendanceRecord } from "@/lib/types/api"
 import { format, subDays } from "date-fns"
 import { el } from "date-fns/locale"
+import { useEmployees } from "@/lib/hooks/use-employees"
 
-// Mock employees for fallback data
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    employeeId: 1,
-    fullName: "Nguyễn Văn An",
-    role: "Receptionist",
-    phoneNumber: "0901234567",
-    email: "nguyenvanan@hotel.com",
-    address: "123 Nguyễn Huệ, Q1, HCM",
-    dateOfBirth: "1995-03-15",
-    hireDate: "2020-01-10",
-    salary: 12000000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=1",
-  },
-  {
-    employeeId: 2,
-    fullName: "Trần Thị Bình",
-    role: "Housekeeping",
-    phoneNumber: "0902345678",
-    email: "tranthibinh@hotel.com",
-    address: "456 Lê Lợi, Q1, HCM",
-    dateOfBirth: "1992-07-22",
-    hireDate: "2019-05-20",
-    salary: 10000000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=2",
-  },
-  {
-    employeeId: 3,
-    fullName: "Lê Minh Cường",
-    role: "Security",
-    phoneNumber: "0903456789",
-    email: "leminhcuong@hotel.com",
-    address: "789 Hai Bà Trưng, Q3, HCM",
-    dateOfBirth: "1990-11-05",
-    hireDate: "2018-03-15",
-    salary: 11000000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=3",
-  },
-  {
-    employeeId: 4,
-    fullName: "Phạm Thị Dung",
-    role: "Chef",
-    phoneNumber: "0904567890",
-    email: "phamthidung@hotel.com",
-    address: "321 Trần Hưng Đạo, Q5, HCM",
-    dateOfBirth: "1988-04-18",
-    hireDate: "2017-08-01",
-    salary: 15000000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=4",
-  },
-  {
-    employeeId: 5,
-    fullName: "Hoàng Văn Em",
-    role: "Manager",
-    phoneNumber: "0905678901",
-    email: "hoangvanem@hotel.com",
-    address: "654 Võ Văn Tần, Q3, HCM",
-    dateOfBirth: "1985-09-30",
-    hireDate: "2015-01-05",
-    salary: 20000000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=5",
-  },
-  {
-    employeeId: 6,
-    fullName: "Vũ Thị Phương",
-    role: "Receptionist",
-    phoneNumber: "0906789012",
-    email: "vuthiphuong@hotel.com",
-    address: "987 Pasteur, Q1, HCM",
-    dateOfBirth: "1994-12-25",
-    hireDate: "2021-06-15",
-    salary: 11500000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=6",
-  },
-  {
-    employeeId: 7,
-    fullName: "Đặng Minh Giang",
-    role: "Housekeeping",
-    phoneNumber: "0907890123",
-    email: "dangminhgiang@hotel.com",
-    address: "135 Điện Biên Phủ, Q3, HCM",
-    dateOfBirth: "1993-06-10",
-    hireDate: "2020-09-01",
-    salary: 10500000,
-    status: "Active",
-    avatarUrl: "https://i.pravatar.cc/150?img=7",
-  },
-]
 
-// Generate mock attendance data for the last 30 days
-const generateMockAttendances = (): Attendance[] => {
-  const attendances: Attendance[] = []
-  const today = new Date()
-  let attendanceId = 1
-
-  // Generate for last 30 days
-  for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
-    const currentDate = subDays(today, dayOffset)
-    const dateStr = format(currentDate, "yyyy-MM-dd")
-
-    // Generate attendance for each employee
-    MOCK_EMPLOYEES.forEach((employee) => {
-      // Random distribution: 5% absent, 5% on leave, 5% late, 3% half day, rest present
-      const random = Math.random()
-      let status: AttendanceStatus
-      let checkInTime: string | undefined
-      let checkOutTime: string | undefined
-      let workingHours: number | undefined
-      let notes: string | undefined
-
-      if (random < 0.05) {
-        // 5% absent
-        status = "Absent"
-        notes = "Không có mặt"
-      } else if (random < 0.10) {
-        // 5% on leave
-        status = "OnLeave"
-        notes = "Nghỉ phép"
-      } else if (random < 0.15) {
-        // 5% late
-        status = "Late"
-        const lateMinutes = Math.floor(Math.random() * 60) + 10 // 10-70 minutes late
-        const checkInHour = 8
-        const checkInMinute = lateMinutes
-        checkInTime = `${checkInHour.toString().padStart(2, "0")}:${checkInMinute.toString().padStart(2, "0")}`
-        checkOutTime = "17:30"
-        workingHours = 8 - (lateMinutes / 60)
-        notes = `Đến muộn ${lateMinutes} phút`
-      } else if (random < 0.18) {
-        // 3% half day
-        status = "HalfDay"
-        checkInTime = "08:00"
-        checkOutTime = "12:00"
-        workingHours = 4
-        notes = "Nghỉ nửa ngày"
-      } else {
-        // Rest present with minor time variations
-        status = "Present"
-        const checkInVariation = Math.floor(Math.random() * 10) - 5 // -5 to +5 minutes
-        const checkOutVariation = Math.floor(Math.random() * 20) - 10 // -10 to +10 minutes
-
-        const baseCheckIn = 8 * 60 // 8:00 in minutes
-        const baseCheckOut = 17 * 60 + 30 // 17:30 in minutes
-
-        const actualCheckIn = baseCheckIn + checkInVariation
-        const actualCheckOut = baseCheckOut + checkOutVariation
-
-        const checkInHours = Math.floor(actualCheckIn / 60)
-        const checkInMinutes = actualCheckIn % 60
-        const checkOutHours = Math.floor(actualCheckOut / 60)
-        const checkOutMinutes = actualCheckOut % 60
-
-        checkInTime = `${checkInHours.toString().padStart(2, "0")}:${checkInMinutes.toString().padStart(2, "0")}`
-        checkOutTime = `${checkOutHours.toString().padStart(2, "0")}:${checkOutMinutes.toString().padStart(2, "0")}`
-        workingHours = (actualCheckOut - actualCheckIn) / 60
-      }
-
-      attendances.push({
-        attendanceId: attendanceId++,
-        employeeId: employee.employeeId,
-        employeeName: employee.fullName,
-        employeeRole: employee.role,
-        employeeAvatar: employee.avatarUrl,
-        workDate: dateStr,
-        checkInTime,
-        checkOutTime,
-        status,
-        workingHours,
-        notes,
-        createdAt: dateStr,
-        updatedAt: dateStr,
-      })
-    })
-  }
-
-  return attendances.reverse() // Most recent first
-}
-
-const MOCK_ATTENDANCES = generateMockAttendances()
 
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -293,7 +110,8 @@ export default function AttendanceManagement() {
   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null)
   const [searchName, setSearchName] = useState("")
   const [filterStatus, setFilterStatus] = useState<AttendanceStatus | "all">("all")
-  const [filterDate, setFilterDate] = useState("")
+  const [filterDay, setFilterDay] = useState("all")
+  const [filterMonthYear, setFilterMonthYear] = useState("")
   // Pagination (server-side load more)
   const [pageIndex, setPageIndex] = useState(1)
   const [pageSize, setPageSize] = useState(10)
@@ -342,7 +160,7 @@ export default function AttendanceManagement() {
   useEffect(() => {
     setPageIndex(1)
     setItems([])
-  }, [searchName, filterStatus, filterDate, pageSize])
+  }, [searchName, filterStatus, filterDay, filterMonthYear, pageSize])
 
   // Build API params
   const apiParams: any = {
@@ -350,20 +168,32 @@ export default function AttendanceManagement() {
     pageSize,
   }
   if (filterStatus && filterStatus !== "all") {
-    const statusMap: Record<string, AttendanceStatus> = {
-      "0": "Present",
-      "1": "Absent",
-      "2": "OnLeave",
-    }
-    apiParams.status = (statusMap as any)[filterStatus] ?? filterStatus
+    apiParams.status = filterStatus
   }
-  if (searchName && searchName.trim() !== "") apiParams.search = searchName.trim()
-  if (filterDate) {
-    apiParams.workDate = filterDate
+  if (searchName && searchName.trim() !== "") apiParams.EmployeeName = searchName.trim()
+  if (filterDay && filterDay !== "all") {
+    apiParams.day = parseInt(filterDay)
+  }
+  // If month-year picker selected, request startDate/endDate for that month
+  if (filterMonthYear) {
+    // filterMonthYear format: YYYY-MM
+    const [yStr, mStr] = filterMonthYear.split("-")
+    const y = parseInt(yStr)
+    const m = parseInt(mStr)
+    apiParams.year = y
+    apiParams.month = m
   }
 
   // Fetch one page from server
   const { data: pagedData, isLoading, error, isFetching } = useAttendances(apiParams)
+
+    const { data: employeesData } = useEmployees({
+      PageIndex: 1,
+      PageSize: 50,
+      Search: "",
+      SortBy: "FullName",
+      SortDesc: false,
+    })
 
   // Append fetched page to items
   useEffect(() => {
@@ -383,14 +213,11 @@ export default function AttendanceManagement() {
   const totalItems = pagedData?.totalCount ?? items.length
   const totalPages = pagedData?.totalPages ?? Math.max(1, Math.ceil(items.length / pageSize))
 
-  // Client-side filtering for searchName only (server filters applied for status/date)
+  // Client-side filtering for searchName and day-of-month (server filters applied for month/year)
   const filteredAttendances = useMemo(() => {
-    const source = items.length > 0 ? items : ((error || !pagedData) ? MOCK_ATTENDANCES : [])
-    return source.filter((attendance) => {
-      const nameMatch = searchName === "" || attendance.employeeName.toLowerCase().includes(searchName.toLowerCase())
-      return nameMatch
-    })
-  }, [items, searchName, error, pagedData])
+    const source = items.length > 0 ? items : []
+    return source
+  }, [items, searchName, filterDay, error, pagedData])
 
   
 
@@ -508,7 +335,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{attendanceStaticData?.attendance}</div>
-            <p className="text-xs text-muted-foreground">Hôm nay</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -519,7 +346,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{attendanceStaticData?.attend}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -530,7 +357,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{attendanceStaticData?.absentWithoutLeave}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
 
@@ -541,7 +368,7 @@ export default function AttendanceManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{attendanceStaticData?.absentWithLeave}</div>
-            <p className="text-xs text-muted-foreground">Nhân viên</p>
+            <p className="text-xs text-muted-foreground">Bản ghi</p>
           </CardContent>
         </Card>
       </div>
@@ -553,7 +380,7 @@ export default function AttendanceManagement() {
           <CardDescription>Tìm kiếm và lọc bản ghi chấm công</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="searchName">Tên nhân viên</Label>
               <Input
@@ -580,12 +407,26 @@ export default function AttendanceManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="filterDate">Ngày</Label>
+              <Label htmlFor="filterDay">Ngày (1-31)</Label>
+              <Select value={filterDay} onValueChange={(value) => setFilterDay(value)}>
+                <SelectTrigger id="filterDay">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>{i + 1}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="filterMonthYear">Tháng & Năm</Label>
               <Input
-                id="filterDate"
-                type="date"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
+                id="filterMonthYear"
+                type="month"
+                value={filterMonthYear}
+                onChange={(e) => setFilterMonthYear(e.target.value)}
               />
             </div>
           </div>
@@ -742,7 +583,7 @@ export default function AttendanceManagement() {
                   <SelectValue placeholder="Chọn nhân viên" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_EMPLOYEES.map((emp) => (
+                  {employeesData?.items?.map((emp) => (
                     <SelectItem key={emp.employeeId} value={emp.employeeId.toString()}>
                       {emp.fullName} - {emp.role}
                     </SelectItem>
